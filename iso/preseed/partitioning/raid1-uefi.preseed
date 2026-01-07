@@ -1,0 +1,78 @@
+# Cortex Linux RAID1 UEFI Partitioning
+# Software RAID1 (mirroring) for high availability
+#
+# Requires two identical disks (/dev/sda and /dev/sdb)
+#
+# Partition layout (mirrored on both disks):
+#   - 512MB EFI System Partition (ESP) on each disk
+#   - 1GB /boot RAID1 (ext4)
+#   - RAID1 for remaining space:
+#     - LVM Volume Group (cortex-vg):
+#       - 20GB / (ext4)
+#       - 8GB swap
+#       - Remaining /home (ext4)
+
+### Partitioning
+d-i partman-auto/method string raid
+d-i partman-auto/disk string /dev/sda /dev/sdb
+
+# Use GPT partitioning for UEFI
+d-i partman-partitioning/choose_label string gpt
+d-i partman-partitioning/default_label string gpt
+
+# RAID and LVM configuration
+d-i partman-md/device_remove_md boolean true
+d-i partman-md/confirm boolean true
+d-i partman-md/confirm_nooverwrite boolean true
+d-i partman-lvm/device_remove_lvm boolean true
+d-i partman-lvm/confirm boolean true
+d-i partman-lvm/confirm_nooverwrite boolean true
+d-i partman-auto-lvm/new_vg_name string cortex-vg
+d-i partman-auto-lvm/guided_size string max
+
+# Define partition recipe for RAID
+d-i partman-auto/expert_recipe string                         \
+      cortex-raid ::                                          \
+              512 512 512 fat32                               \
+                      $primary{ }                             \
+                      $iflabel{ gpt }                         \
+                      $reusemethod{ }                         \
+                      method{ efi }                           \
+                      format{ }                               \
+              .                                               \
+              1024 1024 1024 raid                              \
+                      $primary{ }                             \
+                      $bootable{ }                            \
+                      method{ raid }                          \
+              .                                               \
+              10000 50000 -1 raid                              \
+                      $primary{ }                             \
+                      method{ raid }                          \
+              .
+
+# RAID configuration
+d-i partman-auto-raid/recipe string                           \
+      1 2 0 ext4 /boot                                        \
+              /dev/sda2#/dev/sdb2                             \
+      .                                                       \
+      1 2 0 lvm -                                             \
+              /dev/sda3#/dev/sdb3                             \
+      .
+
+# LVM on top of RAID
+d-i partman-auto-lvm/new_vg_name string cortex-vg
+
+# Logical volumes on the RAID1 LVM
+d-i partman-lvm/confirm boolean true
+d-i partman-lvm/confirm_nooverwrite boolean true
+
+# Confirm partitioning without asking
+d-i partman-partitioning/confirm_write_new_label boolean true
+d-i partman/choose_partition select finish
+d-i partman/confirm boolean true
+d-i partman/confirm_nooverwrite boolean true
+d-i partman-md/confirm_nooverwrite boolean true
+d-i partman-efi/non_efi_system boolean true
+
+# Additional packages for RAID management
+d-i pkgsel/include string mdadm lvm2
