@@ -1,0 +1,64 @@
+#!/bin/bash
+#
+# Cortex Linux Update Notification
+# Shows available updates on login (if any)
+#
+
+# Colors
+PURPLE='\033[0;35m'
+CYAN='\033[0;36m'
+YELLOW='\033[0;33m'
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+GRAY='\033[0;90m'
+RESET='\033[0m'
+
+# Check for update-notifier data (created by apt hooks)
+UPDATES_FILE="/var/lib/update-notifier/updates-available"
+SECURITY_FILE="/var/lib/update-notifier/security-updates-available"
+REBOOT_FILE="/var/run/reboot-required"
+
+# Count updates if apt is available
+if command -v apt-get &>/dev/null; then
+    # Use cached data if available
+    if [ -f "$UPDATES_FILE" ]; then
+        UPDATES=$(grep -oP '\d+ updates' "$UPDATES_FILE" 2>/dev/null | grep -oP '\d+' || echo "0")
+        SECURITY=$(grep -oP '\d+ security' "$UPDATES_FILE" 2>/dev/null | grep -oP '\d+' || echo "0")
+    else
+        # Quick check (may not be accurate without apt update)
+        UPDATES=$(apt list --upgradable 2>/dev/null | grep -c upgradable || echo "0")
+        SECURITY="?"
+    fi
+else
+    UPDATES="0"
+    SECURITY="0"
+fi
+
+# Display update info
+if [ "$UPDATES" != "0" ] && [ "$UPDATES" != "" ]; then
+    echo -e "  ${YELLOW}◆${RESET} ${UPDATES} package update(s) available"
+    if [ "$SECURITY" != "0" ] && [ "$SECURITY" != "?" ] && [ "$SECURITY" != "" ]; then
+        echo -e "  ${RED}◆${RESET} ${SECURITY} security update(s)"
+    fi
+    echo -e "  ${GRAY}  Run: sudo apt update && sudo apt upgrade${RESET}"
+    echo ""
+fi
+
+# Check if reboot required
+if [ -f "$REBOOT_FILE" ]; then
+    echo -e "  ${RED}◆ System restart required${RESET}"
+    if [ -f "/var/run/reboot-required.pkgs" ]; then
+        REBOOT_PKGS=$(cat /var/run/reboot-required.pkgs | head -3 | tr '\n' ', ' | sed 's/,$//')
+        echo -e "  ${GRAY}  Packages: ${REBOOT_PKGS}${RESET}"
+    fi
+    echo -e "  ${GRAY}  Run: sudo reboot${RESET}"
+    echo ""
+fi
+
+# Cortex-specific notifications
+CORTEX_NOTICE="/opt/cortex/notice"
+if [ -f "$CORTEX_NOTICE" ]; then
+    echo -e "  ${CYAN}◆ Cortex Notice:${RESET}"
+    cat "$CORTEX_NOTICE" | sed 's/^/    /'
+    echo ""
+fi

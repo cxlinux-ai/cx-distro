@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Cortex Linux
+Description=Cortex Linux boot splash with neural network animation
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/cortex
+ScriptFile=/usr/share/plymouth/themes/cortex/cortex.script
