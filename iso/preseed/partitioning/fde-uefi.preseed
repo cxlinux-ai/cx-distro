@@ -1,0 +1,91 @@
+# Cortex Linux Full Disk Encryption (FDE) UEFI Partitioning
+# LUKS2 encrypted LVM for security-focused installations
+#
+# Partition layout:
+#   - 512MB EFI System Partition (ESP) - unencrypted
+#   - 1GB /boot (ext4) - unencrypted
+#   - LUKS2 encrypted container:
+#     - LVM Volume Group (cortex-vg):
+#       - 20GB / (ext4)
+#       - 8GB swap (encrypted)
+#       - Remaining /home (ext4)
+#
+# Note: Passphrase should be provided via boot parameter or
+# configured in preseed. For automated installs, consider
+# using a key file or TPM integration in first-boot.
+
+### Partitioning
+d-i partman-auto/method string crypto
+d-i partman-auto/disk string /dev/sda
+
+# Use GPT partitioning for UEFI
+d-i partman-partitioning/choose_label string gpt
+d-i partman-partitioning/default_label string gpt
+
+# Crypto configuration
+d-i partman-crypto/confirm boolean true
+d-i partman-crypto/weak_passphrase boolean true
+d-i partman-crypto/confirm_nooverwrite boolean true
+
+# LUKS configuration
+# Note: In production, this passphrase should be passed via kernel params
+# or replaced during first-boot with a strong passphrase or TPM enrollment
+d-i partman-crypto/passphrase string cortex-temp-passphrase
+d-i partman-crypto/passphrase-again string cortex-temp-passphrase
+
+# LVM configuration
+d-i partman-auto-lvm/guided_size string max
+d-i partman-lvm/device_remove_lvm boolean true
+d-i partman-lvm/confirm boolean true
+d-i partman-lvm/confirm_nooverwrite boolean true
+d-i partman-auto-lvm/new_vg_name string cortex-vg
+
+# Define partition recipe
+d-i partman-auto/expert_recipe string                         \
+      cortex-fde ::                                           \
+              512 512 512 fat32                               \
+                      $primary{ }                             \
+                      $iflabel{ gpt }                         \
+                      $reusemethod{ }                         \
+                      method{ efi }                           \
+                      format{ }                               \
+              .                                               \
+              1024 1024 1024 ext4                              \
+                      $primary{ }                             \
+                      $bootable{ }                            \
+                      method{ format } format{ }              \
+                      use_filesystem{ } filesystem{ ext4 }    \
+                      mountpoint{ /boot }                     \
+              .                                               \
+              20480 20480 20480 ext4                           \
+                      $lvmok{ }                               \
+                      lv_name{ root }                         \
+                      in_vg{ cortex-vg }                      \
+                      method{ format } format{ }              \
+                      use_filesystem{ } filesystem{ ext4 }    \
+                      mountpoint{ / }                         \
+              .                                               \
+              8192 8192 8192 linux-swap                        \
+                      $lvmok{ }                               \
+                      lv_name{ swap }                         \
+                      in_vg{ cortex-vg }                      \
+                      method{ swap } format{ }                \
+              .                                               \
+              16384 32768 -1 ext4                              \
+                      $lvmok{ }                               \
+                      lv_name{ home }                         \
+                      in_vg{ cortex-vg }                      \
+                      method{ format } format{ }              \
+                      use_filesystem{ } filesystem{ ext4 }    \
+                      mountpoint{ /home }                     \
+              .
+
+# Confirm partitioning without asking
+d-i partman-partitioning/confirm_write_new_label boolean true
+d-i partman/choose_partition select finish
+d-i partman/confirm boolean true
+d-i partman/confirm_nooverwrite boolean true
+d-i partman-efi/non_efi_system boolean true
+
+# Skip LUKS warning about weak passphrase (will be changed at first-boot)
+d-i partman-crypto/weak_passphrase boolean true

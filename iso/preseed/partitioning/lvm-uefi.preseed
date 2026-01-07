@@ -1,0 +1,69 @@
+# Cortex Linux LVM UEFI Partitioning
+# LVM-based partitioning for flexible volume management
+#
+# Partition layout:
+#   - 512MB EFI System Partition (ESP)
+#   - 1GB /boot (ext4, outside LVM)
+#   - LVM Volume Group (cortex-vg):
+#     - 20GB / (ext4)
+#     - 8GB swap
+#     - Remaining /home (ext4)
+
+### Partitioning
+d-i partman-auto/method string lvm
+d-i partman-auto/disk string /dev/sda
+
+# Use GPT partitioning for UEFI
+d-i partman-partitioning/choose_label string gpt
+d-i partman-partitioning/default_label string gpt
+
+# LVM configuration
+d-i partman-auto-lvm/guided_size string max
+d-i partman-lvm/device_remove_lvm boolean true
+d-i partman-lvm/confirm boolean true
+d-i partman-lvm/confirm_nooverwrite boolean true
+d-i partman-auto-lvm/new_vg_name string cortex-vg
+
+# Define partition recipe
+d-i partman-auto/expert_recipe string                         \
+      cortex-lvm ::                                           \
+              512 512 512 fat32                               \
+                      $primary{ }                             \
+                      $iflabel{ gpt }                         \
+                      $reusemethod{ }                         \
+                      method{ efi }                           \
+                      format{ }                               \
+              .                                               \
+              1024 1024 1024 ext4                              \
+                      $primary{ }                             \
+                      $bootable{ }                            \
+                      method{ format } format{ }              \
+                      use_filesystem{ } filesystem{ ext4 }    \
+                      mountpoint{ /boot }                     \
+              .                                               \
+              20480 20480 20480 ext4                           \
+                      $lvmok{ }                               \
+                      lv_name{ root }                         \
+                      method{ format } format{ }              \
+                      use_filesystem{ } filesystem{ ext4 }    \
+                      mountpoint{ / }                         \
+              .                                               \
+              8192 8192 8192 linux-swap                        \
+                      $lvmok{ }                               \
+                      lv_name{ swap }                         \
+                      method{ swap } format{ }                \
+              .                                               \
+              16384 32768 -1 ext4                              \
+                      $lvmok{ }                               \
+                      lv_name{ home }                         \
+                      method{ format } format{ }              \
+                      use_filesystem{ } filesystem{ ext4 }    \
+                      mountpoint{ /home }                     \
+              .
+
+# Confirm partitioning without asking
+d-i partman-partitioning/confirm_write_new_label boolean true
+d-i partman/choose_partition select finish
+d-i partman/confirm boolean true
+d-i partman/confirm_nooverwrite boolean true
+d-i partman-efi/non_efi_system boolean true
