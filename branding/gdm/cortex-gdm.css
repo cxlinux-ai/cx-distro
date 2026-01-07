@@ -1,0 +1,167 @@
+/**
+ * Cortex Linux GDM Theme
+ *
+ * Custom styling for the GNOME Display Manager login screen.
+ * This overrides the default GDM theme with Cortex branding.
+ */
+
+/* Login screen background */
+#lockDialogGroup {
+    background: #0F0F23 url('resource:///org/gnome/shell/theme/cortex-login-bg.png');
+    background-size: cover;
+    background-position: center;
+}
+
+/* Alternative: Gradient background without image */
+/*
+#lockDialogGroup {
+    background: linear-gradient(135deg, #0F0F23 0%, #1E1B4B 50%, #0F0F23 100%);
+}
+*/
+
+/* Login dialog box */
+.login-dialog {
+    background-color: rgba(15, 15, 35, 0.85);
+    border: 1px solid rgba(107, 33, 168, 0.3);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+/* User avatar */
+.user-widget .user-icon {
+    border: 2px solid #6B21A8;
+    border-radius: 50%;
+    box-shadow: 0 0 20px rgba(107, 33, 168, 0.3);
+}
+
+/* Username label */
+.user-widget .user-widget-label {
+    color: #E2E8F0;
+    font-weight: 600;
+    font-size: 1.2em;
+}
+
+/* Password entry field */
+.login-dialog-prompt-entry {
+    background-color: rgba(30, 30, 63, 0.8);
+    border: 1px solid rgba(107, 33, 168, 0.5);
+    border-radius: 8px;
+    color: #E2E8F0;
+    padding: 8px 12px;
+}
+
+.login-dialog-prompt-entry:focus {
+    border-color: #06B6D4;
+    box-shadow: 0 0 8px rgba(6, 182, 212, 0.3);
+}
+
+/* Login button */
+.modal-dialog-button {
+    background-color: #6B21A8;
+    border: none;
+    border-radius: 8px;
+    color: #FFFFFF;
+    font-weight: 600;
+    padding: 10px 24px;
+    transition: all 0.2s ease;
+}
+
+.modal-dialog-button:hover {
+    background-color: #7C3AED;
+    box-shadow: 0 4px 12px rgba(107, 33, 168, 0.4);
+}
+
+.modal-dialog-button:active {
+    background-color: #5B21B6;
+}
+
+/* Session/power buttons */
+.login-dialog-button-box .login-dialog-button {
+    background-color: transparent;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    border-radius: 6px;
+    color: #94A3B8;
+}
+
+.login-dialog-button-box .login-dialog-button:hover {
+    background-color: rgba(107, 33, 168, 0.2);
+    border-color: #6B21A8;
+    color: #E2E8F0;
+}
+
+/* Message/error labels */
+.login-dialog-message {
+    color: #94A3B8;
+    font-size: 0.9em;
+}
+
+.login-dialog-message-warning {
+    color: #FBBF24;
+}
+
+.login-dialog-message-hint {
+    color: #64748B;
+}
+
+/* Banner message (optional) */
+.login-dialog-banner {
+    background-color: rgba(6, 182, 212, 0.1);
+    border-left: 3px solid #06B6D4;
+    color: #E2E8F0;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    border-radius: 4px;
+}
+
+/* Clock styling */
+.clock-display {
+    color: #E2E8F0;
+    font-size: 4em;
+    font-weight: 300;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.clock-display .clock-weekday,
+.clock-display .clock-date {
+    color: #94A3B8;
+    font-size: 0.35em;
+    font-weight: 400;
+}
+
+/* Panel/top bar on login screen */
+#panel {
+    background-color: transparent;
+}
+
+/* User list (multi-user) */
+.user-list-item {
+    background-color: rgba(30, 30, 63, 0.6);
+    border-radius: 8px;
+    margin: 4px;
+    padding: 8px;
+}
+
+.user-list-item:hover {
+    background-color: rgba(107, 33, 168, 0.3);
+}
+
+.user-list-item:selected {
+    background-color: rgba(107, 33, 168, 0.5);
+    border: 1px solid #6B21A8;
+}
+
+/* Fingerprint prompt */
+.login-dialog-prompt-fingerprint-message {
+    color: #06B6D4;
+    font-size: 0.85em;
+}
+
+/* Logo/branding area */
+.login-dialog-logo {
+    background-image: url('resource:///org/gnome/shell/theme/cortex-logo.svg');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    min-height: 80px;
+    min-width: 200px;
+}

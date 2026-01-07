@@ -18,7 +18,8 @@
 #   make clean          - Clean build artifacts
 
 .PHONY: all help iso iso-core iso-full iso-secops validate clean test \
-        check-deps preseed-check provision-check lint
+        check-deps preseed-check provision-check lint \
+        branding branding-install branding-package
 
 # Configuration
 SHELL := /bin/bash
@@ -59,6 +60,10 @@ help:
 	@echo "  make preseed-check    Validate preseed syntax"
 	@echo "  make provision-check  Validate provisioning scripts"
 	@echo "  make lint             Run shellcheck on scripts"
+	@echo ""
+	@echo "Branding Targets:"
+	@echo "  make branding-install Install branding to system (requires sudo)"
+	@echo "  make branding-package Build cortex-branding .deb package"
 	@echo ""
 	@echo "Utility Targets:"
 	@echo "  make check-deps       Check build dependencies"
@@ -219,3 +224,53 @@ config:
 	@echo "  ARCH         = $(ARCH)"
 	@echo "  BUILD_DIR    = $(BUILD_DIR)"
 	@echo "  OUTPUT_DIR   = $(OUTPUT_DIR)"
+
+# ============================================================================
+# Branding Targets
+# ============================================================================
+
+BRANDING_DIR := branding
+PACKAGES_DIR := packages
+
+# Install branding directly to system
+branding-install:
+	@echo "Installing Cortex branding..."
+	@if [ "$$(id -u)" -ne 0 ]; then \
+		echo "ERROR: Must run as root (sudo make branding-install)"; \
+		exit 1; \
+	fi
+	@bash $(BRANDING_DIR)/install-branding.sh
+
+# Build cortex-branding .deb package
+branding-package: $(OUTPUT_DIR)
+	@echo "Building cortex-branding package..."
+	@# Create package directory structure
+	@mkdir -p $(BUILD_DIR)/cortex-branding/DEBIAN
+	@mkdir -p $(BUILD_DIR)/cortex-branding/etc
+	@mkdir -p $(BUILD_DIR)/cortex-branding/usr/share/plymouth/themes/cortex
+	@mkdir -p $(BUILD_DIR)/cortex-branding/boot/grub/themes/cortex
+	@mkdir -p $(BUILD_DIR)/cortex-branding/usr/share/backgrounds/cortex
+	@mkdir -p $(BUILD_DIR)/cortex-branding/usr/share/gnome-background-properties
+	@mkdir -p $(BUILD_DIR)/cortex-branding/etc/update-motd.d
+	@mkdir -p $(BUILD_DIR)/cortex-branding/usr/share/cortex/logos
+	@# Copy DEBIAN control files
+	@cp $(PACKAGES_DIR)/cortex-branding/DEBIAN/* $(BUILD_DIR)/cortex-branding/DEBIAN/
+	@chmod 755 $(BUILD_DIR)/cortex-branding/DEBIAN/postinst
+	@chmod 755 $(BUILD_DIR)/cortex-branding/DEBIAN/prerm
+	@# Copy OS release files
+	@cp $(BRANDING_DIR)/os-release/os-release $(BUILD_DIR)/cortex-branding/etc/os-release
+	@cp $(BRANDING_DIR)/os-release/lsb-release $(BUILD_DIR)/cortex-branding/etc/lsb-release
+	@cp $(BRANDING_DIR)/os-release/issue $(BUILD_DIR)/cortex-branding/etc/issue
+	@cp $(BRANDING_DIR)/os-release/issue.net $(BUILD_DIR)/cortex-branding/etc/issue.net
+	@# Copy Plymouth theme
+	@cp $(BRANDING_DIR)/plymouth/cortex/* $(BUILD_DIR)/cortex-branding/usr/share/plymouth/themes/cortex/ 2>/dev/null || true
+	@# Copy GRUB theme
+	@cp $(BRANDING_DIR)/grub/cortex/* $(BUILD_DIR)/cortex-branding/boot/grub/themes/cortex/ 2>/dev/null || true
+	@# Copy wallpapers
+	@cp $(BRANDING_DIR)/wallpapers/*.xml $(BUILD_DIR)/cortex-branding/usr/share/gnome-background-properties/ 2>/dev/null || true
+	@# Copy MOTD scripts
+	@cp $(BRANDING_DIR)/motd/* $(BUILD_DIR)/cortex-branding/etc/update-motd.d/ 2>/dev/null || true
+	@chmod 755 $(BUILD_DIR)/cortex-branding/etc/update-motd.d/*
+	@# Build the package
+	@dpkg-deb --build $(BUILD_DIR)/cortex-branding $(OUTPUT_DIR)/cortex-branding_1.0.0_all.deb
+	@echo "Package built: $(OUTPUT_DIR)/cortex-branding_1.0.0_all.deb"

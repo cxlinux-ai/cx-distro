@@ -1,0 +1,32 @@
+#!/bin/bash
+#
+# Cortex Branding Pre-Removal Script
+#
+
+set -e
+
+case "$1" in
+    remove|upgrade|deconfigure)
+        # Restore default Plymouth theme
+        if command -v plymouth-set-default-theme &>/dev/null; then
+            plymouth-set-default-theme -R 2>/dev/null || true
+        fi
+
+        # Re-enable default MOTD scripts
+        if [ -d /etc/update-motd.d ]; then
+            for f in /etc/update-motd.d/??-* ; do
+                chmod +x "$f" 2>/dev/null || true
+            done
+        fi
+        ;;
+
+    failed-upgrade)
+        ;;
+
+    *)
+        echo "prerm called with unknown argument '$1'" >&2
+        exit 1
+        ;;
+esac
+
+exit 0

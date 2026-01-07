@@ -1,0 +1,22 @@
+Package: cortex-branding
+Version: 1.0.0
+Section: misc
+Priority: optional
+Architecture: all
+Depends: plymouth, plymouth-themes
+Recommends: gnome-shell, gdm3
+Suggests: neofetch
+Maintainer: Cortex Linux Team <team@cortexlinux.com>
+Homepage: https://cortexlinux.com
+Description: Cortex Linux branding and visual identity
+ This package provides the complete Cortex Linux branding including:
+  - OS identity files (/etc/os-release, /etc/lsb-release)
+  - Plymouth boot splash theme
+  - GRUB bootloader theme
+  - Desktop wallpapers
+  - GDM login screen styling
+  - Terminal MOTD (Message of the Day)
+  - System logos and icons
+ .
+ Installing this package will replace Debian/Ubuntu branding with
+ Cortex Linux branding throughout the system.
