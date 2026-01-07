@@ -1,0 +1,162 @@
+# Cortex Linux SecOps Profile Preseed
+# Security-focused installation with FDE and hardening
+#
+# Usage: Append preseed/file=/cdrom/preseed/profiles/cortex-secops.preseed
+#        to kernel boot parameters
+#
+# WARNING: This profile enables Full Disk Encryption.
+# The default passphrase MUST be changed at first boot.
+
+### Localization
+d-i debian-installer/locale string en_US.UTF-8
+d-i keyboard-configuration/xkb-keymap select us
+
+### Network
+d-i netcfg/choose_interface select auto
+d-i netcfg/get_hostname string cortex-sec
+d-i netcfg/get_domain string local
+
+### Mirror settings
+d-i mirror/country string manual
+d-i mirror/http/hostname string deb.debian.org
+d-i mirror/http/directory string /debian
+d-i mirror/http/proxy string
+d-i mirror/suite string bookworm
+
+### Account setup - Enhanced security
+d-i passwd/root-login boolean false
+d-i passwd/user-fullname string Cortex Security User
+d-i passwd/username string cortex
+d-i passwd/user-password-crypted string $6$rounds=4096$cortexsalt$placeholder
+d-i user-setup/allow-password-weak boolean true
+d-i user-setup/encrypt-home boolean false
+
+### Clock and time zone
+d-i clock-setup/utc boolean true
+d-i time/zone string UTC
+d-i clock-setup/ntp boolean true
+
+### Partitioning - Full Disk Encryption with LVM
+d-i partman-auto/method string crypto
+d-i partman-auto/disk string /dev/sda
+d-i partman-partitioning/choose_label string gpt
+d-i partman-partitioning/default_label string gpt
+
+# Crypto configuration
+d-i partman-crypto/confirm boolean true
+d-i partman-crypto/weak_passphrase boolean true
+d-i partman-crypto/confirm_nooverwrite boolean true
+# IMPORTANT: Change this passphrase at first boot!
+d-i partman-crypto/passphrase string cortex-temp-fde-passphrase
+d-i partman-crypto/passphrase-again string cortex-temp-fde-passphrase
+
+d-i partman-auto-lvm/guided_size string max
+d-i partman-lvm/device_remove_lvm boolean true
+d-i partman-lvm/confirm boolean true
+d-i partman-lvm/confirm_nooverwrite boolean true
+d-i partman-auto-lvm/new_vg_name string cortex-sec-vg
+
+d-i partman-auto/expert_recipe string                         \
+      cortex-secops ::                                        \
+              512 512 512 fat32                               \
+                      $primary{ }                             \
+                      $iflabel{ gpt }                         \
+                      method{ efi } format{ }                 \
+              .                                               \
+              1024 1024 1024 ext4                              \
+                      $primary{ } $bootable{ }                \
+                      method{ format } format{ }              \
+                      use_filesystem{ } filesystem{ ext4 }    \
+                      mountpoint{ /boot }                     \
+              .                                               \
+              32768 32768 32768 ext4                           \
+                      $lvmok{ } lv_name{ root }               \
+                      method{ format } format{ }              \
+                      use_filesystem{ } filesystem{ ext4 }    \
+                      mountpoint{ / }                         \
+              .                                               \
+              8192 8192 8192 linux-swap                        \
+                      $lvmok{ } lv_name{ swap }               \
+                      method{ swap } format{ }                \
+              .                                               \
+              16384 32768 -1 ext4                              \
+                      $lvmok{ } lv_name{ home }               \
+                      method{ format } format{ }              \
+                      use_filesystem{ } filesystem{ ext4 }    \
+                      mountpoint{ /home }                     \
+              .
+
+d-i partman-partitioning/confirm_write_new_label boolean true
+d-i partman/choose_partition select finish
+d-i partman/confirm boolean true
+d-i partman/confirm_nooverwrite boolean true
+d-i partman-efi/non_efi_system boolean true
+
+### APT configuration
+d-i apt-setup/non-free-firmware boolean true
+d-i apt-setup/non-free boolean false
+d-i apt-setup/contrib boolean false
+d-i apt-setup/services-select multiselect security, updates
+
+### Package selection - Security tools
+tasksel tasksel/first multiselect standard, ssh-server
+
+d-i pkgsel/include string \
+    sudo \
+    openssh-server \
+    curl \
+    wget \
+    ca-certificates \
+    gnupg \
+    apt-transport-https \
+    lsb-release \
+    python3 \
+    python3-pip \
+    vim \
+    htop \
+    git \
+    ufw \
+    fail2ban \
+    apparmor \
+    apparmor-utils \
+    apparmor-profiles \
+    apparmor-profiles-extra \
+    auditd \
+    audispd-plugins \
+    aide \
+    rkhunter \
+    chkrootkit \
+    clamav \
+    clamav-daemon \
+    lynis \
+    libpam-pwquality \
+    libpam-tmpdir \
+    needrestart \
+    debsums \
+    apt-listbugs \
+    apt-listchanges \
+    unattended-upgrades \
+    cryptsetup \
+    cryptsetup-initramfs
+
+d-i pkgsel/upgrade select full-upgrade
+popularity-contest popularity-contest/participate boolean false
+
+### Boot loader
+d-i grub-installer/only_debian boolean true
+d-i grub-installer/bootdev string default
+
+### Finishing
+d-i finish-install/reboot_in_progress note
+
+# First-boot setup with security hardening
+d-i preseed/late_command string \
+    in-target mkdir -p /opt/cortex/provisioning; \
+    in-target mkdir -p /var/log/cortex; \
+    cp /cdrom/provisioning/first-boot.sh /target/opt/cortex/provisioning/; \
+    cp /cdrom/provisioning/cortex-first-boot.service /target/etc/systemd/system/; \
+    echo "CORTEX_PROFILE=secops" > /target/opt/cortex/provisioning/profile; \
+    echo "REQUIRE_PASSWORD_CHANGE=true" >> /target/opt/cortex/provisioning/profile; \
+    echo "REQUIRE_FDE_PASSPHRASE_CHANGE=true" >> /target/opt/cortex/provisioning/profile; \
+    in-target chmod +x /opt/cortex/provisioning/first-boot.sh; \
+    in-target systemctl enable cortex-first-boot.service
