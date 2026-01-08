@@ -1,0 +1,79 @@
+#!/bin/bash
+#
+# Cortex Linux Live GNOME Desktop Configuration Hook
+#
+# This hook configures the live system to start GNOME desktop automatically
+#
+
+set -e
+
+# Ensure /usr/sbin is in PATH for initramfs tools
+export PATH="$PATH:/usr/sbin"
+
+echo "Configuring Cortex Linux live GNOME desktop environment..."
+
+# Create live user configuration
+mkdir -p /etc/live/config.conf.d
+cat > /etc/live/config.conf.d/cortex-gnome.conf << 'EOF'
+# Cortex Linux Live GNOME Desktop Configuration
+LIVE_USER_DEFAULT=cortex
+LIVE_HOSTNAME=cortex-live
+LIVE_USERNAME=cortex
+LIVE_USER_FULLNAME="Cortex Live User"
+EOF
+
+# Configure GDM to start automatically in live mode
+mkdir -p /etc/gdm3
+cat > /etc/gdm3/daemon.conf << 'EOF'
+# Cortex Linux GDM Configuration for Live Environment
+[daemon]
+AutomaticLoginEnable=true
+AutomaticLogin=cortex
+EOF
+
+# Configure GDM session
+cat > /etc/gdm3/custom.conf << 'EOF'
+# Cortex Linux GDM Custom Configuration
+[daemon]
+AutomaticLoginEnable=true
+AutomaticLogin=cortex
+EOF
+
+# Ensure GNOME starts on boot in live environment
+systemctl set-default graphical.target
+
+# Create a welcome script for the live user
+mkdir -p /etc/skel/Desktop
+mkdir -p /etc/skel/Documents
+mkdir -p /etc/skel/Downloads
+mkdir -p /etc/skel/Pictures
+mkdir -p /etc/skel/.config/autostart
+
+cat > /etc/skel/.config/autostart/welcome.desktop << 'EOF'
+[Desktop Entry]
+Type=Application
+Name=Welcome to Cortex Linux
+Exec=gnome-terminal -- bash -c "echo 'Welcome to Cortex Linux Live!'; echo 'Desktop environment: GNOME'; echo 'Username: cortex'; echo 'Password: (none required)'; echo ''; echo 'Press Enter to continue...'; read"
+Terminal=false
+StartupNotify=false
+EOF
+
+chmod +x /etc/skel/.config/autostart/welcome.desktop
+
+# Configure GNOME to use a nice default setup
+mkdir -p /etc/skel/.config/dconf
+cat > /etc/skel/.config/dconf/user << 'EOF'
+# GNOME settings for live environment
+[org/gnome/desktop/interface]
+gtk-theme='Adwaita'
+icon-theme='Adwaita'
+cursor-theme='Adwaita'
+
+[org/gnome/desktop/background]
+picture-uri='file:///usr/share/backgrounds/gnome/adwaita-l.webp'
+
+[org/gnome/shell]
+welcome-dialog-last-shown-version='9999999999'
+EOF
+
+echo "Live GNOME configuration complete."
