@@ -1,0 +1,31 @@
+# Build artifacts
+build/
+output/
+.cache/
+
+# Branding build artifacts
+packages/cortex-branding/pkg/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.code-workspace
+
+# Logs
+*.log

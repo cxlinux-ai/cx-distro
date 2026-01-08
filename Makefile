@@ -17,8 +17,9 @@
 #   make validate       - Validate preseed files
 #   make clean          - Clean build artifacts
 
-.PHONY: all help iso iso-core iso-full iso-secops validate clean test \
-        check-deps preseed-check provision-check lint \
+.PHONY: all help iso iso-core iso-full iso-secops iso-all \
+        iso-arm64 iso-arm64-core iso-arm64-full iso-arm64-secops iso-arm64-all \
+        validate clean test check-deps preseed-check provision-check lint \
         branding branding-install branding-package
 
 # Configuration
@@ -36,7 +37,7 @@ OUTPUT_DIR := output
 ISO_NAME := cortex-linux
 ISO_VERSION := $(shell date +%Y%m%d)
 DEBIAN_VERSION := bookworm
-ARCH := amd64
+ARCH ?= amd64
 
 # Profiles
 PROFILES := core full secops
@@ -48,12 +49,22 @@ all: help
 help:
 	@echo "Cortex Linux Distribution Build System"
 	@echo ""
-	@echo "ISO Build Targets:"
+	@echo "ISO Build Targets (AMD64):"
 	@echo "  make iso              Build default ISO (full profile)"
 	@echo "  make iso-core         Build minimal core ISO"
 	@echo "  make iso-full         Build full desktop ISO"
 	@echo "  make iso-secops       Build security-focused ISO"
 	@echo "  make iso-all          Build all ISO profiles"
+	@echo ""
+	@echo "ISO Build Targets (ARM64):"
+	@echo "  make iso-arm64        Build default ARM64 ISO (full profile)"
+	@echo "  make iso-arm64-core   Build minimal ARM64 core ISO"
+	@echo "  make iso-arm64-full   Build full ARM64 desktop ISO"
+	@echo "  make iso-arm64-secops Build security-focused ARM64 ISO"
+	@echo "  make iso-arm64-all    Build all ARM64 ISO profiles"
+	@echo ""
+	@echo "Architecture Selection:"
+	@echo "  ARCH=arm64 make iso   Build ISO for specified architecture"
 	@echo ""
 	@echo "Validation Targets:"
 	@echo "  make validate         Run all validation checks"
@@ -133,18 +144,28 @@ define build-iso
 	@echo "Building $(1) ISO..."
 	@mkdir -p $(BUILD_DIR)/$(1)
 	@mkdir -p $(OUTPUT_DIR)
+	@# Copy live-build config files first
+	@mkdir -p $(BUILD_DIR)/$(1)/config/package-lists
+	@mkdir -p $(BUILD_DIR)/$(1)/config/hooks/live
+	@cp $(ISO_DIR)/live-build/config/package-lists/*.list.chroot $(BUILD_DIR)/$(1)/config/package-lists/ 2>/dev/null || true
+	@if [ "$(1)" = "full" ]; then \
+		cp -r $(ISO_DIR)/live-build/config/hooks $(BUILD_DIR)/$(1)/config/ 2>/dev/null || true; \
+	fi
 	@# Configure live-build
 	cd $(BUILD_DIR)/$(1) && lb config \
 		--distribution $(DEBIAN_VERSION) \
 		--archive-areas "main contrib non-free non-free-firmware" \
 		--architectures $(ARCH) \
 		--binary-images iso-hybrid \
-		--bootappend-live "boot=live components preseed/file=/cdrom/preseed/profiles/cortex-$(1).preseed" \
+		--bootappend-live "boot=live components username=cortex preseed/file=/cdrom/preseed/profiles/cortex-$(1).preseed" \
 		--debian-installer live \
 		--debian-installer-gui false \
 		--iso-application "Cortex Linux" \
 		--iso-publisher "Cortex Linux Project" \
-		--iso-volume "CORTEX_$(shell echo $(1) | tr a-z A-Z)"
+		--iso-volume "CORTEX_$(shell echo $(1) | tr a-z A-Z)" \
+		--cache-packages true \
+		--cache-indices true \
+		--cache-stages bootstrap
 	@# Copy preseed and provisioning files
 	@mkdir -p $(BUILD_DIR)/$(1)/config/includes.binary/preseed/profiles
 	@mkdir -p $(BUILD_DIR)/$(1)/config/includes.binary/preseed/partitioning
@@ -175,6 +196,21 @@ iso-secops: check-deps validate $(BUILD_DIR) $(OUTPUT_DIR)
 
 iso-all: iso-core iso-full iso-secops
 	@echo "All ISOs built successfully."
+
+# ARM64 ISO targets
+iso-arm64: iso-arm64-full
+
+iso-arm64-core: check-deps validate $(BUILD_DIR) $(OUTPUT_DIR)
+	$(MAKE) ARCH=arm64 iso-core
+
+iso-arm64-full: check-deps validate $(BUILD_DIR) $(OUTPUT_DIR)
+	$(MAKE) ARCH=arm64 iso-full
+
+iso-arm64-secops: check-deps validate $(BUILD_DIR) $(OUTPUT_DIR)
+	$(MAKE) ARCH=arm64 iso-secops
+
+iso-arm64-all: iso-arm64-core iso-arm64-full iso-arm64-secops
+	@echo "All ARM64 ISOs built successfully."
 
 # Test target
 test: validate
@@ -221,7 +257,7 @@ config:
 	@echo "  ISO_NAME     = $(ISO_NAME)"
 	@echo "  ISO_VERSION  = $(ISO_VERSION)"
 	@echo "  DEBIAN_VERSION = $(DEBIAN_VERSION)"
-	@echo "  ARCH         = $(ARCH)"
+	@echo "  ARCH         = $(ARCH) (supported: amd64, arm64)"
 	@echo "  BUILD_DIR    = $(BUILD_DIR)"
 	@echo "  OUTPUT_DIR   = $(OUTPUT_DIR)"
 
