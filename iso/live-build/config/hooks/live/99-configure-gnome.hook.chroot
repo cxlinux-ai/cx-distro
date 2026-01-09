@@ -60,20 +60,66 @@ EOF
 
 chmod +x /etc/skel/.config/autostart/welcome.desktop
 
-# Configure GNOME to use a nice default setup
-mkdir -p /etc/skel/.config/dconf
-cat > /etc/skel/.config/dconf/user << 'EOF'
-# GNOME settings for live environment
+# Configure GNOME to use Cortex Linux branding via system-wide dconf
+# This uses proper dconf database approach instead of invalid text file
+
+# Create dconf profile for user
+mkdir -p /etc/dconf/profile
+cat > /etc/dconf/profile/user << 'EOF'
+user-db:user
+system-db:local
+EOF
+
+# Create system-wide defaults in dconf database
+mkdir -p /etc/dconf/db/local.d
+cat > /etc/dconf/db/local.d/00-cortex-branding << 'EOF'
+# Cortex Linux GNOME Branding Defaults
+
 [org/gnome/desktop/interface]
-gtk-theme='Adwaita'
+gtk-theme='Adwaita-dark'
 icon-theme='Adwaita'
 cursor-theme='Adwaita'
+color-scheme='prefer-dark'
 
 [org/gnome/desktop/background]
-picture-uri='file:///usr/share/backgrounds/gnome/adwaita-l.webp'
+picture-uri='file:///usr/share/backgrounds/cortex/cortex-default.png'
+picture-uri-dark='file:///usr/share/backgrounds/cortex/cortex-default.png'
+picture-options='zoom'
+primary-color='#0F0F23'
+
+[org/gnome/desktop/screensaver]
+picture-uri='file:///usr/share/backgrounds/cortex/cortex-default.png'
+primary-color='#0F0F23'
 
 [org/gnome/shell]
 welcome-dialog-last-shown-version='9999999999'
+favorite-apps=['firefox-esr.desktop', 'org.gnome.Nautilus.desktop', 'org.gnome.Terminal.desktop', 'org.gnome.Settings.desktop']
 EOF
+
+# Update dconf database
+dconf update
+
+# Also create GSettings override as backup method
+mkdir -p /usr/share/glib-2.0/schemas
+cat > /usr/share/glib-2.0/schemas/10-cortex-settings.gschema.override << 'EOF'
+[org.gnome.desktop.interface]
+gtk-theme='Adwaita-dark'
+icon-theme='Adwaita'
+cursor-theme='Adwaita'
+color-scheme='prefer-dark'
+
+[org.gnome.desktop.background]
+picture-uri='file:///usr/share/backgrounds/cortex/cortex-default.png'
+picture-uri-dark='file:///usr/share/backgrounds/cortex/cortex-default.png'
+picture-options='zoom'
+primary-color='#0F0F23'
+
+[org.gnome.desktop.screensaver]
+picture-uri='file:///usr/share/backgrounds/cortex/cortex-default.png'
+primary-color='#0F0F23'
+EOF
+
+# Compile schemas
+glib-compile-schemas /usr/share/glib-2.0/schemas/ 2>/dev/null || true
 
 echo "Live GNOME configuration complete."

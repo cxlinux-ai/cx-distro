@@ -1,0 +1,249 @@
+#!/bin/bash
+#
+# Cortex Linux Branding Installation Hook
+#
+# This hook installs Cortex Linux branding during ISO build,
+# replacing default Debian branding with Cortex identity.
+#
+
+set -e
+
+echo "Installing Cortex Linux branding..."
+
+# ============================================================================
+# OS Identity Files
+# ============================================================================
+
+echo "  -> Installing OS identity files..."
+
+cat > /etc/os-release << 'EOF'
+PRETTY_NAME="Cortex Linux"
+NAME="Cortex Linux"
+VERSION_ID="1.0"
+VERSION="1.0 (Bookworm)"
+VERSION_CODENAME=bookworm
+ID=cortex
+ID_LIKE=debian
+HOME_URL="https://cortex.io"
+SUPPORT_URL="https://cortex.io/support"
+BUG_REPORT_URL="https://github.com/cortex/cortex-distro/issues"
+PRIVACY_POLICY_URL="https://cortex.io/privacy"
+EOF
+
+cat > /etc/lsb-release << 'EOF'
+DISTRIB_ID=Cortex
+DISTRIB_RELEASE=1.0
+DISTRIB_CODENAME=bookworm
+DISTRIB_DESCRIPTION="Cortex Linux 1.0"
+EOF
+
+cat > /etc/issue << 'EOF'
+Cortex Linux 1.0 \n \l
+
+EOF
+
+cat > /etc/issue.net << 'EOF'
+Cortex Linux 1.0
+EOF
+
+# ============================================================================
+# Plymouth Boot Splash Theme
+# ============================================================================
+
+echo "  -> Configuring Plymouth theme..."
+
+# Plymouth theme files are pre-installed via includes.chroot from branding/plymouth/cortex/
+# Verify they exist
+if [ ! -f /usr/share/plymouth/themes/cortex/cortex.plymouth ]; then
+    echo "    WARNING: Plymouth theme not found in includes.chroot"
+fi
+
+# Set Plymouth theme as default
+if command -v plymouth-set-default-theme &>/dev/null; then
+    plymouth-set-default-theme cortex || true
+fi
+
+# ============================================================================
+# GRUB Bootloader Theme
+# ============================================================================
+
+echo "  -> Configuring GRUB theme..."
+
+# GRUB theme files are pre-installed via includes.chroot from branding/grub/cortex/
+# Verify they exist
+if [ ! -f /boot/grub/themes/cortex/theme.txt ]; then
+    echo "    WARNING: GRUB theme not found in includes.chroot"
+fi
+
+# Update GRUB configuration
+if [ -f /etc/default/grub ]; then
+    if grep -q "^GRUB_THEME=" /etc/default/grub; then
+        sed -i 's|^GRUB_THEME=.*|GRUB_THEME="/boot/grub/themes/cortex/theme.txt"|' /etc/default/grub
+    else
+        echo 'GRUB_THEME="/boot/grub/themes/cortex/theme.txt"' >> /etc/default/grub
+    fi
+
+    # Also set timeout and other branding options
+    sed -i 's|^GRUB_DISTRIBUTOR=.*|GRUB_DISTRIBUTOR="Cortex Linux"|' /etc/default/grub || \
+        echo 'GRUB_DISTRIBUTOR="Cortex Linux"' >> /etc/default/grub
+fi
+
+# ============================================================================
+# Desktop Wallpapers
+# ============================================================================
+
+echo "  -> Verifying desktop wallpapers..."
+
+# Wallpapers and XML are pre-installed via includes.chroot from branding/wallpapers/
+if [ ! -f /usr/share/backgrounds/cortex/cortex-default.png ]; then
+    echo "    WARNING: Default wallpaper not found in includes.chroot"
+fi
+if [ ! -f /usr/share/gnome-background-properties/cortex-wallpapers.xml ]; then
+    echo "    WARNING: Wallpapers XML not found in includes.chroot"
+fi
+
+# ============================================================================
+# GDM Login Screen Branding
+# ============================================================================
+
+echo "  -> Configuring GDM login branding..."
+
+if [ -d /etc/gdm3 ]; then
+    mkdir -p /etc/dconf/db/gdm.d
+    cat > /etc/dconf/db/gdm.d/01-cortex-branding << 'EOF'
+[org/gnome/desktop/background]
+picture-uri='file:///usr/share/backgrounds/cortex/cortex-default.png'
+picture-options='zoom'
+primary-color='#0F0F23'
+
+[org/gnome/login-screen]
+logo='/usr/share/pixmaps/cortex-logo.png'
+banner-message-enable=false
+
+[org/gnome/desktop/interface]
+gtk-theme='Adwaita-dark'
+EOF
+
+    # Logo is pre-installed via includes.chroot
+    dconf update 2>/dev/null || true
+fi
+
+# ============================================================================
+# MOTD (Message of the Day)
+# ============================================================================
+
+echo "  -> Installing terminal MOTD..."
+
+mkdir -p /etc/update-motd.d
+
+# Disable default Debian MOTD scripts
+for f in /etc/update-motd.d/*; do
+    [ -f "$f" ] && chmod -x "$f" 2>/dev/null || true
+done
+
+cat > /etc/update-motd.d/00-cortex-banner << 'MOTDEOF'
+#!/bin/bash
+#
+# Cortex Linux MOTD Banner
+#
+
+PURPLE='\033[0;35m'
+CYAN='\033[0;36m'
+WHITE='\033[1;37m'
+GRAY='\033[0;37m'
+NC='\033[0m'
+
+echo -e ""
+echo -e "${PURPLE}   ____          _            ${NC}"
+echo -e "${PURPLE}  / ___|___  _ _| |_ _____  __${NC}"
+echo -e "${PURPLE} | |   / _ \| '_|  _/ _ \ \/ /${NC}"
+echo -e "${PURPLE} | |__| (_) | |  | ||  __/>  < ${NC}"
+echo -e "${PURPLE}  \____\___/|_|   \__\___/_/\_\\${NC}"
+echo -e ""
+echo -e "${CYAN} Cortex Linux${NC} ${GRAY}| Debian-based AI-Powered OS${NC}"
+echo -e ""
+MOTDEOF
+
+cat > /etc/update-motd.d/10-cortex-sysinfo << 'MOTDEOF'
+#!/bin/bash
+#
+# Cortex Linux System Information
+#
+
+CYAN='\033[0;36m'
+GRAY='\033[0;37m'
+NC='\033[0m'
+
+# System info
+HOSTNAME=$(hostname)
+KERNEL=$(uname -r)
+UPTIME=$(uptime -p 2>/dev/null | sed 's/up //' || echo "unknown")
+LOAD=$(cat /proc/loadavg | awk '{print $1, $2, $3}')
+
+echo -e " ${CYAN}Hostname:${NC}  $HOSTNAME"
+echo -e " ${CYAN}Kernel:${NC}    $KERNEL"
+echo -e " ${CYAN}Uptime:${NC}    $UPTIME"
+echo -e " ${CYAN}Load:${NC}      $LOAD"
+echo -e ""
+MOTDEOF
+
+chmod +x /etc/update-motd.d/00-cortex-banner
+chmod +x /etc/update-motd.d/10-cortex-sysinfo
+
+# ============================================================================
+# Neofetch Configuration
+# ============================================================================
+
+echo "  -> Installing neofetch configuration..."
+
+mkdir -p /etc/neofetch
+
+cat > /etc/neofetch/config.conf << 'EOF'
+# Cortex Linux Neofetch Configuration
+
+print_info() {
+    info title
+    info underline
+    info "OS" distro
+    info "Host" model
+    info "Kernel" kernel
+    info "Uptime" uptime
+    info "Packages" packages
+    info "Shell" shell
+    info "Resolution" resolution
+    info "DE" de
+    info "WM" wm
+    info "Terminal" term
+    info "CPU" cpu
+    info "GPU" gpu
+    info "Memory" memory
+    info cols
+}
+
+# Cortex branding colors (purple/cyan)
+colors=(5 6 7 5 6 7)
+bold="on"
+ascii_distro="cortex"
+EOF
+
+# Create custom ASCII art for neofetch
+mkdir -p /usr/share/neofetch/ascii/distro
+
+cat > /usr/share/neofetch/ascii/distro/cortex << 'EOF'
+${c1}   ____          _
+  / ___|___  _ _| |_ _____  __
+ | |   / _ \| '_|  _/ _ \ \/ /
+ | |__| (_) | |  | ||  __/>  <
+  \____\___/|_|   \__\___/_/\_\
+${c2}
+  AI-Powered Linux Distribution
+EOF
+
+# ============================================================================
+# Update initramfs with new Plymouth theme
+# ============================================================================
+
+echo "  -> Updating initramfs..."
+update-initramfs -u 2>/dev/null || true
+
+echo "Cortex Linux branding installation complete."

@@ -148,8 +148,19 @@ define build-iso
 	@mkdir -p $(BUILD_DIR)/$(1)/config/package-lists
 	@mkdir -p $(BUILD_DIR)/$(1)/config/hooks/live
 	@cp $(ISO_DIR)/live-build/config/package-lists/*.list.chroot $(BUILD_DIR)/$(1)/config/package-lists/ 2>/dev/null || true
-	@if [ "$(1)" = "full" ]; then \
-		cp -r $(ISO_DIR)/live-build/config/hooks $(BUILD_DIR)/$(1)/config/ 2>/dev/null || true; \
+	@# Copy hooks for all profiles (branding, GNOME config, etc.)
+	@cp -r $(ISO_DIR)/live-build/config/hooks $(BUILD_DIR)/$(1)/config/ 2>/dev/null || true
+	@# Copy includes.chroot (branding assets: wallpapers, Plymouth, GRUB themes)
+	@if [ -d "$(ISO_DIR)/live-build/config/includes.chroot" ]; then \
+		cp -r $(ISO_DIR)/live-build/config/includes.chroot $(BUILD_DIR)/$(1)/config/; \
+	fi
+	@# Copy includes.binary (live ISO boot assets: GRUB theme for boot menu)
+	@if [ -d "$(ISO_DIR)/live-build/config/includes.binary" ]; then \
+		cp -r $(ISO_DIR)/live-build/config/includes.binary $(BUILD_DIR)/$(1)/config/; \
+	fi
+	@# Copy bootloaders config (custom GRUB theme and menu)
+	@if [ -d "$(ISO_DIR)/live-build/config/bootloaders" ]; then \
+		cp -r $(ISO_DIR)/live-build/config/bootloaders $(BUILD_DIR)/$(1)/config/; \
 	fi
 	@# Configure live-build
 	cd $(BUILD_DIR)/$(1) && lb config \
@@ -157,7 +168,7 @@ define build-iso
 		--archive-areas "main contrib non-free non-free-firmware" \
 		--architectures $(ARCH) \
 		--binary-images iso-hybrid \
-		--bootappend-live "boot=live components username=cortex preseed/file=/cdrom/preseed/profiles/cortex-$(1).preseed" \
+		--bootappend-live "boot=live components username=cortex splash quiet preseed/file=/cdrom/preseed/profiles/cortex-$(1).preseed" \
 		--debian-installer live \
 		--debian-installer-gui false \
 		--iso-application "Cortex Linux" \

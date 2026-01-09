@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE wallpapers SYSTEM "gnome-wp-list.dtd">
+<wallpapers>
+
+  <wallpaper deleted="false">
+    <name>Cortex Neural Dark</name>
+    <filename>/usr/share/backgrounds/cortex/neural-dark.png</filename>
+    <options>zoom</options>
+    <shade_type>solid</shade_type>
+    <pcolor>#0F0F23</pcolor>
+    <scolor>#0F0F23</scolor>
+  </wallpaper>
+
+  <wallpaper deleted="false">
+    <name>Cortex Neural Light</name>
+    <filename>/usr/share/backgrounds/cortex/neural-light.png</filename>
+    <options>zoom</options>
+    <shade_type>solid</shade_type>
+    <pcolor>#F8FAFC</pcolor>
+    <scolor>#F8FAFC</scolor>
+  </wallpaper>
+
+  <wallpaper deleted="false">
+    <name>Cortex Gradient Purple</name>
+    <filename>/usr/share/backgrounds/cortex/gradient-purple.png</filename>
+    <options>zoom</options>
+    <shade_type>solid</shade_type>
+    <pcolor>#1E1B4B</pcolor>
+    <scolor>#1E1B4B</scolor>
+  </wallpaper>
+
+  <wallpaper deleted="false">
+    <name>Cortex Gradient Cyan</name>
+    <filename>/usr/share/backgrounds/cortex/gradient-cyan.png</filename>
+    <options>zoom</options>
+    <shade_type>solid</shade_type>
+    <pcolor>#042F2E</pcolor>
+    <scolor>#042F2E</scolor>
+  </wallpaper>
+
+  <wallpaper deleted="false">
+    <name>Cortex Minimal Dark</name>
+    <filename>/usr/share/backgrounds/cortex/minimal-dark.png</filename>
+    <options>zoom</options>
+    <shade_type>solid</shade_type>
+    <pcolor>#0F0F23</pcolor>
+    <scolor>#0F0F23</scolor>
+  </wallpaper>
+
+  <wallpaper deleted="false">
+    <name>Cortex Circuit Board</name>
+    <filename>/usr/share/backgrounds/cortex/circuit-board.png</filename>
+    <options>zoom</options>
+    <shade_type>solid</shade_type>
+    <pcolor>#0F0F23</pcolor>
+    <scolor>#0F0F23</scolor>
+  </wallpaper>
+
+</wallpapers>

@@ -24,7 +24,6 @@ gedit
 evince
 
 # Additional desktop integration
-desktop-base
 fonts-liberation
 fonts-dejavu
 
@@ -33,3 +32,8 @@ live-config
 live-boot
 live-boot-doc
 initramfs-tools
+
+# Branding and boot splash
+plymouth
+plymouth-themes
+neofetch
