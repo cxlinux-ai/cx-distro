@@ -1,0 +1,155 @@
+/**
+ * Cortex Linux Plymouth Theme
+ *
+ * A modern boot splash with neural network-inspired animation
+ * representing the AI-powered nature of Cortex Linux.
+ */
+
+// Color definitions (Cortex brand colors)
+// Primary: Deep Purple (#6B21A8)
+// Accent: Electric Cyan (#06B6D4)
+// Background: Dark (#0F0F23)
+
+Window.SetBackgroundTopColor(0.06, 0.06, 0.14);     // Dark purple-black
+Window.SetBackgroundBottomColor(0.02, 0.02, 0.08);  // Darker at bottom
+
+// Screen dimensions
+screen_width = Window.GetWidth();
+screen_height = Window.GetHeight();
+screen_x = Window.GetX();
+screen_y = Window.GetY();
+
+// Load logo
+logo.image = Image("logo.png");
+logo.width = logo.image.GetWidth();
+logo.height = logo.image.GetHeight();
+logo.x = screen_x + screen_width / 2 - logo.width / 2;
+logo.y = screen_y + screen_height / 2 - logo.height / 2 - 50;
+logo.sprite = Sprite(logo.image);
+logo.sprite.SetPosition(logo.x, logo.y, 10);
+logo.sprite.SetOpacity(1);
+
+// Load wordmark
+wordmark.image = Image("wordmark.png");
+wordmark.width = wordmark.image.GetWidth();
+wordmark.height = wordmark.image.GetHeight();
+wordmark.x = screen_x + screen_width / 2 - wordmark.width / 2;
+wordmark.y = logo.y + logo.height + 20;
+wordmark.sprite = Sprite(wordmark.image);
+wordmark.sprite.SetPosition(wordmark.x, wordmark.y, 10);
+wordmark.sprite.SetOpacity(1);
+
+// Progress bar
+progress_box.image = Image("progress-box.png");
+progress_box.sprite = Sprite(progress_box.image);
+progress_box.x = screen_x + screen_width / 2 - progress_box.image.GetWidth() / 2;
+progress_box.y = screen_y + screen_height - 100;
+progress_box.sprite.SetPosition(progress_box.x, progress_box.y, 1);
+
+progress_bar.original_image = Image("progress-bar.png");
+progress_bar.sprite = Sprite();
+progress_bar.x = progress_box.x + 5;
+progress_bar.y = progress_box.y + 5;
+progress_bar.sprite.SetPosition(progress_bar.x, progress_bar.y, 2);
+
+// Animation variables
+global.progress = 0;
+global.pulse_opacity = 1;
+global.pulse_direction = -1;
+
+// Pulsing animation for logo
+fun pulse_logo() {
+    global.pulse_opacity += global.pulse_direction * 0.01;
+
+    if (global.pulse_opacity <= 0.7) {
+        global.pulse_direction = 1;
+    } else if (global.pulse_opacity >= 1) {
+        global.pulse_direction = -1;
+    }
+
+    logo.sprite.SetOpacity(global.pulse_opacity);
+}
+
+// Progress callback
+fun progress_callback(duration, progress) {
+    if (progress_bar.original_image.GetWidth() > 0) {
+        new_width = progress_bar.original_image.GetWidth() * progress;
+        if (new_width > 1) {
+            progress_bar.image = progress_bar.original_image.Scale(new_width, progress_bar.original_image.GetHeight());
+            progress_bar.sprite.SetImage(progress_bar.image);
+        }
+    }
+    pulse_logo();
+}
+Plymouth.SetBootProgressFunction(progress_callback);
+
+// System update progress
+fun system_update_callback(progress) {
+    if (progress_bar.original_image.GetWidth() > 0) {
+        new_width = progress_bar.original_image.GetWidth() * progress / 100;
+        if (new_width > 1) {
+            progress_bar.image = progress_bar.original_image.Scale(new_width, progress_bar.original_image.GetHeight());
+            progress_bar.sprite.SetImage(progress_bar.image);
+        }
+    }
+}
+Plymouth.SetSystemUpdateFunction(system_update_callback);
+
+// Password prompt
+fun password_dialogue_setup(title, bullet) {
+    local.entry;
+    local.bullet_image;
+
+    bullet_image = Image(bullet);
+    entry.image = Image("entry.png");
+    entry.sprite = Sprite(entry.image);
+    entry.x = screen_x + screen_width / 2 - entry.image.GetWidth() / 2;
+    entry.y = screen_y + screen_height / 2 + 80;
+    entry.sprite.SetPosition(entry.x, entry.y, 10);
+
+    global.password_entry = entry;
+    global.password_bullet = bullet_image;
+    global.password_bullets = [];
+
+    prompt.image = Image.Text(title, 0.8, 0.8, 0.9, 1, "Sans 14");
+    prompt.sprite = Sprite(prompt.image);
+    prompt.x = screen_x + screen_width / 2 - prompt.image.GetWidth() / 2;
+    prompt.y = entry.y - prompt.image.GetHeight() - 10;
+    prompt.sprite.SetPosition(prompt.x, prompt.y, 10);
+
+    global.password_prompt = prompt;
+}
+
+fun password_dialogue_opacity(opacity) {
+    global.password_entry.sprite.SetOpacity(opacity);
+    global.password_prompt.sprite.SetOpacity(opacity);
+    for (i = 0; global.password_bullets[i]; i++) {
+        global.password_bullets[i].sprite.SetOpacity(opacity);
+    }
+}
+
+Plymouth.SetDisplayPasswordFunction(password_dialogue_setup);
+
+fun display_normal_callback() {
+    password_dialogue_opacity(0);
+}
+Plymouth.SetDisplayNormalFunction(display_normal_callback);
+
+// Message display
+fun message_callback(text) {
+    message.image = Image.Text(text, 0.6, 0.6, 0.7, 1, "Sans 11");
+    message.sprite = Sprite(message.image);
+    message.x = screen_x + screen_width / 2 - message.image.GetWidth() / 2;
+    message.y = screen_y + screen_height - 50;
+    message.sprite.SetPosition(message.x, message.y, 10);
+}
+Plymouth.SetMessageFunction(message_callback);
+
+// Quit callback
+fun quit_callback() {
+    logo.sprite.SetOpacity(0);
+    wordmark.sprite.SetOpacity(0);
+    progress_box.sprite.SetOpacity(0);
+    progress_bar.sprite.SetOpacity(0);
+}
+Plymouth.SetQuitFunction(quit_callback);
