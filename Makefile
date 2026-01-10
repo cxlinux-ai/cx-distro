@@ -19,8 +19,8 @@
 
 .PHONY: all help iso iso-core iso-full iso-secops iso-all \
         iso-arm64 iso-arm64-core iso-arm64-full iso-arm64-secops iso-arm64-all \
-        validate clean test check-deps preseed-check provision-check lint \
-        branding branding-install branding-package
+        validate clean clean-all clean-hooks sync-config test check-deps \
+        preseed-check provision-check lint branding branding-install branding-package
 
 # Configuration
 SHELL := /bin/bash
@@ -91,7 +91,12 @@ help:
 # Check build dependencies
 check-deps:
 	@echo "Checking build dependencies..."
-	@command -v lb >/dev/null 2>&1 || { echo "ERROR: live-build not installed"; exit 1; }
+	@command -v lb >/dev/null 2>&1 || { echo "ERROR: live-build not installed. Install with: sudo apt install live-build"; exit 1; }
+	@# Check live-build version (need 1:20210814 or newer for bookworm support)
+	@LB_VERSION=$$(dpkg-query -W -f='$${Version}' live-build 2>/dev/null || echo "0"); \
+		if dpkg --compare-versions "$$LB_VERSION" lt "1:20210814"; then \
+			echo "WARNING: live-build version $$LB_VERSION may be too old. Recommended: >= 1:20210814"; \
+		fi
 	@command -v gpg >/dev/null 2>&1 || { echo "ERROR: gpg not installed"; exit 1; }
 	@command -v python3 >/dev/null 2>&1 || { echo "ERROR: python3 not installed"; exit 1; }
 	@python3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)" 2>/dev/null || \
@@ -240,16 +245,44 @@ test: validate
 	@bash -n $(PROVISION_DIR)/first-boot.sh
 	@echo "All tests passed."
 
-# Clean build artifacts
+# Clean build artifacts (keeps package cache for faster rebuilds)
 clean:
-	@echo "Cleaning build artifacts..."
-	@rm -rf $(BUILD_DIR)
-	@echo "Clean complete."
+	@echo "Cleaning build artifacts (keeping package cache)..."
+	@for profile in $(PROFILES); do \
+		if [ -d "$(BUILD_DIR)/$$profile" ]; then \
+			cd "$(BUILD_DIR)/$$profile" && lb clean 2>/dev/null || true; \
+		fi; \
+	done
+	@echo "Clean complete. Package cache preserved."
 
-clean-all: clean
-	@echo "Cleaning all output..."
+# Clean everything including cache
+clean-all:
+	@echo "Cleaning all build artifacts and cache..."
+	@rm -rf $(BUILD_DIR)
 	@rm -rf $(OUTPUT_DIR)
 	@echo "Full clean complete."
+
+# Quick rebuild - only re-run hooks (fastest)
+clean-hooks:
+	@echo "Cleaning hook markers for re-run..."
+	@for profile in $(PROFILES); do \
+		rm -f "$(BUILD_DIR)/$$profile/.build/chroot_hooks" 2>/dev/null || true; \
+		rm -f "$(BUILD_DIR)/$$profile/.build/binary_hooks" 2>/dev/null || true; \
+	done
+	@echo "Hooks will re-run on next build."
+
+# Re-sync config files without full rebuild
+sync-config:
+	@echo "Syncing config files to build directories..."
+	@for profile in $(PROFILES); do \
+		if [ -d "$(BUILD_DIR)/$$profile" ]; then \
+			cp -r $(ISO_DIR)/live-build/config/hooks "$(BUILD_DIR)/$$profile/config/" 2>/dev/null || true; \
+			cp -r $(ISO_DIR)/live-build/config/includes.chroot "$(BUILD_DIR)/$$profile/config/" 2>/dev/null || true; \
+			cp -r $(ISO_DIR)/live-build/config/includes.binary "$(BUILD_DIR)/$$profile/config/" 2>/dev/null || true; \
+			echo "  Synced: $$profile"; \
+		fi; \
+	done
+	@echo "Config sync complete."
 
 # Development helpers
 .PHONY: dev-shell

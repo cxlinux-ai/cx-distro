@@ -47,6 +47,21 @@ Cortex Linux 1.0
 EOF
 
 # ============================================================================
+# Cortex APT Repository
+# ============================================================================
+
+echo "  -> Configuring Cortex APT repository..."
+
+# Download and install GPG key
+mkdir -p /usr/share/keyrings
+curl -fsSL https://apt.cortexlinux.com/keys/cortex-linux.gpg.asc | gpg --dearmor -o /usr/share/keyrings/cortex-linux.gpg
+
+# Add repository source
+echo "deb [signed-by=/usr/share/keyrings/cortex-linux.gpg] https://apt.cortexlinux.com stable main" > /etc/apt/sources.list.d/cortex-linux.list
+
+echo "  -> Cortex repository configured"
+
+# ============================================================================
 # Plymouth Boot Splash Theme
 # ============================================================================
 
