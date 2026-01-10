@@ -17,6 +17,9 @@ gnome-settings-daemon
 # System utilities for live environment
 network-manager-gnome
 pavucontrol
+curl
+ca-certificates
+gnupg
 
 # Basic applications
 firefox-esr

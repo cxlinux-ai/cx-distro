@@ -1,0 +1,20 @@
+Package: cortex-core
+Version: 0.1.0
+Section: metapackages
+Priority: optional
+Architecture: all
+Depends: cortex-archive-keyring, cortex-upgrade, cortex-gpu, cortex-verify
+Recommends: neofetch, htop, curl, wget, git
+Suggests: cortex-full, cortex-secops
+Maintainer: Cortex Linux Team <team@cortexlinux.com>
+Homepage: https://cortexlinux.com
+Description: Cortex Linux core meta-package with CLI tools
+ This meta-package installs the core Cortex Linux components:
+ .
+  - cortex-upgrade: Safe system upgrades with LVM/Btrfs/ZFS snapshot rollback
+  - cortex-gpu: GPU detection, NVIDIA/AMD driver enablement, Secure Boot MOK setup
+  - cortex-verify: Offline integrity verification
+  - cortex-archive-keyring: GPG keyring for Cortex APT repository trust
+ .
+ Install this package to get the essential Cortex Linux tools on any
+ Debian or Ubuntu system.

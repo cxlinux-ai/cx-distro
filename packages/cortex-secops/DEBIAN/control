@@ -1,0 +1,55 @@
+Package: cortex-secops
+Version: 0.1.0
+Section: metapackages
+Priority: optional
+Architecture: all
+Depends: cortex-core,
+ apparmor,
+ apparmor-utils,
+ apparmor-profiles,
+ apparmor-profiles-extra,
+ auditd,
+ audispd-plugins,
+ aide,
+ aide-common,
+ rkhunter,
+ chkrootkit,
+ fail2ban,
+ ufw,
+ cryptsetup,
+ cryptsetup-initramfs
+Recommends: clamav,
+ clamav-daemon,
+ clamav-freshclam,
+ lynis,
+ tiger,
+ tripwire,
+ ossec-hids,
+ psad,
+ logwatch,
+ acct,
+ sysstat,
+ arpwatch,
+ needrestart,
+ debsums,
+ apt-listbugs,
+ apt-listchanges,
+ unattended-upgrades
+Suggests: cortex-full
+Maintainer: Cortex Linux Team <team@cortexlinux.com>
+Homepage: https://cortexlinux.com
+Description: Cortex Linux security operations meta-package
+ This meta-package installs security-hardened tools for security operations:
+ .
+  - Mandatory Access Control: AppArmor with profiles
+  - Audit: auditd with plugins for compliance logging
+  - File Integrity: AIDE, rkhunter, chkrootkit, debsums
+  - Intrusion Detection: fail2ban, OSSEC, psad
+  - Antivirus: ClamAV with freshclam updates
+  - Security Scanning: Lynis, Tiger
+  - Encryption: cryptsetup for LUKS full disk encryption
+  - Firewall: UFW (Uncomplicated Firewall)
+  - Automatic Security Updates: unattended-upgrades
+ .
+ Recommended for security-critical deployments requiring compliance
+ (PCI-DSS, HIPAA, SOC2) and hardened configurations.

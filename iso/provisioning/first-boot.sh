@@ -416,16 +416,32 @@ setup_cortex_repository() {
     log_info "Setting up Cortex package repository..."
 
     local keyring_dir="/usr/share/keyrings"
-    local sources_file="/etc/apt/sources.list.d/cortex.list"
+    local sources_file="/etc/apt/sources.list.d/cortex-linux.list"
 
-    # TODO: Replace with actual Cortex repository URL and key
-    # This is a placeholder for when the repository is available
-    if [[ ! -f "${sources_file}" ]]; then
-        log_info "Cortex repository setup (placeholder - repository not yet available)"
-        # Uncomment when repository is live:
-        # curl -fsSL https://repo.cortexlinux.com/gpg | gpg --dearmor -o "${keyring_dir}/cortex-archive-keyring.gpg"
-        # echo "deb [signed-by=${keyring_dir}/cortex-archive-keyring.gpg] https://repo.cortexlinux.com/apt bookworm main" > "${sources_file}"
-        # apt-get update
+    # Check if already configured (from live image or previous run)
+    if [[ -f "${sources_file}" ]]; then
+        log_info "Cortex repository already configured"
+        return 0
+    fi
+
+    log_info "Adding Cortex Linux APT repository..."
+
+    # Download and install GPG key
+    if curl -fsSL https://apt.cortexlinux.com/keys/cortex-linux.gpg.asc | gpg --dearmor -o "${keyring_dir}/cortex-linux.gpg"; then
+        log_info "Cortex GPG key installed"
+    else
+        log_error "Failed to download Cortex GPG key"
+        return 1
+    fi
+
+    # Add repository source
+    echo "deb [signed-by=${keyring_dir}/cortex-linux.gpg] https://apt.cortexlinux.com stable main" > "${sources_file}"
+
+    # Update package lists
+    if apt-get update -qq; then
+        log_info "Cortex repository configured successfully"
+    else
+        log_warn "apt-get update failed, repository may not be accessible"
     fi
 }
 
