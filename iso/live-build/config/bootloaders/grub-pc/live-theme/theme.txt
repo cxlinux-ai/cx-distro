@@ -2,9 +2,7 @@
 # Modern boot menu with neural network aesthetics
 
 # Global properties
-title-text: "Cortex Linux"
-title-color: "#ffffff"
-title-font: "DejaVu Sans Bold 16"
+title-text: ""
 desktop-color: "#0F0F23"
 message-color: "#94A3B8"
 message-bg-color: "#0F0F23"

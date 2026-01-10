@@ -1,0 +1,40 @@
+Package: cortex-full
+Version: 0.1.0
+Section: metapackages
+Priority: optional
+Architecture: all
+Depends: cortex-core,
+ cortex-branding,
+ task-gnome-desktop,
+ gnome-tweaks,
+ flatpak,
+ gnome-software-plugin-flatpak
+Recommends: docker.io,
+ docker-compose,
+ build-essential,
+ python3-pip,
+ python3-venv,
+ nodejs,
+ npm,
+ golang,
+ rustc,
+ cargo,
+ firefox-esr,
+ libreoffice,
+ gimp,
+ vlc,
+ thunderbird
+Suggests: cortex-secops, cortex-llm
+Maintainer: Cortex Linux Team <team@cortexlinux.com>
+Homepage: https://cortexlinux.com
+Description: Cortex Linux full installation meta-package
+ This meta-package installs the complete Cortex Linux desktop environment
+ with development tools and productivity applications:
+ .
+  - GNOME Desktop Environment with Cortex branding
+  - Development tools: Python, Node.js, Go, Rust, Docker
+  - Productivity: Firefox, LibreOffice, Thunderbird
+  - Media: GIMP, VLC
+  - Flatpak support for additional applications
+ .
+ This is the recommended package for workstations and development machines.
