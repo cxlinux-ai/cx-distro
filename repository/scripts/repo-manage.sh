@@ -135,7 +135,11 @@ cmd_publish() {
             
             # Generate Packages file
             log "Generating Packages for ${suite}/${arch}..."
-            (cd "${REPO_DIR}" && dpkg-scanpackages --arch "$arch" pool/main > "${arch_dir}/Packages" 2>/dev/null || true)
+            if [ -d "${REPO_DIR}/pool/main" ]; then
+                (cd "${REPO_DIR}" && dpkg-scanpackages --arch "$arch" pool/main > "${arch_dir}/Packages")
+            else
+                touch "${arch_dir}/Packages"
+            fi
             gzip -9 -k -f "${arch_dir}/Packages"
             xz -9 -k -f "${arch_dir}/Packages"
             

@@ -20,28 +20,29 @@ case "$1" in
             else
                 sed -i 's|^GRUB_THEME=.*|GRUB_THEME="/boot/grub/themes/cortex/theme.txt"|' /etc/default/grub
             fi
-            update-grub 2>/dev/null || true
+            if command -v update-grub &>/dev/null; then
+                update-grub
+            fi
         fi
 
         # Set MOTD scripts executable
         if [ -d /etc/update-motd.d ]; then
-            chmod +x /etc/update-motd.d/00-cortex-banner 2>/dev/null || true
-            chmod +x /etc/update-motd.d/10-cortex-sysinfo 2>/dev/null || true
-            chmod +x /etc/update-motd.d/20-cortex-updates 2>/dev/null || true
-            chmod +x /etc/update-motd.d/99-cortex-footer 2>/dev/null || true
+            for script in 00-cortex-banner 10-cortex-sysinfo 20-cortex-updates 99-cortex-footer; do
+                [ -f "/etc/update-motd.d/$script" ] && chmod +x "/etc/update-motd.d/$script"
+            done
 
             # Disable default Ubuntu/Debian MOTD scripts
             for f in /etc/update-motd.d/??-* ; do
-                case "$(basename $f)" in
+                case "$(basename "$f")" in
                     *cortex*) ;;  # Keep our scripts
-                    *) chmod -x "$f" 2>/dev/null || true ;;
+                    *) [ -f "$f" ] && chmod -x "$f" ;;
                 esac
             done
         fi
 
         # Update GDM branding
-        if [ -f /etc/gdm3/greeter.dconf-defaults ]; then
-            dconf update 2>/dev/null || true
+        if [ -f /etc/gdm3/greeter.dconf-defaults ] && command -v dconf &>/dev/null; then
+            dconf update
         fi
 
         # Set wallpaper as default

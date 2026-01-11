@@ -130,37 +130,47 @@ EOF
 # SYSTEMD SERVICES
 # =============================================================================
 
-# Cortex first-boot service
-cat > /etc/systemd/system/cortex-firstboot.service << 'EOF'
+# Cortex first-boot service (canonical version from iso/provisioning/)
+# Note: The actual first-boot.sh is deployed via preseed to /opt/cortex/provisioning/
+cat > /etc/systemd/system/cortex-first-boot.service << 'EOF'
 [Unit]
-Description=Cortex Linux First Boot Provisioning
-After=network-online.target
-Wants=network-online.target
-ConditionPathExists=!/etc/cortex/.firstboot-complete
+Description=Cortex Linux First-Boot Provisioning
+Documentation=https://github.com/cortexlinux/cortex-distro
+After=network-pre.target systemd-resolved.service
+Before=network.target getty@tty1.service display-manager.service
+Wants=network-pre.target
+ConditionPathExists=!/opt/cortex/provisioning/.first-boot-complete
 
 [Service]
 Type=oneshot
-ExecStart=/usr/lib/cortex/firstboot.sh
-ExecStartPost=/usr/bin/touch /etc/cortex/.firstboot-complete
+ExecStart=/opt/cortex/provisioning/first-boot.sh
 RemainAfterExit=yes
+TimeoutSec=600
+NoNewPrivileges=false
+ProtectSystem=false
+ProtectHome=false
+PrivateTmp=true
 StandardOutput=journal+console
 StandardError=journal+console
+SyslogIdentifier=cortex-first-boot
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
 # Enable first-boot service
-systemctl enable cortex-firstboot.service
+systemctl enable cortex-first-boot.service
 
 # =============================================================================
 # SECURITY HARDENING
 # =============================================================================
 
-# Disable unnecessary services
-systemctl disable bluetooth.service 2>/dev/null || true
-systemctl disable cups.service 2>/dev/null || true
-systemctl disable avahi-daemon.service 2>/dev/null || true
+# Disable unnecessary services (only if installed)
+for svc in bluetooth.service cups.service avahi-daemon.service; do
+    if systemctl list-unit-files "$svc" &>/dev/null; then
+        systemctl disable "$svc"
+    fi
+done
 
 # Kernel security parameters
 cat > /etc/sysctl.d/99-cortex-security.conf << 'EOF'

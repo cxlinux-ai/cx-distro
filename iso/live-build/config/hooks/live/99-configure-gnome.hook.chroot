@@ -120,6 +120,8 @@ primary-color='#0F0F23'
 EOF
 
 # Compile schemas
-glib-compile-schemas /usr/share/glib-2.0/schemas/ 2>/dev/null || true
+if command -v glib-compile-schemas &>/dev/null; then
+    glib-compile-schemas /usr/share/glib-2.0/schemas/
+fi
 
 echo "Live GNOME configuration complete."

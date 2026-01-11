@@ -9,13 +9,13 @@ case "$1" in
     remove|upgrade|deconfigure)
         # Restore default Plymouth theme
         if command -v plymouth-set-default-theme &>/dev/null; then
-            plymouth-set-default-theme -R 2>/dev/null || true
+            plymouth-set-default-theme -R
         fi
 
         # Re-enable default MOTD scripts
         if [ -d /etc/update-motd.d ]; then
             for f in /etc/update-motd.d/??-* ; do
-                chmod +x "$f" 2>/dev/null || true
+                [ -f "$f" ] && chmod +x "$f"
             done
         fi
         ;;

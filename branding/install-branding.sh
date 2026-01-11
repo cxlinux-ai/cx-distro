@@ -70,18 +70,37 @@ install_plymouth() {
     fi
 
     # Set as default theme
-    plymouth-set-default-theme cortex 2>/dev/null || true
-    update-initramfs -u 2>/dev/null || true
+    if command -v plymouth-set-default-theme &>/dev/null; then
+        plymouth-set-default-theme cortex
+    fi
+    if command -v update-initramfs &>/dev/null; then
+        update-initramfs -u
+    fi
 
     log_success "Plymouth theme installed"
 }
 
 # Install GRUB theme
+# Note: For ISO builds, GRUB theme is handled by scripts/build.sh
+# This function is for manual post-install branding on existing systems
 install_grub() {
     log_info "Installing GRUB theme..."
 
+    # Skip if this looks like an ISO build environment
+    if [ -f /etc/cortex/.iso-build ]; then
+        log_info "ISO build detected, GRUB theme handled by build script"
+        return
+    fi
+
     mkdir -p /boot/grub/themes/cortex
     cp -r "${BRANDING_DIR}/grub/cortex/"* /boot/grub/themes/cortex/
+
+    # Convert background to 8-bit for GRUB compatibility
+    if command -v convert &>/dev/null && [ -f /boot/grub/themes/cortex/background.png ]; then
+        convert /boot/grub/themes/cortex/background.png -depth 8 -type TrueColor \
+            PNG24:/boot/grub/themes/cortex/background.png
+        log_info "Converted background.png to 8-bit for GRUB"
+    fi
 
     # Check for required image assets
     if [ ! -f /boot/grub/themes/cortex/background.png ]; then
@@ -95,7 +114,9 @@ install_grub() {
         else
             echo 'GRUB_THEME="/boot/grub/themes/cortex/theme.txt"' >> /etc/default/grub
         fi
-        update-grub 2>/dev/null || true
+        if command -v update-grub &>/dev/null; then
+            update-grub
+        fi
     fi
 
     log_success "GRUB theme installed"
@@ -113,9 +134,8 @@ install_wallpapers() {
         /usr/share/gnome-background-properties/
 
     # Check for wallpaper images
-    if [ -d "${BRANDING_DIR}/wallpapers/images" ]; then
-        cp "${BRANDING_DIR}/wallpapers/images/"*.png \
-            /usr/share/backgrounds/cortex/ 2>/dev/null || true
+    if [ -d "${BRANDING_DIR}/wallpapers/images" ] && ls "${BRANDING_DIR}/wallpapers/images/"*.png 1>/dev/null 2>&1; then
+        cp "${BRANDING_DIR}/wallpapers/images/"*.png /usr/share/backgrounds/cortex/
     else
         log_warn "Wallpaper images not found in wallpapers/images/"
         log_warn "Please add PNG files as described in ASSETS.md"
@@ -137,7 +157,9 @@ install_gdm() {
     if [ -d /etc/gdm3 ]; then
         cp "${BRANDING_DIR}/gdm/gdm-branding.conf" \
             /etc/gdm3/greeter.dconf-defaults
-        dconf update 2>/dev/null || true
+        if command -v dconf &>/dev/null; then
+            dconf update
+        fi
     fi
 
     log_success "GDM branding installed"
@@ -151,7 +173,7 @@ install_motd() {
 
     # Disable existing MOTD scripts
     for f in /etc/update-motd.d/*; do
-        [ -f "$f" ] && chmod -x "$f" 2>/dev/null || true
+        [ -f "$f" ] && chmod -x "$f"
     done
 
     # Install Cortex MOTD scripts

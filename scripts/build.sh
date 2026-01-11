@@ -1,18 +1,36 @@
 #!/bin/bash
-# Cortex Linux Master Build Script
-# One-command ISO build with all dependencies
+# Cortex Linux Build Script
+# Called by Makefile to handle all build operations
 # Copyright 2025 AI Venture Holdings LLC
 # SPDX-License-Identifier: Apache-2.0
 
-set -e
+set -euo pipefail
+
+# =============================================================================
+# Configuration
+# =============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="${SCRIPT_DIR}/.."
 
-# Configuration
-VERSION="${CORTEX_VERSION:-0.1.0}"
-ARCH="${CORTEX_ARCH:-amd64}"
-BUILD_TYPE="${1:-offline}"  # netinst or offline
+# Directories
+BUILD_DIR="${PROJECT_ROOT}/build"
+OUTPUT_DIR="${PROJECT_ROOT}/output"
+ISO_DIR="${PROJECT_ROOT}/iso"
+PRESEED_DIR="${ISO_DIR}/preseed"
+PROVISION_DIR="${ISO_DIR}/provisioning"
+BRANDING_DIR="${PROJECT_ROOT}/branding"
+PACKAGES_DIR="${PROJECT_ROOT}/packages"
+
+# Defaults
+PROFILE="${PROFILE:-full}"
+ARCH="${ARCH:-amd64}"
+DEBIAN_VERSION="${DEBIAN_VERSION:-bookworm}"
+ISO_NAME="${ISO_NAME:-cortex-linux}"
+ISO_VERSION="${ISO_VERSION:-$(date +%Y%m%d)}"
+
+# Profiles
+PROFILES=(core full secops)
 
 # Colors
 RED='\033[0;31m'
@@ -21,335 +39,880 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-log() { echo -e "${GREEN}[$(date '+%H:%M:%S')]${NC} $*"; }
-warn() { echo -e "${YELLOW}[$(date '+%H:%M:%S')]${NC} $*"; }
-error() { echo -e "${RED}[$(date '+%H:%M:%S')]${NC} $*" >&2; }
-header() { echo -e "\n${BLUE}========================================${NC}\n${BLUE}$*${NC}\n${BLUE}========================================${NC}\n"; }
+# =============================================================================
+# Logging
+# =============================================================================
 
-usage() {
-    cat << EOF
-Cortex Linux Build Script
+log() { echo -e "${GREEN}[BUILD]${NC} $*"; }
+warn() { echo -e "${YELLOW}[WARN]${NC} $*"; }
+error() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
+header() { echo -e "\n${BLUE}=== $* ===${NC}\n"; }
+pass() { echo -e "${GREEN}[PASS]${NC} $*"; }
+fail() { echo -e "${RED}[FAIL]${NC} $*"; }
 
-Usage: $(basename "$0") [build-type] [options]
+# =============================================================================
+# Helper Functions
+# =============================================================================
 
-Build Types:
-    netinst     Build minimal network installer ISO (~500MB)
-    offline     Build full offline ISO with package pool (~2-4GB)
-    packages    Build Debian packages only
-    all         Build both ISOs
-
-Options:
-    -v, --version   Set version (default: 0.1.0)
-    -a, --arch      Set architecture (default: amd64)
-    -c, --clean     Clean before building
-    -h, --help      Show this help
-
-Examples:
-    $(basename "$0") offline
-    $(basename "$0") netinst --clean
-    $(basename "$0") all --version 0.2.0
-
-Requirements:
-    - Debian 12+ or Ubuntu 24.04+ build host
-    - Root/sudo access for live-build
-    - ~10GB free disk space
-    - Internet connection (for package downloads)
-EOF
+copy_if_exists() {
+    local src="$1"
+    local dest="$2"
+    if [ -e "$src" ]; then
+        cp -r "$src" "$dest"
+        return 0
+    fi
+    return 1
 }
 
-check_requirements() {
-    header "Checking Requirements"
-    
-    local missing=0
-    
-    # Check OS
-    if [ -f /etc/debian_version ]; then
-        log "Debian-based OS detected"
-    else
-        warn "Non-Debian OS - build may not work correctly"
+copy_glob_if_exists() {
+    local pattern="$1"
+    local dest="$2"
+    # shellcheck disable=SC2086
+    if ls $pattern 1>/dev/null 2>&1; then
+        cp $pattern "$dest"
+        return 0
     fi
-    
-    # Check for required commands
-    local required_cmds=(
-        "dpkg-buildpackage"
-        "lb"
-        "debootstrap"
-        "xorriso"
-        "mksquashfs"
-    )
-    
-    for cmd in "${required_cmds[@]}"; do
-        if command -v "$cmd" &>/dev/null; then
-            log "Found: $cmd"
+    return 1
+}
+
+check_command() {
+    local cmd="$1"
+    local pkg="${2:-$1}"
+    if command -v "$cmd" &>/dev/null; then
+        log "$cmd: OK"
+        return 0
+    else
+        error "$cmd not installed. Install with: sudo apt install $pkg"
+        return 1
+    fi
+}
+
+# =============================================================================
+# Dependency Checking
+# =============================================================================
+
+cmd_check_deps() {
+    local failed=0
+
+    header "Checking build dependencies"
+
+    # Required dependencies
+    check_command lb live-build || failed=1
+    check_command gpg gnupg || failed=1
+    check_command python3 python3 || failed=1
+
+    # Check live-build version
+    if command -v lb &>/dev/null; then
+        local lb_version
+        lb_version=$(dpkg-query -W -f='${Version}' live-build 2>/dev/null || echo "0")
+        if dpkg --compare-versions "$lb_version" lt "1:20210814"; then
+            warn "live-build version $lb_version may be too old. Recommended: >= 1:20210814"
         else
-            error "Missing: $cmd"
-            ((missing++))
+            log "live-build version: $lb_version"
+        fi
+    fi
+
+    # Check Python version
+    if command -v python3 &>/dev/null; then
+        if python3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)" 2>/dev/null; then
+            log "Python version: $(python3 --version 2>&1 | cut -d' ' -f2)"
+        else
+            warn "Python 3.11+ recommended (found: $(python3 --version 2>&1 | cut -d' ' -f2))"
+        fi
+    fi
+
+    # Optional dependencies
+    echo ""
+    log "Checking optional dependencies..."
+
+    if command -v shellcheck &>/dev/null; then
+        log "shellcheck: OK"
+    else
+        warn "shellcheck not installed (optional, for linting)"
+    fi
+
+    if command -v convert &>/dev/null; then
+        log "ImageMagick: OK"
+    else
+        warn "ImageMagick not installed (optional, for GRUB theme images)"
+    fi
+
+    if command -v dpkg-deb &>/dev/null; then
+        log "dpkg-deb: OK"
+    else
+        warn "dpkg-deb not installed (needed for branding-package)"
+    fi
+
+    echo ""
+    if [ $failed -eq 0 ]; then
+        log "All required dependencies found."
+        return 0
+    else
+        error "Missing required dependencies."
+        return 1
+    fi
+}
+
+# =============================================================================
+# Validation Functions
+# =============================================================================
+
+validate_preseed() {
+    log "Validating preseed files..."
+    local found=0
+    local warnings=0
+
+    for dir in "$PRESEED_DIR" "$PRESEED_DIR/profiles" "$PRESEED_DIR/partitioning"; do
+        if [ -d "$dir" ]; then
+            for f in "$dir"/*.preseed; do
+                if [ -f "$f" ]; then
+                    found=$((found + 1))
+                    if grep -qE '^[^#]*[[:space:]]$' "$f"; then
+                        warn "  $f: trailing whitespace"
+                        warnings=$((warnings + 1))
+                    fi
+                fi
+            done
         fi
     done
-    
-    if [ $missing -gt 0 ]; then
-        error ""
-        error "$missing required tools missing. Install with:"
-        error "  sudo apt-get install live-build debootstrap squashfs-tools xorriso dpkg-dev devscripts"
+
+    if [ $found -eq 0 ]; then
+        warn "No preseed files found"
+    else
+        log "Checked $found preseed files ($warnings warnings)"
+    fi
+}
+
+validate_provision() {
+    log "Validating provisioning scripts..."
+    local errors=0
+
+    if [ -f "${PROVISION_DIR}/first-boot.sh" ]; then
+        if bash -n "${PROVISION_DIR}/first-boot.sh"; then
+            pass "first-boot.sh: syntax OK"
+        else
+            fail "first-boot.sh: SYNTAX ERROR"
+            errors=$((errors + 1))
+        fi
+    else
+        warn "first-boot.sh not found"
+    fi
+
+    for script in "${PROVISION_DIR}"/*.sh; do
+        if [ -f "$script" ] && [ "$(basename "$script")" != "first-boot.sh" ]; then
+            if bash -n "$script"; then
+                pass "$(basename "$script"): syntax OK"
+            else
+                fail "$(basename "$script"): SYNTAX ERROR"
+                errors=$((errors + 1))
+            fi
+        fi
+    done
+
+    return $errors
+}
+
+validate_hooks() {
+    log "Validating live-build hooks..."
+    local hooks_dir="${ISO_DIR}/live-build/config/hooks/live"
+    local errors=0
+
+    if [ -d "$hooks_dir" ]; then
+        for hook in "$hooks_dir"/*.hook.chroot "$hooks_dir"/*.hook.binary; do
+            if [ -f "$hook" ]; then
+                if bash -n "$hook"; then
+                    pass "$(basename "$hook"): syntax OK"
+                else
+                    fail "$(basename "$hook"): SYNTAX ERROR"
+                    errors=$((errors + 1))
+                fi
+            fi
+        done
+    else
+        warn "Hooks directory not found"
+    fi
+
+    return $errors
+}
+
+run_shellcheck() {
+    log "Running shellcheck..."
+
+    if ! command -v shellcheck &>/dev/null; then
+        warn "shellcheck not installed, skipping"
+        return 0
+    fi
+
+    local errors=0
+
+    # Check provisioning scripts
+    for script in "${PROVISION_DIR}"/*.sh; do
+        if [ -f "$script" ]; then
+            if shellcheck "$script" 2>/dev/null; then
+                pass "$(basename "$script"): OK"
+            else
+                fail "$(basename "$script"): issues found"
+                errors=$((errors + 1))
+            fi
+        fi
+    done
+
+    # Check build script itself
+    if shellcheck "${SCRIPT_DIR}/build.sh" 2>/dev/null; then
+        pass "build.sh: OK"
+    else
+        fail "build.sh: issues found"
+        errors=$((errors + 1))
+    fi
+
+    # Check branding install script
+    if [ -f "${BRANDING_DIR}/install-branding.sh" ]; then
+        if shellcheck "${BRANDING_DIR}/install-branding.sh" 2>/dev/null; then
+            pass "install-branding.sh: OK"
+        else
+            fail "install-branding.sh: issues found"
+            errors=$((errors + 1))
+        fi
+    fi
+
+    return $errors
+}
+
+cmd_validate() {
+    local mode="${1:-all}"
+    local errors=0
+
+    header "Validation"
+
+    case "$mode" in
+        preseed)
+            validate_preseed
+            ;;
+        provision)
+            validate_provision || errors=$((errors + $?))
+            ;;
+        hooks)
+            validate_hooks || errors=$((errors + $?))
+            ;;
+        lint)
+            run_shellcheck || errors=$((errors + $?))
+            ;;
+        all)
+            validate_preseed
+            echo ""
+            validate_provision || errors=$((errors + $?))
+            echo ""
+            validate_hooks || errors=$((errors + $?))
+            echo ""
+            run_shellcheck || errors=$((errors + $?))
+            ;;
+        *)
+            error "Unknown validation mode: $mode"
+            return 1
+            ;;
+    esac
+
+    echo ""
+    if [ $errors -eq 0 ]; then
+        log "All validation checks passed."
+    else
+        error "Validation completed with errors"
+        return 1
+    fi
+}
+
+# =============================================================================
+# Test Functions
+# =============================================================================
+
+cmd_test() {
+    local errors=0
+
+    header "Running Test Suite"
+
+    # Test preseed profiles exist
+    log "Testing preseed profiles..."
+    for profile in "${PROFILES[@]}"; do
+        local preseed_file="${PRESEED_DIR}/profiles/cortex-${profile}.preseed"
+        if [ -f "$preseed_file" ]; then
+            pass "Profile ${profile}: found"
+        else
+            fail "Profile ${profile}: MISSING"
+            errors=$((errors + 1))
+        fi
+    done
+
+    echo ""
+
+    # Test provisioning scripts
+    log "Testing provisioning scripts..."
+    if [ -f "${PROVISION_DIR}/first-boot.sh" ]; then
+        if bash -n "${PROVISION_DIR}/first-boot.sh"; then
+            pass "first-boot.sh: syntax OK"
+        else
+            fail "first-boot.sh: SYNTAX ERROR"
+            errors=$((errors + 1))
+        fi
+    else
+        fail "first-boot.sh: NOT FOUND"
+        errors=$((errors + 1))
+    fi
+
+    echo ""
+
+    # Test branding assets
+    log "Testing branding assets..."
+    local required_files=(
+        "grub/cortex/theme.txt"
+        "os-release/os-release"
+        "os-release/lsb-release"
+    )
+
+    for file in "${required_files[@]}"; do
+        if [ -f "${BRANDING_DIR}/${file}" ]; then
+            pass "${file}: found"
+        else
+            fail "${file}: MISSING"
+            errors=$((errors + 1))
+        fi
+    done
+
+    echo ""
+
+    # Test hooks
+    log "Testing live-build hooks..."
+    local hooks_dir="${ISO_DIR}/live-build/config/hooks/live"
+    for hook in "$hooks_dir"/*.hook.chroot; do
+        if [ -f "$hook" ]; then
+            if bash -n "$hook"; then
+                pass "$(basename "$hook"): syntax OK"
+            else
+                fail "$(basename "$hook"): SYNTAX ERROR"
+                errors=$((errors + 1))
+            fi
+        fi
+    done
+
+    echo ""
+
+    # Test package control files
+    log "Testing package control files..."
+    local pkg_dir="${PACKAGES_DIR}/cortex-branding/DEBIAN"
+    for file in control postinst prerm; do
+        if [ -f "${pkg_dir}/${file}" ]; then
+            pass "DEBIAN/${file}: found"
+            if [[ "$file" == "postinst" || "$file" == "prerm" ]]; then
+                if bash -n "${pkg_dir}/${file}"; then
+                    pass "DEBIAN/${file}: syntax OK"
+                else
+                    fail "DEBIAN/${file}: SYNTAX ERROR"
+                    errors=$((errors + 1))
+                fi
+            fi
+        else
+            fail "DEBIAN/${file}: MISSING"
+            errors=$((errors + 1))
+        fi
+    done
+
+    echo ""
+    echo "========================"
+    if [ $errors -eq 0 ]; then
+        log "All tests passed!"
+        return 0
+    else
+        error "Tests completed with ${errors} error(s)"
+        return 1
+    fi
+}
+
+# =============================================================================
+# ISO Build Functions
+# =============================================================================
+
+prepare_build_dir() {
+    local profile="$1"
+    local build_path="${BUILD_DIR}/${profile}"
+
+    header "Preparing build directory for ${profile}"
+
+    mkdir -p "${build_path}/config/package-lists"
+    mkdir -p "${build_path}/config/hooks/live"
+
+    # Copy package lists
+    if copy_glob_if_exists "${ISO_DIR}/live-build/config/package-lists/*.list.chroot" "${build_path}/config/package-lists/"; then
+        log "Copied package lists"
+    fi
+
+    # Copy hooks
+    if [ -d "${ISO_DIR}/live-build/config/hooks" ]; then
+        cp -r "${ISO_DIR}/live-build/config/hooks" "${build_path}/config/"
+        log "Copied hooks"
+    fi
+
+    # Copy includes.chroot
+    if [ -d "${ISO_DIR}/live-build/config/includes.chroot" ]; then
+        cp -r "${ISO_DIR}/live-build/config/includes.chroot" "${build_path}/config/"
+        log "Copied includes.chroot"
+    fi
+
+    # Copy includes.binary
+    if [ -d "${ISO_DIR}/live-build/config/includes.binary" ]; then
+        cp -r "${ISO_DIR}/live-build/config/includes.binary" "${build_path}/config/"
+        log "Copied includes.binary"
+    fi
+
+    # Copy bootloaders
+    if [ -d "${ISO_DIR}/live-build/config/bootloaders" ]; then
+        cp -r "${ISO_DIR}/live-build/config/bootloaders" "${build_path}/config/"
+        log "Copied bootloaders"
+    fi
+}
+
+copy_grub_theme() {
+    local profile="$1"
+    local build_path="${BUILD_DIR}/${profile}"
+    local theme_dest="${build_path}/config/bootloaders/grub-pc/live-theme"
+
+    header "Copying GRUB theme from branding"
+
+    mkdir -p "$theme_dest"
+
+    # Copy PNG files
+    if copy_glob_if_exists "${BRANDING_DIR}/grub/cortex/*.png" "$theme_dest/"; then
+        log "Copied PNG files"
+    fi
+
+    # Copy theme.txt (required)
+    if [ -f "${BRANDING_DIR}/grub/cortex/theme.txt" ]; then
+        cp "${BRANDING_DIR}/grub/cortex/theme.txt" "$theme_dest/"
+        log "Copied theme.txt"
+    else
+        error "theme.txt not found in ${BRANDING_DIR}/grub/cortex/"
         exit 1
     fi
-    
-    # Check disk space
-    local free_space
-    free_space=$(df -BG "${PROJECT_ROOT}" | tail -1 | awk '{print $4}' | tr -d 'G')
-    if [ "$free_space" -lt 10 ]; then
-        warn "Low disk space: ${free_space}GB free (recommend 10GB+)"
-    else
-        log "Disk space OK: ${free_space}GB free"
+
+    # Convert background to 8-bit for GRUB compatibility
+    if command -v convert &>/dev/null && [ -f "${theme_dest}/background.png" ]; then
+        convert "${theme_dest}/background.png" -depth 8 -type TrueColor \
+            "PNG24:${theme_dest}/background.png"
+        log "Converted background.png to 8-bit for GRUB"
     fi
-    
-    log "All requirements satisfied"
-}
-
-install_dependencies() {
-    header "Installing Build Dependencies"
-    
-    sudo apt-get update
-    sudo apt-get install -y \
-        live-build \
-        debootstrap \
-        squashfs-tools \
-        xorriso \
-        isolinux \
-        syslinux-efi \
-        grub-pc-bin \
-        grub-efi-amd64-bin \
-        mtools \
-        dosfstools \
-        dpkg-dev \
-        devscripts \
-        debhelper \
-        fakeroot \
-        gnupg
-    
-    log "Dependencies installed"
-}
-
-build_packages() {
-    header "Building Debian Packages"
-    
-    cd "${PROJECT_ROOT}"
-    
-    # Build each package
-    for pkg in cortex-archive-keyring cortex-core cortex-full; do
-        log "Building ${pkg}..."
-        cd "${PROJECT_ROOT}/packages/${pkg}"
-        
-        # Clean previous builds
-        rm -f ../cortex-*.deb ../cortex-*.buildinfo ../cortex-*.changes 2>/dev/null || true
-        
-        # Build
-        dpkg-buildpackage -us -uc -b
-        
-        log "${pkg} built successfully"
-    done
-    
-    # Move packages to output
-    mkdir -p "${PROJECT_ROOT}/output/packages"
-    mv "${PROJECT_ROOT}/packages"/*.deb "${PROJECT_ROOT}/output/packages/" 2>/dev/null || true
-    
-    log "All packages built: ${PROJECT_ROOT}/output/packages/"
 }
 
 configure_live_build() {
-    header "Configuring Live-Build"
+    local profile="$1"
+    local build_path="${BUILD_DIR}/${profile}"
 
-    cd "${PROJECT_ROOT}/iso/live-build"
+    header "Configuring live-build for ${profile}"
 
-    # Make auto scripts executable
-    chmod +x auto/* 2>/dev/null || true
+    cd "$build_path"
 
-    # Clean previous configuration
-    sudo lb clean --purge 2>/dev/null || true
-
-    # Run configuration
-    sudo lb config
-
-    # Copy built packages to chroot
-    if [ -d "${PROJECT_ROOT}/output/packages" ]; then
-        mkdir -p config/packages.chroot/
-        cp "${PROJECT_ROOT}/output/packages"/*.deb config/packages.chroot/
-        log "Packages copied to chroot"
-    fi
-
-    # Copy GRUB theme from branding (single source of truth)
-    log "Copying GRUB theme from branding..."
-    mkdir -p config/bootloaders/grub-pc/live-theme
-    cp "${PROJECT_ROOT}/branding/grub/cortex/"*.png config/bootloaders/grub-pc/live-theme/ 2>/dev/null || true
-    cp "${PROJECT_ROOT}/branding/grub/cortex/theme.txt" config/bootloaders/grub-pc/live-theme/
-
-    # Convert background to 8-bit for GRUB compatibility
-    if command -v convert &>/dev/null && [ -f config/bootloaders/grub-pc/live-theme/background.png ]; then
-        convert config/bootloaders/grub-pc/live-theme/background.png -depth 8 -type TrueColor \
-            PNG24:config/bootloaders/grub-pc/live-theme/background.png
-        log "Converted background.png to 8-bit for GRUB"
-    fi
-
-    # Copy theme to includes for installed system
-    mkdir -p config/includes.chroot/boot/grub/themes/cortex
-    cp "${PROJECT_ROOT}/branding/grub/cortex/"* config/includes.chroot/boot/grub/themes/cortex/
-    log "GRUB theme copied"
+    lb config \
+        --distribution "$DEBIAN_VERSION" \
+        --archive-areas "main contrib non-free non-free-firmware" \
+        --architectures "$ARCH" \
+        --binary-images iso-hybrid \
+        --bootappend-live "boot=live components username=cortex splash quiet preseed/file=/cdrom/preseed/profiles/cortex-${profile}.preseed" \
+        --debian-installer live \
+        --debian-installer-gui false \
+        --iso-application "Cortex Linux" \
+        --iso-publisher "AI Venture Holdings LLC" \
+        --iso-volume "CORTEX_$(echo "$profile" | tr '[:lower:]' '[:upper:]')" \
+        --cache true \
+        --cache-packages true \
+        --cache-indices true \
+        --cache-stages bootstrap
 
     log "Live-build configured"
 }
 
-build_iso() {
-    local iso_type="$1"
-    
-    header "Building ISO: ${iso_type}"
-    
-    cd "${PROJECT_ROOT}/iso/live-build"
-    
-    # Build
-    log "Starting build (this may take 30-60 minutes)..."
-    sudo lb build 2>&1 | tee "${PROJECT_ROOT}/build-${iso_type}.log"
-    
-    # Move output
-    mkdir -p "${PROJECT_ROOT}/output"
-    
-    local iso_file
-    iso_file=$(find . -maxdepth 1 -name "*.iso" -type f | head -1)
-    
-    if [ -n "$iso_file" ] && [ -f "$iso_file" ]; then
-        local output_name="cortex-linux-${VERSION}-${ARCH}-${iso_type}.iso"
-        mv "$iso_file" "${PROJECT_ROOT}/output/${output_name}"
-        
-        # Generate checksums
-        cd "${PROJECT_ROOT}/output"
-        sha256sum "${output_name}" > "${output_name}.sha256"
-        sha512sum "${output_name}" > "${output_name}.sha512"
-        
-        log "ISO built: ${PROJECT_ROOT}/output/${output_name}"
-        log "Checksums generated"
-    else
-        error "ISO build failed - no ISO file found"
-        error "Check build log: ${PROJECT_ROOT}/build-${iso_type}.log"
-        exit 1
+copy_preseed_files() {
+    local profile="$1"
+    local build_path="${BUILD_DIR}/${profile}"
+    local preseed_dest="${build_path}/config/includes.binary/preseed"
+
+    header "Copying preseed and provisioning files"
+
+    mkdir -p "${preseed_dest}/profiles"
+    mkdir -p "${preseed_dest}/partitioning"
+    mkdir -p "${build_path}/config/includes.binary/provisioning"
+
+    # Copy preseed files
+    if copy_glob_if_exists "${PRESEED_DIR}/*.preseed" "$preseed_dest/"; then
+        log "Copied base preseed files"
+    fi
+
+    if copy_glob_if_exists "${PRESEED_DIR}/profiles/*.preseed" "${preseed_dest}/profiles/"; then
+        log "Copied profile preseed files"
+    fi
+
+    if copy_glob_if_exists "${PRESEED_DIR}/partitioning/*.preseed" "${preseed_dest}/partitioning/"; then
+        log "Copied partitioning preseed files"
+    fi
+
+    # Copy provisioning files
+    if [ -d "$PROVISION_DIR" ]; then
+        if copy_glob_if_exists "${PROVISION_DIR}/*" "${build_path}/config/includes.binary/provisioning/"; then
+            log "Copied provisioning files"
+        fi
     fi
 }
 
-clean_build() {
-    header "Cleaning Build Environment"
-    
-    cd "${PROJECT_ROOT}/iso/live-build"
-    sudo lb clean --purge 2>/dev/null || true
-    
-    rm -rf "${PROJECT_ROOT}/output" 2>/dev/null || true
-    rm -f "${PROJECT_ROOT}"/*.log 2>/dev/null || true
-    
-    log "Build environment cleaned"
+build_iso() {
+    local profile="$1"
+    local build_path="${BUILD_DIR}/${profile}"
+
+    header "Building ISO for ${profile}"
+
+    cd "$build_path"
+
+    log "Starting live-build (this may take a while)..."
+    sudo lb build
+
+    log "Build complete"
+}
+
+move_output() {
+    local profile="$1"
+    local build_path="${BUILD_DIR}/${profile}"
+    local iso_file="${build_path}/live-image-${ARCH}.hybrid.iso"
+    local output_name="${ISO_NAME}-${profile}-${ISO_VERSION}-${ARCH}.iso"
+
+    header "Moving output"
+
+    mkdir -p "$OUTPUT_DIR"
+
+    if [ -f "$iso_file" ]; then
+        mv "$iso_file" "${OUTPUT_DIR}/${output_name}"
+        log "ISO built: ${OUTPUT_DIR}/${output_name}"
+
+        # Generate checksums
+        cd "$OUTPUT_DIR"
+        sha256sum "$output_name" > "${output_name}.sha256"
+        log "Checksum generated: ${output_name}.sha256"
+    else
+        error "ISO file not found at ${iso_file}"
+        exit 1
+    fi
 }
 
 generate_sbom() {
     header "Generating SBOM"
-    
-    chmod +x "${PROJECT_ROOT}/sbom/generate-sbom.sh"
-    "${PROJECT_ROOT}/sbom/generate-sbom.sh" "${PROJECT_ROOT}/output/sbom"
-}
 
-run_tests() {
-    header "Running Verification Tests"
-    
-    chmod +x "${PROJECT_ROOT}/tests"/*.sh
-    
-    "${PROJECT_ROOT}/tests/verify-packages.sh" || warn "Package tests had issues"
-    "${PROJECT_ROOT}/tests/verify-preseed.sh" || warn "Preseed tests had issues"
-    
-    # ISO tests if ISO exists
-    local iso_file
-    iso_file=$(find "${PROJECT_ROOT}/output" -name "*.iso" -type f | head -1)
-    if [ -n "$iso_file" ]; then
-        "${PROJECT_ROOT}/tests/verify-iso.sh" "$iso_file" || warn "ISO tests had issues"
+    if [ -f "${PROJECT_ROOT}/sbom/generate-sbom.sh" ]; then
+        chmod +x "${PROJECT_ROOT}/sbom/generate-sbom.sh"
+        "${PROJECT_ROOT}/sbom/generate-sbom.sh" "${OUTPUT_DIR}/sbom"
+        log "SBOM generated: ${OUTPUT_DIR}/sbom/"
+    else
+        warn "SBOM generator not found at sbom/generate-sbom.sh"
     fi
 }
 
-# Parse arguments
-CLEAN=false
-while [[ $# -gt 0 ]]; do
-    case "$1" in
-        -v|--version)
-            VERSION="$2"
-            shift 2
+cmd_build() {
+    local profile="${1:-$PROFILE}"
+
+    header "Building Cortex Linux ISO: ${profile}"
+    log "Architecture: ${ARCH}"
+    log "Debian version: ${DEBIAN_VERSION}"
+
+    prepare_build_dir "$profile"
+    copy_grub_theme "$profile"
+    configure_live_build "$profile"
+    copy_preseed_files "$profile"
+    build_iso "$profile"
+    move_output "$profile"
+    generate_sbom
+
+    header "Build Complete"
+    log "Output: ${OUTPUT_DIR}/"
+}
+
+# =============================================================================
+# Clean Functions
+# =============================================================================
+
+clean_build() {
+    local profile="$1"
+    local build_path="${BUILD_DIR}/${profile}"
+
+    header "Cleaning build for ${profile}"
+
+    if [ -d "$build_path" ]; then
+        cd "$build_path"
+        sudo lb clean
+        log "Clean complete"
+    else
+        warn "Build directory not found: ${build_path}"
+    fi
+}
+
+cmd_clean() {
+    local profile="${1:-$PROFILE}"
+
+    # If "all" is specified, clean all profiles
+    if [ "$profile" = "all" ]; then
+        for p in "${PROFILES[@]}"; do
+            if [ -d "${BUILD_DIR}/${p}" ]; then
+                clean_build "$p"
+            fi
+        done
+    else
+        clean_build "$profile"
+    fi
+}
+
+cmd_clean_all() {
+    header "Cleaning all build artifacts"
+
+    rm -rf "$BUILD_DIR"
+    rm -rf "$OUTPUT_DIR"
+
+    log "Full clean complete"
+}
+
+cmd_clean_hooks() {
+    header "Cleaning hook markers"
+
+    for profile in "${PROFILES[@]}"; do
+        if [ -d "${BUILD_DIR}/${profile}/.build" ]; then
+            rm -f "${BUILD_DIR}/${profile}/.build/chroot_hooks"
+            rm -f "${BUILD_DIR}/${profile}/.build/binary_hooks"
+            log "Cleaned hooks for ${profile}"
+        fi
+    done
+
+    log "Hooks will re-run on next build"
+}
+
+# =============================================================================
+# Sync Functions
+# =============================================================================
+
+cmd_sync() {
+    local profile="${1:-$PROFILE}"
+
+    # If "all" is specified, sync all profiles
+    if [ "$profile" = "all" ]; then
+        for p in "${PROFILES[@]}"; do
+            if [ -d "${BUILD_DIR}/${p}" ]; then
+                sync_config "$p"
+            fi
+        done
+    else
+        sync_config "$profile"
+    fi
+}
+
+sync_config() {
+    local profile="$1"
+    local build_path="${BUILD_DIR}/${profile}"
+
+    header "Syncing config for ${profile}"
+
+    if [ -d "$build_path" ]; then
+        [ -d "${ISO_DIR}/live-build/config/hooks" ] && \
+            cp -r "${ISO_DIR}/live-build/config/hooks" "${build_path}/config/"
+        [ -d "${ISO_DIR}/live-build/config/includes.chroot" ] && \
+            cp -r "${ISO_DIR}/live-build/config/includes.chroot" "${build_path}/config/"
+        [ -d "${ISO_DIR}/live-build/config/includes.binary" ] && \
+            cp -r "${ISO_DIR}/live-build/config/includes.binary" "${build_path}/config/"
+        log "Config synced"
+    else
+        warn "Build directory not found: ${build_path}"
+    fi
+}
+
+# =============================================================================
+# Branding Package Functions
+# =============================================================================
+
+cmd_branding_package() {
+    local pkg_name="cortex-branding"
+    local pkg_version="1.0.0"
+    local pkg_dir="${BUILD_DIR}/${pkg_name}"
+
+    header "Building Cortex Branding Package"
+
+    # Create directory structure
+    log "Creating package directory structure..."
+    mkdir -p "${pkg_dir}/DEBIAN"
+    mkdir -p "${pkg_dir}/etc"
+    mkdir -p "${pkg_dir}/usr/share/plymouth/themes/cortex"
+    mkdir -p "${pkg_dir}/boot/grub/themes/cortex"
+    mkdir -p "${pkg_dir}/usr/share/backgrounds/cortex"
+    mkdir -p "${pkg_dir}/usr/share/gnome-background-properties"
+    mkdir -p "${pkg_dir}/etc/update-motd.d"
+    mkdir -p "${pkg_dir}/usr/share/cortex/logos"
+
+    # Copy DEBIAN control files
+    log "Copying DEBIAN control files..."
+    if [ -d "${PACKAGES_DIR}/${pkg_name}/DEBIAN" ]; then
+        cp "${PACKAGES_DIR}/${pkg_name}/DEBIAN/"* "${pkg_dir}/DEBIAN/"
+        chmod 755 "${pkg_dir}/DEBIAN/postinst"
+        chmod 755 "${pkg_dir}/DEBIAN/prerm"
+    else
+        error "DEBIAN control files not found"
+        exit 1
+    fi
+
+    # Copy OS release files
+    log "Copying OS release files..."
+    local os_release_dir="${BRANDING_DIR}/os-release"
+    if [ -d "$os_release_dir" ]; then
+        copy_if_exists "${os_release_dir}/os-release" "${pkg_dir}/etc/os-release"
+        copy_if_exists "${os_release_dir}/lsb-release" "${pkg_dir}/etc/lsb-release"
+        copy_if_exists "${os_release_dir}/issue" "${pkg_dir}/etc/issue"
+        copy_if_exists "${os_release_dir}/issue.net" "${pkg_dir}/etc/issue.net"
+    fi
+
+    # Copy Plymouth theme
+    log "Copying Plymouth theme..."
+    if [ -d "${BRANDING_DIR}/plymouth/cortex" ]; then
+        copy_glob_if_exists "${BRANDING_DIR}/plymouth/cortex/*" "${pkg_dir}/usr/share/plymouth/themes/cortex/" || true
+    fi
+
+    # Copy GRUB theme
+    log "Copying GRUB theme..."
+    if [ -d "${BRANDING_DIR}/grub/cortex" ]; then
+        copy_glob_if_exists "${BRANDING_DIR}/grub/cortex/*" "${pkg_dir}/boot/grub/themes/cortex/" || true
+
+        # Convert background to 8-bit
+        local bg="${pkg_dir}/boot/grub/themes/cortex/background.png"
+        if command -v convert &>/dev/null && [ -f "$bg" ]; then
+            convert "$bg" -depth 8 -type TrueColor "PNG24:${bg}"
+            log "Converted background.png to 8-bit"
+        fi
+    fi
+
+    # Copy wallpapers
+    log "Copying wallpapers..."
+    copy_glob_if_exists "${BRANDING_DIR}/wallpapers/*.xml" "${pkg_dir}/usr/share/gnome-background-properties/" || true
+    if [ -d "${BRANDING_DIR}/wallpapers/images" ]; then
+        copy_glob_if_exists "${BRANDING_DIR}/wallpapers/images/*" "${pkg_dir}/usr/share/backgrounds/cortex/" || true
+    fi
+
+    # Copy MOTD scripts
+    log "Copying MOTD scripts..."
+    if [ -d "${BRANDING_DIR}/motd" ]; then
+        if copy_glob_if_exists "${BRANDING_DIR}/motd/*" "${pkg_dir}/etc/update-motd.d/"; then
+            chmod 755 "${pkg_dir}/etc/update-motd.d/"*
+        fi
+    fi
+
+    # Copy logos
+    if [ -d "${BRANDING_DIR}/logos" ]; then
+        copy_glob_if_exists "${BRANDING_DIR}/logos/*" "${pkg_dir}/usr/share/cortex/logos/" || true
+    fi
+
+    # Build the package
+    log "Building .deb package..."
+    mkdir -p "$OUTPUT_DIR"
+    local output_file="${OUTPUT_DIR}/${pkg_name}_${pkg_version}_all.deb"
+    dpkg-deb --build "$pkg_dir" "$output_file"
+
+    # Cleanup
+    rm -rf "$pkg_dir"
+
+    log "Package built: ${output_file}"
+}
+
+# =============================================================================
+# Help
+# =============================================================================
+
+cmd_help() {
+    cat << EOF
+Cortex Linux Build Script
+
+Usage: $0 <command> [args]
+
+Build Commands:
+    build [profile]         Build ISO for profile (default: full)
+    branding-package        Build cortex-branding .deb package
+
+Validation Commands:
+    check-deps              Check build dependencies
+    validate [mode]         Run validation (all|preseed|provision|hooks|lint)
+    test                    Run test suite
+
+Clean Commands:
+    clean [profile|all]     Clean build artifacts for profile
+    clean-all               Clean all build artifacts and output
+    clean-hooks             Clean hook markers for re-run
+
+Utility Commands:
+    sync [profile|all]      Sync config files to build directory
+    help                    Show this help
+
+Profiles:
+    core                    Minimal system
+    full                    Full desktop (default)
+    secops                  Security-focused
+
+Environment Variables:
+    ARCH                    Architecture (default: amd64)
+    DEBIAN_VERSION          Debian version (default: bookworm)
+    ISO_NAME                ISO name prefix (default: cortex-linux)
+    ISO_VERSION             ISO version (default: YYYYMMDD)
+
+Examples:
+    $0 build full
+    $0 build core
+    ARCH=arm64 $0 build full
+    $0 validate
+    $0 test
+    $0 clean all
+    $0 clean-all
+    $0 branding-package
+EOF
+}
+
+# =============================================================================
+# Entry Point
+# =============================================================================
+
+main() {
+    local cmd="${1:-help}"
+    shift || true
+
+    case "$cmd" in
+        build)
+            cmd_build "$@"
             ;;
-        -a|--arch)
-            ARCH="$2"
-            shift 2
+        check-deps)
+            cmd_check_deps
             ;;
-        -c|--clean)
-            CLEAN=true
-            shift
+        validate)
+            cmd_validate "$@"
             ;;
-        -h|--help)
-            usage
-            exit 0
+        test)
+            cmd_test
             ;;
-        netinst|offline|packages|all)
-            BUILD_TYPE="$1"
-            shift
+        clean)
+            cmd_clean "$@"
+            ;;
+        clean-all)
+            cmd_clean_all
+            ;;
+        clean-hooks)
+            cmd_clean_hooks
+            ;;
+        sync)
+            cmd_sync "$@"
+            ;;
+        branding-package)
+            cmd_branding_package
+            ;;
+        help|--help|-h)
+            cmd_help
             ;;
         *)
-            error "Unknown option: $1"
-            usage
+            error "Unknown command: $cmd"
+            cmd_help
             exit 1
             ;;
     esac
-done
+}
 
-# Main execution
-header "Cortex Linux Build System"
-log "Version: ${VERSION}"
-log "Architecture: ${ARCH}"
-log "Build Type: ${BUILD_TYPE}"
-
-# Clean if requested
-if [ "$CLEAN" = true ]; then
-    clean_build
-fi
-
-# Check requirements
-check_requirements
-
-# Build based on type
-case "$BUILD_TYPE" in
-    packages)
-        build_packages
-        ;;
-    netinst)
-        build_packages
-        configure_live_build
-        build_iso "netinst"
-        generate_sbom
-        run_tests
-        ;;
-    offline)
-        build_packages
-        configure_live_build
-        build_iso "offline"
-        generate_sbom
-        run_tests
-        ;;
-    all)
-        build_packages
-        configure_live_build
-        build_iso "netinst"
-        clean_build
-        configure_live_build
-        build_iso "offline"
-        generate_sbom
-        run_tests
-        ;;
-    *)
-        error "Unknown build type: ${BUILD_TYPE}"
-        usage
-        exit 1
-        ;;
-esac
-
-header "Build Complete"
-log "Output: ${PROJECT_ROOT}/output/"
-ls -la "${PROJECT_ROOT}/output/" 2>/dev/null || true
+main "$@"
