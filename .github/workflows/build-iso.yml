@@ -33,14 +33,16 @@ jobs:
   validate:
     name: Validate
     runs-on: ubuntu-24.04
+    container:
+      image: debian:bookworm
     steps:
+      - name: Install git
+        run: |
+          apt-get update
+          apt-get install -y git sudo shellcheck
+
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y shellcheck
 
       - name: Run validation
         run: make validate
@@ -48,15 +50,17 @@ jobs:
   build-branding-package:
     name: Build Branding Package
     runs-on: ubuntu-24.04
+    container:
+      image: debian:bookworm
     needs: validate
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y dpkg-dev imagemagick
+          apt-get update
+          apt-get install -y git dpkg-dev sudo imagemagick
+
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Build cortex-branding package
         run: make branding-package
@@ -71,6 +75,9 @@ jobs:
   build-iso:
     name: Build ISO (${{ matrix.profile }})
     runs-on: ubuntu-24.04
+    container:
+      image: debian:bookworm
+      options: --privileged
     needs: [validate, build-branding-package]
     strategy:
       fail-fast: false
@@ -135,8 +142,10 @@ jobs:
               chmod +x auto/* 2>/dev/null || true
               lb config
 
-              echo "=== Building ISO (packages will be added post-install) ==="
-              lb build 2>&1 | tee /workspace/build.log
+      - name: Build ISO
+        run: make iso-${{ matrix.profile }}
+        env:
+          ARCH: ${{ matrix.arch }}
 
               echo "=== Generating checksums ==="
               if ls *.iso 1>/dev/null 2>&1; then
