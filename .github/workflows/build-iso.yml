@@ -94,20 +94,28 @@ jobs:
         arch: [amd64]
     steps:
       - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Additional cleanup
         run: |
-          echo "=== Disk space before cleanup ==="
-          df -h
-          echo "=== Removing unnecessary files ==="
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /usr/local/lib/android
-          sudo rm -rf /opt/ghc
-          sudo rm -rf /opt/hostedtoolcache/CodeQL
-          sudo rm -rf /usr/local/share/boost
-          sudo rm -rf /usr/share/swift
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-          sudo apt-get clean
-          sudo docker image prune -af || true
-          echo "=== Disk space after cleanup ==="
+          echo "=== Additional cleanup ==="
+          sudo rm -rf /home/runner/.rustup || true
+          sudo rm -rf /home/runner/.cargo || true
+          sudo rm -rf /usr/share/swift || true
+          sudo rm -rf /usr/lib/jvm || true
+          sudo rm -rf /usr/local/julia* || true
+          sudo rm -rf /usr/local/share/chromium || true
+          sudo rm -rf /usr/lib/google-cloud-sdk || true
+          sudo rm -rf /opt/hostedtoolcache/CodeQL || true
+          echo "=== Disk space after additional cleanup ==="
           df -h
 
       - name: Checkout
