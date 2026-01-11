@@ -11,6 +11,7 @@ on:
     tags: ['v*']
     paths:
       - 'iso/**'
+      - 'branding/**'
       - 'packages/**'
       - 'scripts/**'
       - 'Makefile'
@@ -19,6 +20,7 @@ on:
     branches: [main]
     paths:
       - 'iso/**'
+      - 'branding/**'
       - 'packages/**'
       - 'scripts/**'
       - 'Makefile'
@@ -28,49 +30,52 @@ env:
   DEBIAN_FRONTEND: noninteractive
 
 jobs:
-  build-packages:
-    name: Build Debian Packages
+  validate:
+    name: Validate
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build packages in Debian container
+      - name: Install dependencies
         run: |
-          docker run --rm \
-            -v "${{ github.workspace }}:/workspace" \
-            -w /workspace \
-            -e DEBIAN_FRONTEND=noninteractive \
-            debian:bookworm /bin/bash -c '
-              set -e
-              apt-get update
-              apt-get install -y build-essential dpkg-dev devscripts debhelper fakeroot gnupg
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
 
-              for pkg in cx-archive-keyring cx-core cx-full; do
-                echo "Building $pkg..."
-                cd /workspace/packages/$pkg
-                dpkg-buildpackage -us -uc -b
-                cd /workspace
-              done
+      - name: Run validation
+        run: make validate
 
-              mkdir -p /workspace/output/packages
-              mv /workspace/packages/*.deb /workspace/output/packages/ 2>/dev/null || true
-              ls -la /workspace/output/packages/
-            '
+  build-branding-package:
+    name: Build Branding Package
+    runs-on: ubuntu-24.04
+    needs: validate
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Upload packages
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dpkg-dev imagemagick
+
+      - name: Build cortex-branding package
+        run: make branding-package
+
+      - name: Upload branding package
         uses: actions/upload-artifact@v4
         with:
-          name: debian-packages
-          path: output/packages/*.deb
+          name: cortex-branding
+          path: output/*.deb
           retention-days: 7
 
   build-iso:
-    name: Build ISO Image
+    name: Build ISO (${{ matrix.profile }})
     runs-on: ubuntu-24.04
-    needs: build-packages
+    needs: [validate, build-branding-package]
     strategy:
+      fail-fast: false
       matrix:
+        profile: [core, full]
         arch: [amd64]
     steps:
       - name: Free disk space
@@ -87,11 +92,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download packages
+      - name: Download branding package
         uses: actions/download-artifact@v4
         with:
-          name: debian-packages
-          path: packages/
+          name: cortex-branding
+          path: output/
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          df -h
 
       - name: Build ISO in Debian container
         run: |
@@ -145,48 +157,104 @@ jobs:
       - name: Upload ISO
         uses: actions/upload-artifact@v4
         with:
-          name: cortex-linux-${{ matrix.arch }}
+          name: cortex-linux-${{ matrix.profile }}-${{ matrix.arch }}
           path: |
             output/*.iso
-            output/SHA256SUMS
-            output/SHA512SUMS
+            output/*.sha256
           retention-days: 14
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ matrix.profile }}-${{ matrix.arch }}
+          path: output/sbom/
+          retention-days: 14
+        continue-on-error: true
 
       - name: Upload build log
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: build-log-${{ matrix.arch }}
+          name: build-log-${{ matrix.profile }}-${{ matrix.arch }}
           path: build.log
           retention-days: 7
+
+  test-iso:
+    name: Test ISO (${{ matrix.profile }})
+    runs-on: ubuntu-24.04
+    needs: build-iso
+    strategy:
+      matrix:
+        profile: [core, full]
+        arch: [amd64]
+    steps:
+      - name: Download ISO
+        uses: actions/download-artifact@v4
+        with:
+          name: cortex-linux-${{ matrix.profile }}-${{ matrix.arch }}
+
+      - name: Verify checksums
+        run: |
+          ls -la
+          for iso in *.iso; do
+            if [ -f "${iso}.sha256" ]; then
+              sha256sum -c "${iso}.sha256"
+            fi
+          done
+
+      - name: Check ISO structure
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xorriso
+          for iso in *.iso; do
+            echo "=== Checking $iso ==="
+            xorriso -indev "$iso" -find / -maxdepth 1 2>/dev/null | head -20
+          done
 
   release:
     name: Create Release
     runs-on: ubuntu-24.04
-    needs: build-iso
+    needs: [build-iso, test-iso]
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: write
     steps:
-      - name: Download ISO artifacts
+      - name: Download all ISO artifacts
         uses: actions/download-artifact@v4
         with:
           pattern: cortex-linux-*
           merge-multiple: true
+          path: release/
 
-      - name: Download packages
+      - name: Download branding package
         uses: actions/download-artifact@v4
         with:
-          name: debian-packages
+          name: cortex-branding
+          path: release/
+
+      - name: Download SBOMs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: sbom-*
+          merge-multiple: true
+          path: release/sbom/
+        continue-on-error: true
+
+      - name: Generate combined checksums
+        run: |
+          cd release
+          sha256sum *.iso *.deb > SHA256SUMS
+          sha512sum *.iso *.deb > SHA512SUMS
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            *.iso
-            *.deb
-            SHA256SUMS
-            SHA512SUMS
+            release/*.iso
+            release/*.deb
+            release/SHA256SUMS
+            release/SHA512SUMS
+            release/sbom/*
           body: |
             ## CX Linux ${{ github.ref_name }}
 
@@ -199,7 +267,7 @@ jobs:
             ```
 
             ### Quick Start
-            1. Write ISO to USB: `dd if=cortex-linux-*.iso of=/dev/sdX bs=4M status=progress`
+            1. Write ISO to USB: `sudo dd if=cortex-linux-*.iso of=/dev/sdX bs=4M status=progress oflag=sync`
             2. Boot from USB
             3. Follow installation prompts
 
