@@ -5,12 +5,6 @@
 # This Makefile provides targets for building Cortex Linux ISOs,
 # packages, and managing the distribution.
 #
-# Requirements:
-#   - Debian 12+ or Ubuntu 24.04+ build host
-#   - live-build package
-#   - GPG for signing
-#   - Python 3.11+ for tooling
-#
 # Usage:
 #   make help           - Show available targets
 #   make iso            - Build default ISO (full profile)
@@ -22,8 +16,8 @@
 .PHONY: all help iso iso-core iso-full iso-secops iso-all \
         iso-arm64 iso-arm64-core iso-arm64-full iso-arm64-secops iso-arm64-all \
         validate clean clean-all clean-hooks sync-config test check-deps \
-        preseed-check provision-check lint branding branding-install branding-package \
-        dev-shell chroot-shell
+        preseed-check provision-check lint branding-install branding-package \
+        chroot-shell config
 
 # Configuration
 SHELL := /bin/bash
@@ -31,9 +25,6 @@ SHELL := /bin/bash
 
 # Directories
 BUILD_DIR := build
-ISO_DIR := iso
-PRESEED_DIR := $(ISO_DIR)/preseed
-PROVISION_DIR := $(ISO_DIR)/provisioning
 OUTPUT_DIR := output
 
 # ISO configuration
@@ -42,13 +33,16 @@ ISO_VERSION := $(shell date +%Y%m%d)
 DEBIAN_VERSION := bookworm
 ARCH ?= amd64
 
-# Profiles
-PROFILES := core full secops
+# Build script
+BUILD_SCRIPT := scripts/build.sh
 
 # Default target
 all: help
 
-# Help target
+# =============================================================================
+# Help
+# =============================================================================
+
 help:
 	@echo "CX Linux Distribution Build System"
 	@echo ""
@@ -84,8 +78,7 @@ help:
 	@echo "  make branding-package Build cortex-branding .deb package"
 	@echo ""
 	@echo "Development Targets:"
-	@echo "  make dev-shell        Start development shell in build environment"
-	@echo "  make chroot-shell     Start chroot shell for debugging"
+	@echo "  make chroot-shell     Enter interactive shell in chroot filesystem"
 	@echo ""
 	@echo "Utility Targets:"
 	@echo "  make check-deps       Check build dependencies"
@@ -99,132 +92,42 @@ help:
 	@echo "  DEBIAN_VERSION = $(DEBIAN_VERSION)"
 	@echo "  ARCH           = $(ARCH)"
 
-# Check build dependencies
+# =============================================================================
+# Dependencies & Validation
+# =============================================================================
+
 check-deps:
-	@echo "Checking build dependencies..."
-	@command -v lb >/dev/null 2>&1 || { echo "ERROR: live-build not installed. Install with: sudo apt install live-build"; exit 1; }
-	@# Check live-build version (need 1:20210814 or newer for bookworm support)
-	@LB_VERSION=$$(dpkg-query -W -f='$${Version}' live-build 2>/dev/null || echo "0"); \
-		if dpkg --compare-versions "$$LB_VERSION" lt "1:20210814"; then \
-			echo "WARNING: live-build version $$LB_VERSION may be too old. Recommended: >= 1:20210814"; \
-		fi
-	@command -v gpg >/dev/null 2>&1 || { echo "ERROR: gpg not installed"; exit 1; }
-	@command -v python3 >/dev/null 2>&1 || { echo "ERROR: python3 not installed"; exit 1; }
-	@python3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)" 2>/dev/null || \
-		{ echo "WARNING: Python 3.11+ recommended"; }
-	@echo "All required dependencies found."
+	@$(BUILD_SCRIPT) check-deps
 
-# Validate preseed files
 preseed-check:
-	@echo "Validating preseed files..."
-	@for f in $(PRESEED_DIR)/*.preseed $(PRESEED_DIR)/profiles/*.preseed $(PRESEED_DIR)/partitioning/*.preseed; do \
-		if [ -f "$$f" ]; then \
-			echo "  Checking: $$f"; \
-			if grep -qE '^[^#]*[[:space:]]$$' "$$f"; then \
-				echo "    WARNING: Trailing whitespace found"; \
-			fi; \
-		fi; \
-	done
-	@echo "Preseed validation complete."
+	@$(BUILD_SCRIPT) validate preseed
 
-# Validate provisioning scripts
 provision-check:
-	@echo "Validating provisioning scripts..."
-	@if [ -f "$(PROVISION_DIR)/first-boot.sh" ]; then \
-		bash -n "$(PROVISION_DIR)/first-boot.sh" && echo "  first-boot.sh: OK" || exit 1; \
-	fi
-	@echo "Provisioning validation complete."
+	@$(BUILD_SCRIPT) validate provision
 
-# Run shellcheck on scripts
 lint:
-	@echo "Running shellcheck..."
-	@if command -v shellcheck >/dev/null 2>&1; then \
-		find $(PROVISION_DIR) -name "*.sh" -exec shellcheck {} \; ; \
-	else \
-		echo "WARNING: shellcheck not installed, skipping lint"; \
-	fi
+	@$(BUILD_SCRIPT) validate lint
 
-# Run all validation
-validate: preseed-check provision-check lint
-	@echo "All validation checks passed."
+validate:
+	@$(BUILD_SCRIPT) validate all
 
-# Create build directory structure
-$(BUILD_DIR):
-	@mkdir -p $(BUILD_DIR)
+# =============================================================================
+# ISO Build Targets
+# =============================================================================
 
-$(OUTPUT_DIR):
-	@mkdir -p $(OUTPUT_DIR)
-
-# Build ISO for a specific profile
-define build-iso
-	@echo "Building $(1) ISO..."
-	@mkdir -p $(BUILD_DIR)/$(1)
-	@mkdir -p $(OUTPUT_DIR)
-	@# Copy live-build config files first
-	@mkdir -p $(BUILD_DIR)/$(1)/config/package-lists
-	@mkdir -p $(BUILD_DIR)/$(1)/config/hooks/live
-	@cp $(ISO_DIR)/live-build/config/package-lists/*.list.chroot $(BUILD_DIR)/$(1)/config/package-lists/ 2>/dev/null || true
-	@# Copy hooks for all profiles (branding, GNOME config, etc.)
-	@cp -r $(ISO_DIR)/live-build/config/hooks $(BUILD_DIR)/$(1)/config/ 2>/dev/null || true
-	@# Copy includes.chroot (branding assets: wallpapers, Plymouth, GRUB themes)
-	@if [ -d "$(ISO_DIR)/live-build/config/includes.chroot" ]; then \
-		cp -r $(ISO_DIR)/live-build/config/includes.chroot $(BUILD_DIR)/$(1)/config/; \
-	fi
-	@# Copy includes.binary (live ISO boot assets: GRUB theme for boot menu)
-	@if [ -d "$(ISO_DIR)/live-build/config/includes.binary" ]; then \
-		cp -r $(ISO_DIR)/live-build/config/includes.binary $(BUILD_DIR)/$(1)/config/; \
-	fi
-	@# Copy bootloaders config (custom GRUB theme and menu)
-	@if [ -d "$(ISO_DIR)/live-build/config/bootloaders" ]; then \
-		cp -r $(ISO_DIR)/live-build/config/bootloaders $(BUILD_DIR)/$(1)/config/; \
-	fi
-	@# Configure live-build
-	cd $(BUILD_DIR)/$(1) && lb config \
-		--distribution $(DEBIAN_VERSION) \
-		--archive-areas "main contrib non-free non-free-firmware" \
-		--architectures $(ARCH) \
-		--binary-images iso-hybrid \
-		--bootappend-live "boot=live components username=cortex splash quiet preseed/file=/cdrom/preseed/profiles/cortex-$(1).preseed" \
-		--debian-installer live \
-		--debian-installer-gui false \
-		--iso-application "CX Linux" \
-		--iso-publisher "AI Venture Holdings LLC" \
-		--iso-volume "CX Linux $(VERSION)" \
-		--memtest none \
-		--security true \
-		--updates true \
-		--backports true \
-		--apt-indices true \
-		--apt-recommends true \
-		--apt-source-archives false \
-		--cache true \
-		--checksums sha256 \
-		--clean \
-		--color \
-		--compression xz \
-		--debconf-frontend noninteractive \
-		--debootstrap-options "--variant=minbase" \
-		--firmware-binary true \
-		--firmware-chroot true \
-		--initramfs live-boot \
-		--interactive false \
-		--linux-packages "linux-image linux-headers" \
-		--mode debian \
-		--system live \
-		--bootappend-live "boot=live components quiet splash"
-	touch $@
-
-# ISO targets
 iso: iso-full
 
-iso-core: check-deps validate $(BUILD_DIR) $(OUTPUT_DIR)
-	$(call build-iso,core)
+iso-core: check-deps validate
+	@ARCH=$(ARCH) DEBIAN_VERSION=$(DEBIAN_VERSION) ISO_NAME=$(ISO_NAME) ISO_VERSION=$(ISO_VERSION) \
+		$(BUILD_SCRIPT) build core
 
-iso-full: check-deps validate $(BUILD_DIR) $(OUTPUT_DIR)
-	$(call build-iso,full)
+iso-full: check-deps validate
+	@ARCH=$(ARCH) DEBIAN_VERSION=$(DEBIAN_VERSION) ISO_NAME=$(ISO_NAME) ISO_VERSION=$(ISO_VERSION) \
+		$(BUILD_SCRIPT) build full
 
-iso-secops: check-deps validate $(BUILD_DIR) $(OUTPUT_DIR)
-	$(call build-iso,secops)
+iso-secops: check-deps validate
+	@ARCH=$(ARCH) DEBIAN_VERSION=$(DEBIAN_VERSION) ISO_NAME=$(ISO_NAME) ISO_VERSION=$(ISO_VERSION) \
+		$(BUILD_SCRIPT) build secops
 
 iso-all: iso-core iso-full iso-secops
 	@echo "All ISOs built successfully."
@@ -232,99 +135,75 @@ iso-all: iso-core iso-full iso-secops
 # ARM64 ISO targets
 iso-arm64: iso-arm64-full
 
-iso-arm64-core: check-deps validate $(BUILD_DIR) $(OUTPUT_DIR)
+iso-arm64-core:
 	$(MAKE) ARCH=arm64 iso-core
 
-iso-arm64-full: check-deps validate $(BUILD_DIR) $(OUTPUT_DIR)
+iso-arm64-full:
 	$(MAKE) ARCH=arm64 iso-full
 
-iso-arm64-secops: check-deps validate $(BUILD_DIR) $(OUTPUT_DIR)
+iso-arm64-secops:
 	$(MAKE) ARCH=arm64 iso-secops
 
 iso-arm64-all: iso-arm64-core iso-arm64-full iso-arm64-secops
 	@echo "All ARM64 ISOs built successfully."
 
-# Test target
-test: validate
-	@echo "Running test suite..."
-	@# Test preseed syntax
-	@echo "Testing preseed files..."
-	@for profile in $(PROFILES); do \
-		if [ -f "$(PRESEED_DIR)/profiles/cortex-$$profile.preseed" ]; then \
-			echo "  Profile $$profile: OK"; \
-		else \
-			echo "  Profile $$profile: MISSING" && exit 1; \
-		fi; \
-	done
-	@# Test provisioning script
-	@echo "Testing provisioning scripts..."
-	@bash -n $(PROVISION_DIR)/first-boot.sh
-	@echo "All tests passed."
+# =============================================================================
+# Clean Targets
+# =============================================================================
 
-# Clean build artifacts (keeps package cache for faster rebuilds)
 clean:
-	@echo "Cleaning build artifacts (keeping package cache)..."
-	@for profile in $(PROFILES); do \
-		if [ -d "$(BUILD_DIR)/$$profile" ]; then \
-			cd "$(BUILD_DIR)/$$profile" && sudo lb clean 2>/dev/null || true; \
-		fi; \
-	done
-	@echo "Clean complete. Package cache preserved."
+	@$(BUILD_SCRIPT) clean all
 
-# Clean everything including cache
 clean-all:
-	@echo "Cleaning all build artifacts and cache..."
-	@rm -rf $(BUILD_DIR)
-	@rm -rf $(OUTPUT_DIR)
-	@echo "Full clean complete."
+	@$(BUILD_SCRIPT) clean-all
 
-# Quick rebuild - only re-run hooks (fastest)
 clean-hooks:
-	@echo "Cleaning hook markers for re-run..."
-	@for profile in $(PROFILES); do \
-		rm -f "$(BUILD_DIR)/$$profile/.build/chroot_hooks" 2>/dev/null || true; \
-		rm -f "$(BUILD_DIR)/$$profile/.build/binary_hooks" 2>/dev/null || true; \
-	done
-	@echo "Hooks will re-run on next build."
+	@$(BUILD_SCRIPT) clean-hooks
 
-# Re-sync config files without full rebuild
 sync-config:
-	@echo "Syncing config files to build directories..."
-	@for profile in $(PROFILES); do \
-		if [ -d "$(BUILD_DIR)/$$profile" ]; then \
-			cp -r $(ISO_DIR)/live-build/config/hooks "$(BUILD_DIR)/$$profile/config/" 2>/dev/null || true; \
-			cp -r $(ISO_DIR)/live-build/config/includes.chroot "$(BUILD_DIR)/$$profile/config/" 2>/dev/null || true; \
-			cp -r $(ISO_DIR)/live-build/config/includes.binary "$(BUILD_DIR)/$$profile/config/" 2>/dev/null || true; \
-			echo "  Synced: $$profile"; \
-		fi; \
-	done
-	@echo "Config sync complete."
+	@$(BUILD_SCRIPT) sync all
 
-# Development helpers - Direct lb shell/chroot access
-dev-shell:
-	@echo "Starting development shell in build environment..."
-	@PROFILE=$${PROFILE:-full}; \
-	if [ -d "$(BUILD_DIR)/$$PROFILE" ]; then \
-		cd "$(BUILD_DIR)/$$PROFILE" && sudo lb shell; \
-	else \
-		echo "ERROR: Build directory for profile '$$PROFILE' not found."; \
-		echo "Run 'make iso-$$PROFILE' first or specify PROFILE=<core|full|secops>"; \
+# =============================================================================
+# Test
+# =============================================================================
+
+test:
+	@$(BUILD_SCRIPT) test
+
+# =============================================================================
+# Branding
+# =============================================================================
+
+branding-install:
+	@if [ "$$(id -u)" -ne 0 ]; then \
+		echo "ERROR: Must run as root (sudo make branding-install)"; \
 		exit 1; \
 	fi
+	@bash branding/install-branding.sh
 
+branding-package:
+	@$(BUILD_SCRIPT) branding-package
+
+# =============================================================================
+# Development Helpers
+# =============================================================================
+
+# Enter interactive shell inside the chroot filesystem
 chroot-shell:
-	@echo "Starting chroot shell for debugging..."
 	@PROFILE=$${PROFILE:-full}; \
 	if [ -d "$(BUILD_DIR)/$$PROFILE/chroot" ]; then \
-		cd "$(BUILD_DIR)/$$PROFILE" && sudo lb chroot; \
+		echo "Entering chroot for profile '$$PROFILE'..."; \
+		sudo chroot "$(BUILD_DIR)/$$PROFILE/chroot" /bin/bash; \
 	else \
 		echo "ERROR: Chroot for profile '$$PROFILE' not found."; \
 		echo "Run 'make iso-$$PROFILE' first or specify PROFILE=<core|full|secops>"; \
 		exit 1; \
 	fi
 
-# Print configuration
-.PHONY: config
+# =============================================================================
+# Configuration
+# =============================================================================
+
 config:
 	@echo "Current Configuration:"
 	@echo "  ISO_NAME       = $(ISO_NAME)"
@@ -333,53 +212,3 @@ config:
 	@echo "  ARCH           = $(ARCH) (supported: amd64, arm64)"
 	@echo "  BUILD_DIR      = $(BUILD_DIR)"
 	@echo "  OUTPUT_DIR     = $(OUTPUT_DIR)"
-
-# ============================================================================
-# Branding Targets
-# ============================================================================
-
-BRANDING_DIR := branding
-PACKAGES_DIR := packages
-
-# Install branding directly to system
-branding-install:
-	@echo "Installing Cortex branding..."
-	@if [ "$$(id -u)" -ne 0 ]; then \
-		echo "ERROR: Must run as root (sudo make branding-install)"; \
-		exit 1; \
-	fi
-	@bash $(BRANDING_DIR)/install-branding.sh
-
-# Build cortex-branding .deb package
-branding-package: $(OUTPUT_DIR)
-	@echo "Building cortex-branding package..."
-	@# Create package directory structure
-	@mkdir -p $(BUILD_DIR)/cortex-branding/DEBIAN
-	@mkdir -p $(BUILD_DIR)/cortex-branding/etc
-	@mkdir -p $(BUILD_DIR)/cortex-branding/usr/share/plymouth/themes/cortex
-	@mkdir -p $(BUILD_DIR)/cortex-branding/boot/grub/themes/cortex
-	@mkdir -p $(BUILD_DIR)/cortex-branding/usr/share/backgrounds/cortex
-	@mkdir -p $(BUILD_DIR)/cortex-branding/usr/share/gnome-background-properties
-	@mkdir -p $(BUILD_DIR)/cortex-branding/etc/update-motd.d
-	@mkdir -p $(BUILD_DIR)/cortex-branding/usr/share/cortex/logos
-	@# Copy DEBIAN control files
-	@cp $(PACKAGES_DIR)/cortex-branding/DEBIAN/* $(BUILD_DIR)/cortex-branding/DEBIAN/
-	@chmod 755 $(BUILD_DIR)/cortex-branding/DEBIAN/postinst
-	@chmod 755 $(BUILD_DIR)/cortex-branding/DEBIAN/prerm
-	@# Copy OS release files
-	@cp $(BRANDING_DIR)/os-release/os-release $(BUILD_DIR)/cortex-branding/etc/os-release
-	@cp $(BRANDING_DIR)/os-release/lsb-release $(BUILD_DIR)/cortex-branding/etc/lsb-release
-	@cp $(BRANDING_DIR)/os-release/issue $(BUILD_DIR)/cortex-branding/etc/issue
-	@cp $(BRANDING_DIR)/os-release/issue.net $(BUILD_DIR)/cortex-branding/etc/issue.net
-	@# Copy Plymouth theme
-	@cp $(BRANDING_DIR)/plymouth/cortex/* $(BUILD_DIR)/cortex-branding/usr/share/plymouth/themes/cortex/ 2>/dev/null || true
-	@# Copy GRUB theme
-	@cp $(BRANDING_DIR)/grub/cortex/* $(BUILD_DIR)/cortex-branding/boot/grub/themes/cortex/ 2>/dev/null || true
-	@# Copy wallpapers
-	@cp $(BRANDING_DIR)/wallpapers/*.xml $(BUILD_DIR)/cortex-branding/usr/share/gnome-background-properties/ 2>/dev/null || true
-	@# Copy MOTD scripts
-	@cp $(BRANDING_DIR)/motd/* $(BUILD_DIR)/cortex-branding/etc/update-motd.d/ 2>/dev/null || true
-	@chmod 755 $(BUILD_DIR)/cortex-branding/etc/update-motd.d/*
-	@# Build the package
-	@dpkg-deb --build $(BUILD_DIR)/cortex-branding $(OUTPUT_DIR)/cortex-branding_1.0.0_all.deb
-	@echo "Package built: $(OUTPUT_DIR)/cortex-branding_1.0.0_all.deb"

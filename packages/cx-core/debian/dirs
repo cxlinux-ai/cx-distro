@@ -1,7 +1,0 @@
-etc/cx
-etc/cx/profiles.d
-var/lib/cx
-var/log/cx
-var/cache/cx
-usr/share/cx
-usr/share/doc/cx-core

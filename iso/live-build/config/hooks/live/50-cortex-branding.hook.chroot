@@ -140,7 +140,9 @@ gtk-theme='Adwaita-dark'
 EOF
 
     # Logo is pre-installed via includes.chroot
-    dconf update 2>/dev/null || true
+    if command -v dconf &>/dev/null; then
+        dconf update
+    fi
 fi
 
 # ============================================================================
@@ -153,7 +155,7 @@ mkdir -p /etc/update-motd.d
 
 # Disable default Debian MOTD scripts
 for f in /etc/update-motd.d/*; do
-    [ -f "$f" ] && chmod -x "$f" 2>/dev/null || true
+    [ -f "$f" ] && chmod -x "$f"
 done
 
 cat > /etc/update-motd.d/00-cortex-banner << 'MOTDEOF'
@@ -259,6 +261,8 @@ EOF
 # ============================================================================
 
 echo "  -> Updating initramfs..."
-update-initramfs -u 2>/dev/null || true
+if command -v update-initramfs &>/dev/null; then
+    update-initramfs -u
+fi
 
 echo "Cortex Linux branding installation complete."

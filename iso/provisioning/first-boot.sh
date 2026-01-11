@@ -293,10 +293,13 @@ secops_hardening() {
     if command -v aide &>/dev/null; then
         if [[ ! -f /var/lib/aide/aide.db ]]; then
             log_info "Initializing AIDE database (this may take a while)..."
-            aide --init 2>/dev/null || true
-            if [[ -f /var/lib/aide/aide.db.new ]]; then
-                mv /var/lib/aide/aide.db.new /var/lib/aide/aide.db
-                log_info "AIDE database initialized"
+            if aide --init; then
+                if [[ -f /var/lib/aide/aide.db.new ]]; then
+                    mv /var/lib/aide/aide.db.new /var/lib/aide/aide.db
+                    log_info "AIDE database initialized"
+                fi
+            else
+                log_warn "AIDE initialization failed (non-critical)"
             fi
         fi
     fi
@@ -470,10 +473,12 @@ cleanup() {
     log_info "Cleaning up installation artifacts..."
 
     # Remove installer logs that may contain sensitive info
-    rm -f /var/log/installer/* 2>/dev/null || true
+    if [ -d /var/log/installer ]; then
+        rm -f /var/log/installer/*
+    fi
 
     # Clear apt cache
-    apt-get clean 2>/dev/null || true
+    apt-get clean
 
     log_info "Cleanup complete"
 }
@@ -543,7 +548,9 @@ main() {
     mark_complete
 
     # Disable the first-boot service after completion
-    systemctl disable cortex-first-boot.service 2>/dev/null || true
+    if systemctl is-enabled cortex-first-boot.service &>/dev/null; then
+        systemctl disable cortex-first-boot.service
+    fi
 
     log_info "System will continue to boot normally."
 }
