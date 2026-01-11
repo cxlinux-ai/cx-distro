@@ -1,57 +1,52 @@
 # Cortex Linux GRUB Theme
-# Modern, minimal boot menu with neural network aesthetics
+# Modern boot menu with neural network aesthetics
 
 # Global properties
 title-text: ""
 desktop-image: "background.png"
 desktop-color: "#0F0F23"
+message-color: "#94A3B8"
+message-bg-color: "#0F0F23"
 terminal-font: "DejaVu Sans Mono Regular 14"
 terminal-box: "terminal_box_*.png"
 
 # Boot menu
 + boot_menu {
     left = 15%
-    top = 30%
+    top = 25%
     width = 70%
-    height = 45%
-    item_font = "DejaVu Sans Regular 16"
+    height = 50%
+    item_font = "DejaVu Sans Regular 14"
     item_color = "#E2E8F0"
-    selected_item_font = "DejaVu Sans Bold 16"
+    selected_item_font = "DejaVu Sans Bold 14"
     selected_item_color = "#06B6D4"
-    item_height = 40
-    item_padding = 15
-    item_icon_space = 20
-    item_spacing = 5
-    icon_width = 32
-    icon_height = 32
-    selected_item_pixmap_style = "select_*.png"
-    scrollbar = true
-    scrollbar_width = 10
-    scrollbar_thumb = "scrollbar_thumb.png"
-    scrollbar_frame = "scrollbar_frame.png"
+    item_height = 36
+    item_padding = 12
+    item_spacing = 4
+    selected_item_color = "#06B6D4"
 }
 
 # Title label (Cortex Linux)
 + label {
-    left = 50%-150
-    top = 10%
-    width = 300
-    height = 50
+    left = 50%-100
+    top = 8%
+    width = 200
+    height = 40
     text = "CORTEX LINUX"
-    font = "DejaVu Sans Bold 28"
-    color = "#FFFFFF"
+    font = "DejaVu Sans Bold 24"
+    color = "#ffffff"
     align = "center"
 }
 
-# Version label
+# Subtitle
 + label {
-    left = 50%-100
-    top = 16%
-    width = 200
-    height = 30
-    text = "v1.0 Synapse"
-    font = "DejaVu Sans Regular 14"
-    color = "#94A3B8"
+    left = 50%-120
+    top = 14%
+    width = 240
+    height = 25
+    text = "AI-Powered Linux Distribution"
+    font = "DejaVu Sans Regular 12"
+    color = "#6B21A8"
     align = "center"
 }
 
@@ -60,7 +55,7 @@ terminal-box: "terminal_box_*.png"
     left = 50%-150
     top = 80%
     width = 300
-    height = 30
+    height = 25
     id = "__timeout__"
     text = "Booting in %d seconds..."
     font = "DejaVu Sans Regular 12"
@@ -70,12 +65,12 @@ terminal-box: "terminal_box_*.png"
 
 # Help text
 + label {
-    left = 50%-200
+    left = 50%-180
     top = 90%
-    width = 400
-    height = 25
-    text = "Press 'e' to edit | 'c' for command line"
-    font = "DejaVu Sans Regular 11"
+    width = 360
+    height = 20
+    text = "Press 'e' to edit options | 'c' for command line"
+    font = "DejaVu Sans Regular 10"
     color = "#475569"
     align = "center"
 }
