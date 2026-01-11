@@ -86,9 +86,6 @@ jobs:
   build-iso:
     name: Build ISO (${{ matrix.profile }})
     runs-on: ubuntu-24.04
-    container:
-      image: debian:bookworm
-      options: --privileged
     needs: [validate, build-branding-package]
     strategy:
       fail-fast: false
@@ -96,26 +93,22 @@ jobs:
         profile: [core, full]
         arch: [amd64]
     steps:
-      - name: Install dependencies
+      - name: Free disk space
         run: |
-          apt-get update
-          apt-get install -y \
-            git \
-            make \
-            sudo \
-            live-build \
-            debootstrap \
-            squashfs-tools \
-            xorriso \
-            isolinux \
-            syslinux-efi \
-            grub-pc-bin \
-            grub-efi-amd64-bin \
-            mtools \
-            dosfstools \
-            imagemagick \
-            gnupg \
-            python3
+          echo "=== Disk space before cleanup ==="
+          df -h
+          echo "=== Removing unnecessary files ==="
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf /usr/share/swift
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          sudo apt-get clean
+          sudo docker image prune -af || true
+          echo "=== Disk space after cleanup ==="
+          df -h
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -126,13 +119,36 @@ jobs:
           name: cortex-branding
           path: output/
 
-      - name: Check dependencies
-        run: make check-deps
-
-      - name: Build ISO
-        run: make iso-${{ matrix.profile }}
-        env:
-          ARCH: ${{ matrix.arch }}
+      - name: Build in Debian container
+        run: |
+          docker run --rm --privileged \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            -e ARCH=${{ matrix.arch }} \
+            -e DEBIAN_FRONTEND=noninteractive \
+            debian:bookworm /bin/bash -c '
+              set -e
+              apt-get update
+              apt-get install -y \
+                git \
+                make \
+                sudo \
+                live-build \
+                debootstrap \
+                squashfs-tools \
+                xorriso \
+                isolinux \
+                syslinux-efi \
+                grub-pc-bin \
+                grub-efi-amd64-bin \
+                mtools \
+                dosfstools \
+                imagemagick \
+                gnupg \
+                python3
+              make check-deps
+              make iso-${{ matrix.profile }}
+            '
 
       - name: List output
         if: always()
