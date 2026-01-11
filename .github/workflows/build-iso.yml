@@ -75,9 +75,6 @@ jobs:
   build-iso:
     name: Build ISO (${{ matrix.profile }})
     runs-on: ubuntu-24.04
-    container:
-      image: debian:bookworm
-      options: --privileged
     needs: [validate, build-branding-package]
     strategy:
       fail-fast: false
@@ -121,9 +118,11 @@ jobs:
             -e DEBIAN_FRONTEND=noninteractive \
             debian:bookworm /bin/bash -c '
               set -e
-              echo "=== Installing build dependencies ==="
               apt-get update
               apt-get install -y \
+                git \
+                make \
+                sudo \
                 live-build \
                 debootstrap \
                 squashfs-tools \
@@ -134,18 +133,12 @@ jobs:
                 grub-efi-amd64-bin \
                 mtools \
                 dosfstools \
+                imagemagick \
                 gnupg \
-                debian-archive-keyring
-
-              echo "=== Configuring live-build ==="
-              cd /workspace/iso/live-build
-              chmod +x auto/* 2>/dev/null || true
-              lb config
-
-      - name: Build ISO
-        run: make iso-${{ matrix.profile }}
-        env:
-          ARCH: ${{ matrix.arch }}
+                python3
+              make check-deps
+              make iso-${{ matrix.profile }}
+            '
 
               echo "=== Generating checksums ==="
               if ls *.iso 1>/dev/null 2>&1; then
