@@ -50,16 +50,14 @@ EOF
 # Cortex APT Repository
 # ============================================================================
 
-echo "  -> Configuring Cortex APT repository..."
+# TODO: Enable when apt.cortexlinux.com is available
+# echo "  -> Configuring Cortex APT repository..."
+# mkdir -p /usr/share/keyrings
+# curl -fsSL https://apt.cortexlinux.com/keys/cortex-linux.gpg.asc | gpg --dearmor -o /usr/share/keyrings/cortex-linux.gpg
+# echo "deb [signed-by=/usr/share/keyrings/cortex-linux.gpg] https://apt.cortexlinux.com stable main" > /etc/apt/sources.list.d/cortex-linux.list
+# echo "  -> Cortex repository configured"
 
-# Download and install GPG key
-mkdir -p /usr/share/keyrings
-curl -fsSL https://apt.cortexlinux.com/keys/cortex-linux.gpg.asc | gpg --dearmor -o /usr/share/keyrings/cortex-linux.gpg
-
-# Add repository source
-echo "deb [signed-by=/usr/share/keyrings/cortex-linux.gpg] https://apt.cortexlinux.com stable main" > /etc/apt/sources.list.d/cortex-linux.list
-
-echo "  -> Cortex repository configured"
+echo "  -> Skipping Cortex APT repository (not yet available)"
 
 # ============================================================================
 # Plymouth Boot Splash Theme
