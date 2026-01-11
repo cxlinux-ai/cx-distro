@@ -102,8 +102,6 @@ logrotate
 # Essential firmware
 firmware-linux-free
 firmware-misc-nonfree
-amd64-microcode
-intel-microcode
 
 # =============================================================================
 # CORTEX PACKAGES (from Cortex repository)

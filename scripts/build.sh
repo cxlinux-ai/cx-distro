@@ -158,25 +158,43 @@ build_packages() {
 
 configure_live_build() {
     header "Configuring Live-Build"
-    
+
     cd "${PROJECT_ROOT}/iso/live-build"
-    
+
     # Make auto scripts executable
     chmod +x auto/* 2>/dev/null || true
-    
+
     # Clean previous configuration
     sudo lb clean --purge 2>/dev/null || true
-    
+
     # Run configuration
     sudo lb config
-    
+
     # Copy built packages to chroot
     if [ -d "${PROJECT_ROOT}/output/packages" ]; then
         mkdir -p config/packages.chroot/
         cp "${PROJECT_ROOT}/output/packages"/*.deb config/packages.chroot/
         log "Packages copied to chroot"
     fi
-    
+
+    # Copy GRUB theme from branding (single source of truth)
+    log "Copying GRUB theme from branding..."
+    mkdir -p config/bootloaders/grub-pc/live-theme
+    cp "${PROJECT_ROOT}/branding/grub/cortex/"*.png config/bootloaders/grub-pc/live-theme/ 2>/dev/null || true
+    cp "${PROJECT_ROOT}/branding/grub/cortex/theme.txt" config/bootloaders/grub-pc/live-theme/
+
+    # Convert background to 8-bit for GRUB compatibility
+    if command -v convert &>/dev/null && [ -f config/bootloaders/grub-pc/live-theme/background.png ]; then
+        convert config/bootloaders/grub-pc/live-theme/background.png -depth 8 -type TrueColor \
+            PNG24:config/bootloaders/grub-pc/live-theme/background.png
+        log "Converted background.png to 8-bit for GRUB"
+    fi
+
+    # Copy theme to includes for installed system
+    mkdir -p config/includes.chroot/boot/grub/themes/cortex
+    cp "${PROJECT_ROOT}/branding/grub/cortex/"* config/includes.chroot/boot/grub/themes/cortex/
+    log "GRUB theme copied"
+
     log "Live-build configured"
 }
 

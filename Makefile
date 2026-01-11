@@ -187,6 +187,7 @@ define build-iso
 		--iso-application "Cortex Linux" \
 		--iso-publisher "AI Venture Holdings LLC" \
 		--iso-volume "CORTEX_$(shell echo $(1) | tr a-z A-Z)" \
+		--cache true \
 		--cache-packages true \
 		--cache-indices true \
 		--cache-stages bootstrap

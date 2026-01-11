@@ -3,6 +3,11 @@ build/
 output/
 .cache/
 
+# Generated theme copies (source of truth is branding/grub/cortex/)
+iso/live-build/config/bootloaders/grub-pc/live-theme/
+iso/live-build/config/includes.chroot/boot/grub/themes/
+iso/live-build/config/includes.binary/boot/grub/themes/
+
 # Branding build artifacts
 packages/cortex-branding/pkg/
 
