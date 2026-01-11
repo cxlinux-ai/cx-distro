@@ -44,14 +44,16 @@ jobs:
   validate:
     name: Validate
     runs-on: ubuntu-24.04
+    container:
+      image: debian:bookworm
     steps:
+      - name: Install git
+        run: |
+          apt-get update
+          apt-get install -y git sudo shellcheck
+
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y shellcheck
 
       - name: Run validation
         run: make validate
@@ -59,15 +61,17 @@ jobs:
   build-branding-package:
     name: Build Branding Package
     runs-on: ubuntu-24.04
+    container:
+      image: debian:bookworm
     needs: validate
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y dpkg-dev imagemagick
+          apt-get update
+          apt-get install -y git dpkg-dev sudo imagemagick
+
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Build cortex-branding package
         run: make branding-package
@@ -82,34 +86,23 @@ jobs:
   build-iso:
     name: Build ISO (${{ matrix.profile }})
     runs-on: ubuntu-24.04
+    container:
+      image: debian:bookworm
+      options: --privileged
     needs: [validate, build-branding-package]
     strategy:
       fail-fast: false
       matrix:
         profile: [core, full]
         arch: [amd64]
-        # Note: arm64 builds require self-hosted runner
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Download branding package
-        uses: actions/download-artifact@v4
-        with:
-          name: cortex-branding
-          path: output/
-
-      - name: Free disk space
+      - name: Install dependencies
         run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /usr/local/lib/android
-          sudo rm -rf /opt/ghc
-          df -h
-
-      - name: Install live-build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
+          apt-get update
+          apt-get install -y \
+            git \
+            make \
+            sudo \
             live-build \
             debootstrap \
             squashfs-tools \
@@ -121,14 +114,23 @@ jobs:
             mtools \
             dosfstools \
             imagemagick \
-            gnupg
+            gnupg \
+            python3
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download branding package
+        uses: actions/download-artifact@v4
+        with:
+          name: cortex-branding
+          path: output/
 
       - name: Check dependencies
         run: make check-deps
 
       - name: Build ISO
-        run: |
-          make iso-${{ matrix.profile }} 2>&1 | tee build.log
+        run: make iso-${{ matrix.profile }}
         env:
           ARCH: ${{ matrix.arch }}
 
