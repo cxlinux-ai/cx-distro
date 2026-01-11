@@ -39,7 +39,7 @@ jobs:
       - name: Install git
         run: |
           apt-get update
-          apt-get install -y git sudo shellcheck
+          apt-get install -y git sudo make shellcheck
 
       - name: Checkout
         uses: actions/checkout@v4
