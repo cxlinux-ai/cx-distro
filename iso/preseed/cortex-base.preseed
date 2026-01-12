@@ -1,8 +1,7 @@
 # Cortex Linux Base Preseed Configuration
 # Automated installation answers for Debian Installer
 #
-# This is the base preseed file that other profiles include.
-# It handles locale, keyboard, network, and common settings.
+# Base preseed file with common settings for locale, keyboard, network, etc.
 
 ### Localization
 d-i debian-installer/locale string en_US.UTF-8
