@@ -131,7 +131,7 @@ jobs:
             -v "${{ github.workspace }}:/workspace" \
             -w /workspace \
             -e ARCH=${{ matrix.arch }} \
-            -e LB_COMPRESSION=$COMPRESSION \
+            -e SQUASHFS_COMP=$COMPRESSION \
             -e DEBIAN_FRONTEND=noninteractive \
             debian:bookworm /bin/bash -c '
               set -e
