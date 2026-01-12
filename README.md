@@ -21,18 +21,14 @@
 git clone https://github.com/cortexlinux/cortex-distro.git
 cd cortex-distro
 
-# Install dependencies (requires sudo)
-sudo apt-get install -y live-build debootstrap squashfs-tools xorriso \
-    isolinux syslinux-efi grub-pc-bin grub-efi-amd64-bin \
-    mtools dosfstools dpkg-dev devscripts debhelper fakeroot gnupg
+# Install dependencies
+sudo ./scripts/install-deps.sh
 
-# Build offline ISO (recommended)
-chmod +x scripts/build.sh
-sudo ./scripts/build.sh offline
+# Build ISO
+make iso
 
-# Or use Makefile
-make deps  # Install dependencies
-make iso   # Build ISO
+# Build for ARM64
+make iso ARCH=arm64
 ```
 
 ### Output
@@ -40,15 +36,11 @@ make iso   # Build ISO
 After a successful build:
 ```
 output/
-├── cortex-linux-0.1.0-amd64-offline.iso      # Bootable ISO
-├── cortex-linux-0.1.0-amd64-offline.iso.sha256
-├── packages/
-│   ├── cortex-archive-keyring_*.deb
-│   ├── cortex-core_*.deb
-│   └── cortex-full_*.deb
+├── cortex-linux-0.1.0-amd64.iso           # Bootable ISO
+├── cortex-linux-0.1.0-amd64.iso.sha256
 └── sbom/
-    ├── cortex-linux-0.1.0.cdx.json           # CycloneDX SBOM
-    └── cortex-linux-0.1.0.spdx.json          # SPDX SBOM
+    ├── cortex-linux-0.1.0.cdx.json        # CycloneDX SBOM
+    └── cortex-linux-0.1.0.spdx.json       # SPDX SBOM
 ```
 
 ## Architecture
@@ -59,17 +51,17 @@ cortex-distro/
 │   ├── live-build/             # Debian live-build configs
 │   │   ├── auto/               # Build automation scripts
 │   │   └── config/             # Package lists, hooks, includes
-│   └── preseed/                # Automated installation preseeds
+│   ├── preseed/                # Automated installation preseeds
+│   └── provisioning/           # First-boot setup scripts
 ├── packages/                   # Debian package definitions
-│   ├── cortex-archive-keyring/ # GPG keyring package
-│   ├── cortex-core/            # Minimal installation meta-package
-│   └── cortex-full/            # Full installation meta-package
+│   └── cortex-branding/        # Branding package
 ├── repository/                 # APT repository tooling
 │   └── scripts/                # repo-manage.sh
 ├── sbom/                       # SBOM generation (CycloneDX/SPDX)
 ├── branding/                   # Plymouth theme, wallpapers
 ├── scripts/                    # Build automation
-│   └── build.sh                # Master build script
+│   ├── build.sh                # Master build script
+│   └── install-deps.sh         # Dependency installer
 ├── tests/                      # Verification tests
 │   ├── verify-iso.sh
 │   ├── verify-packages.sh
@@ -85,26 +77,22 @@ cortex-distro/
 |-----------|-------------|
 | **ISO Builder** | Reproducible ISO image pipeline using Debian live-build |
 | **APT Repository** | Signed package repository with GPG key management |
-| **Meta-packages** | cortex-core (minimal), cortex-full (complete) |
 | **First-boot** | Preseed automation and idempotent provisioning |
 | **SBOM** | Software Bill of Materials (CycloneDX/SPDX) |
 
-## Installation Profiles
+## Included Software
 
-### cortex-core (Minimal)
+The Cortex Linux ISO includes:
 - Base system with Python 3.11+
+- GNOME desktop environment
 - Security sandbox (Firejail, AppArmor)
-- SSH server
-- Cortex package manager dependencies
-
-### cortex-full (Recommended)
-Everything in cortex-core plus:
-- Docker and container tools
+- Container runtime (Docker, Podman)
 - Network security (nftables, fail2ban)
 - Monitoring (Prometheus node exporter)
 - Web server (nginx) and TLS (certbot)
-- GPU support prerequisites
+- GPU support prerequisites (NVIDIA, AMD)
 - Modern CLI tools (htop, btop, fzf, ripgrep, bat)
+- AI/ML prerequisites (numpy, scipy, pandas)
 
 ## Automated Installation
 
@@ -143,7 +131,7 @@ Signed-By: /usr/share/keyrings/cortex-archive-keyring.gpg
 ./repository/scripts/repo-manage.sh init
 
 # Add package
-./repository/scripts/repo-manage.sh add packages/cortex-core_0.1.0-1_all.deb
+./repository/scripts/repo-manage.sh add packages/cortex-branding_1.0.0_all.deb
 
 # Publish (sign and generate metadata)
 CORTEX_GPG_KEY_ID=ABCD1234 ./repository/scripts/repo-manage.sh publish
@@ -174,14 +162,12 @@ CORTEX_GPG_KEY_ID=ABCD1234 ./repository/scripts/repo-manage.sh publish
 
 ```bash
 make help           # Show all targets
-make iso            # Build full offline ISO
-make iso-netinst    # Build minimal network installer
-make package        # Build all Debian packages
-make package PKG=cortex-core  # Build specific package
+make iso            # Build ISO
+make iso ARCH=arm64 # Build ARM64 ISO
 make sbom           # Generate SBOM
 make test           # Run verification tests
 make clean          # Remove build artifacts
-make deps           # Install build dependencies
+make install-deps   # Install build dependencies
 ```
 
 ## Topics Covered
@@ -207,7 +193,7 @@ This repository implements 9 major topics from the Cortex Linux planning:
 - Root/sudo access
 
 ### Target Hardware
-- x86_64 (amd64) architecture
+- x86_64 (amd64) or ARM64 architecture
 - UEFI or Legacy BIOS
 - 2GB+ RAM (4GB+ recommended)
 - 20GB+ storage
