@@ -6,12 +6,10 @@
 # It is designed to be:
 #   - Idempotent: Safe to run multiple times
 #   - Offline-capable: Core functionality works without network
-#   - Profile-aware: Different actions for core/full/secops
 #
 # Exit codes:
 #   0 - Success
 #   1 - General error
-#   2 - Profile not found
 #   3 - Required command missing
 #
 
@@ -22,7 +20,6 @@ readonly PROVISION_DIR="${CORTEX_DIR}/provisioning"
 readonly LOG_DIR="/var/log/cortex"
 readonly LOG_FILE="${LOG_DIR}/first-boot.log"
 readonly STATE_FILE="${PROVISION_DIR}/.first-boot-complete"
-readonly PROFILE_FILE="${PROVISION_DIR}/profile"
 
 # Logging functions
 log() {
@@ -57,19 +54,6 @@ init_logging() {
     log_info "Kernel: $(uname -r)"
 }
 
-# Load profile configuration
-load_profile() {
-    if [[ ! -f "${PROFILE_FILE}" ]]; then
-        log_warn "Profile file not found, defaulting to 'core'"
-        CORTEX_PROFILE="core"
-    else
-        # shellcheck source=/dev/null
-        source "${PROFILE_FILE}"
-    fi
-
-    log_info "Profile: ${CORTEX_PROFILE:-core}"
-    export CORTEX_PROFILE="${CORTEX_PROFILE:-core}"
-}
 
 # Check network connectivity (non-blocking)
 check_network() {
@@ -271,126 +255,9 @@ EOF
     fi
 }
 
-# Profile-specific: SecOps hardening
-secops_hardening() {
-    log_info "Applying SecOps security hardening..."
-
-    # Enable AppArmor
-    if command -v aa-status &>/dev/null; then
-        systemctl enable apparmor
-        systemctl start apparmor || true
-        log_info "AppArmor enabled"
-    fi
-
-    # Enable auditd
-    if command -v auditd &>/dev/null; then
-        systemctl enable auditd
-        systemctl start auditd || true
-        log_info "Audit daemon enabled"
-    fi
-
-    # Initialize AIDE database (offline-safe)
-    if command -v aide &>/dev/null; then
-        if [[ ! -f /var/lib/aide/aide.db ]]; then
-            log_info "Initializing AIDE database (this may take a while)..."
-            if aide --init; then
-                if [[ -f /var/lib/aide/aide.db.new ]]; then
-                    mv /var/lib/aide/aide.db.new /var/lib/aide/aide.db
-                    log_info "AIDE database initialized"
-                fi
-            else
-                log_warn "AIDE initialization failed (non-critical)"
-            fi
-        fi
-    fi
-
-    # Configure kernel hardening via sysctl
-    local sysctl_hardening="/etc/sysctl.d/99-cortex-hardening.conf"
-    if [[ ! -f "${sysctl_hardening}" ]]; then
-        cat > "${sysctl_hardening}" << 'EOF'
-# Cortex Linux Kernel Hardening
-
-# Disable IP forwarding
-net.ipv4.ip_forward = 0
-net.ipv6.conf.all.forwarding = 0
-
-# Enable SYN flood protection
-net.ipv4.tcp_syncookies = 1
-
-# Disable ICMP redirects
-net.ipv4.conf.all.accept_redirects = 0
-net.ipv6.conf.all.accept_redirects = 0
-net.ipv4.conf.all.send_redirects = 0
-
-# Disable source routing
-net.ipv4.conf.all.accept_source_route = 0
-net.ipv6.conf.all.accept_source_route = 0
-
-# Enable reverse path filtering
-net.ipv4.conf.all.rp_filter = 1
-
-# Ignore ICMP broadcasts
-net.ipv4.icmp_echo_ignore_broadcasts = 1
-
-# Log martian packets
-net.ipv4.conf.all.log_martians = 1
-
-# Disable core dumps for setuid programs
-fs.suid_dumpable = 0
-
-# Restrict kernel pointer exposure
-kernel.kptr_restrict = 2
-
-# Restrict dmesg access
-kernel.dmesg_restrict = 1
-
-# Restrict perf access
-kernel.perf_event_paranoid = 3
-
-# Enable ASLR
-kernel.randomize_va_space = 2
-
-# Restrict ptrace
-kernel.yama.ptrace_scope = 1
-EOF
-        chmod 644 "${sysctl_hardening}"
-        sysctl --system &>/dev/null || true
-        log_info "Kernel hardening applied"
-    fi
-
-    # Warn about FDE passphrase change
-    if [[ "${REQUIRE_FDE_PASSPHRASE_CHANGE:-false}" == "true" ]]; then
-        log_warn "IMPORTANT: FDE passphrase change required!"
-        log_warn "Run: sudo cryptsetup luksChangeKey /dev/sda3"
-
-        # Create reminder file
-        cat > /home/cortex/SECURITY-NOTICE.txt << 'EOF'
-===============================================================================
-                    CORTEX LINUX SECURITY NOTICE
-===============================================================================
-
-Your system is configured with Full Disk Encryption (FDE).
-
-IMPORTANT: The current encryption passphrase is a temporary default.
-You MUST change it immediately for security.
-
-To change the FDE passphrase:
-    sudo cryptsetup luksChangeKey /dev/sda3
-
-To verify encryption status:
-    sudo cryptsetup status cortex-sec-vg
-
-For more information, see the Cortex Linux Security Guide.
-
-===============================================================================
-EOF
-        chown cortex:cortex /home/cortex/SECURITY-NOTICE.txt
-    fi
-}
-
-# Profile-specific: Full desktop setup
-full_desktop_setup() {
-    log_info "Configuring full desktop environment..."
+# Desktop environment setup
+setup_desktop() {
+    log_info "Configuring desktop environment..."
 
     # Add Flathub repository if flatpak is installed
     if command -v flatpak &>/dev/null && [[ "${NETWORK_AVAILABLE}" == "true" ]]; then
@@ -491,11 +358,9 @@ mark_complete() {
     cat > "${STATE_FILE}" << EOF
 # Cortex Linux First-Boot Provisioning
 # Completed: ${completion_time}
-# Profile: ${CORTEX_PROFILE}
 # Hostname: $(hostname)
 COMPLETED=true
 TIMESTAMP=${completion_time}
-PROFILE=${CORTEX_PROFILE}
 EOF
 
     chmod 644 "${STATE_FILE}"
@@ -506,43 +371,25 @@ EOF
 main() {
     check_already_complete
     init_logging
-    load_profile
     check_network
 
-    # Core setup (all profiles)
+    # Core setup
     setup_machine_id
     setup_sudo
     setup_ssh_keys
     setup_ssh
     setup_password_change
 
-    # Profile-specific setup
-    case "${CORTEX_PROFILE}" in
-        core)
-            log_info "Applying core profile configuration..."
-            setup_firewall
-            ;;
-        full)
-            log_info "Applying full profile configuration..."
-            setup_firewall
-            setup_fail2ban
-            setup_unattended_upgrades
-            full_desktop_setup
-            setup_cortex_repository
-            ;;
-        secops)
-            log_info "Applying secops profile configuration..."
-            setup_firewall
-            setup_fail2ban
-            setup_unattended_upgrades
-            secops_hardening
-            setup_cortex_repository
-            ;;
-        *)
-            log_warn "Unknown profile: ${CORTEX_PROFILE}, using core defaults"
-            setup_firewall
-            ;;
-    esac
+    # Security setup
+    setup_firewall
+    setup_fail2ban
+    setup_unattended_upgrades
+
+    # Desktop setup (if applicable)
+    setup_desktop
+
+    # Repository setup (requires network)
+    setup_cortex_repository
 
     cleanup
     mark_complete
