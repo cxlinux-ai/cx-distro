@@ -46,6 +46,7 @@ COMMON_PACKAGES=(
     python3
     shellcheck
     dpkg-dev
+    liblz4-tool
 )
 
 log "Installing common packages..."

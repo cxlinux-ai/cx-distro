@@ -121,10 +121,17 @@ jobs:
 
       - name: Build in Debian container
         run: |
+          # Use xz compression for releases (smaller), lz4 for PR/branch builds (faster)
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            COMPRESSION="xz"
+          else
+            COMPRESSION="lz4"
+          fi
           docker run --rm --privileged \
             -v "${{ github.workspace }}:/workspace" \
             -w /workspace \
             -e ARCH=${{ matrix.arch }} \
+            -e LB_COMPRESSION=$COMPRESSION \
             -e DEBIAN_FRONTEND=noninteractive \
             debian:bookworm /bin/bash -c '
               set -e
