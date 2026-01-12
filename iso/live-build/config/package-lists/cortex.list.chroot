@@ -188,6 +188,7 @@ tmux
 screen
 htop
 btop
+neofetch
 iotop
 iftop
 ncdu
