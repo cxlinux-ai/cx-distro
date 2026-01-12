@@ -21,18 +21,14 @@
 git clone https://github.com/cxlinux-ai/cortex-distro.git
 cd cx-distro
 
-# Install dependencies (requires sudo)
-sudo apt-get install -y live-build debootstrap squashfs-tools xorriso \
-    isolinux syslinux-efi grub-pc-bin grub-efi-amd64-bin \
-    mtools dosfstools dpkg-dev devscripts debhelper fakeroot gnupg
+# Install dependencies
+sudo ./scripts/install-deps.sh
 
-# Build offline ISO (recommended)
-chmod +x scripts/build.sh
-sudo ./scripts/build.sh offline
+# Build ISO
+make iso
 
-# Or use Makefile
-make deps  # Install dependencies
-make iso   # Build ISO
+# Build for ARM64
+make iso ARCH=arm64
 ```
 
 ### Output
@@ -40,6 +36,7 @@ make iso   # Build ISO
 After a successful build:
 ```
 output/
+<<<<<<< HEAD
 ├── cx-linux-0.1.0-amd64-offline.iso      # Bootable ISO
 ├── cx-linux-0.1.0-amd64-offline.iso.sha256
 ├── packages/
@@ -49,6 +46,13 @@ output/
 └── sbom/
     ├── cx-linux-0.1.0.cdx.json           # CycloneDX SBOM
     └── cx-linux-0.1.0.spdx.json          # SPDX SBOM
+=======
+├── cortex-linux-0.1.0-amd64.iso           # Bootable ISO
+├── cortex-linux-0.1.0-amd64.iso.sha256
+└── sbom/
+    ├── cortex-linux-0.1.0.cdx.json        # CycloneDX SBOM
+    └── cortex-linux-0.1.0.spdx.json       # SPDX SBOM
+>>>>>>> aa34a92 (Refactor Cortex Linux documentation and build scripts)
 ```
 
 ## Architecture
@@ -59,17 +63,23 @@ cx-distro/
 │   ├── live-build/             # Debian live-build configs
 │   │   ├── auto/               # Build automation scripts
 │   │   └── config/             # Package lists, hooks, includes
-│   └── preseed/                # Automated installation preseeds
+│   ├── preseed/                # Automated installation preseeds
+│   └── provisioning/           # First-boot setup scripts
 ├── packages/                   # Debian package definitions
+<<<<<<< HEAD
 │   ├── cx-archive-keyring/ # GPG keyring package
 │   ├── cx-core/            # Minimal installation meta-package
 │   └── cx-full/            # Full installation meta-package
+=======
+│   └── cortex-branding/        # Branding package
+>>>>>>> aa34a92 (Refactor Cortex Linux documentation and build scripts)
 ├── repository/                 # APT repository tooling
 │   └── scripts/                # repo-manage.sh
 ├── sbom/                       # SBOM generation (CycloneDX/SPDX)
 ├── branding/                   # Plymouth theme, wallpapers
 ├── scripts/                    # Build automation
-│   └── build.sh                # Master build script
+│   ├── build.sh                # Master build script
+│   └── install-deps.sh         # Dependency installer
 ├── tests/                      # Verification tests
 │   ├── verify-iso.sh
 │   ├── verify-packages.sh
@@ -85,26 +95,39 @@ cx-distro/
 |-----------|-------------|
 | **ISO Builder** | Reproducible ISO image pipeline using Debian live-build |
 | **APT Repository** | Signed package repository with GPG key management |
+<<<<<<< HEAD
 | **Meta-packages** | cx-core (minimal), cx-full (complete) |
+=======
+>>>>>>> aa34a92 (Refactor Cortex Linux documentation and build scripts)
 | **First-boot** | Preseed automation and idempotent provisioning |
 | **SBOM** | Software Bill of Materials (CycloneDX/SPDX) |
 
-## Installation Profiles
+## Included Software
 
+<<<<<<< HEAD
 ### cx-core (Minimal)
+=======
+The Cortex Linux ISO includes:
+>>>>>>> aa34a92 (Refactor Cortex Linux documentation and build scripts)
 - Base system with Python 3.11+
+- GNOME desktop environment
 - Security sandbox (Firejail, AppArmor)
+<<<<<<< HEAD
 - SSH server
 - CX package manager dependencies
 
 ### cx-full (Recommended)
 Everything in cx-core plus:
 - Docker and container tools
+=======
+- Container runtime (Docker, Podman)
+>>>>>>> aa34a92 (Refactor Cortex Linux documentation and build scripts)
 - Network security (nftables, fail2ban)
 - Monitoring (Prometheus node exporter)
 - Web server (nginx) and TLS (certbot)
-- GPU support prerequisites
+- GPU support prerequisites (NVIDIA, AMD)
 - Modern CLI tools (htop, btop, fzf, ripgrep, bat)
+- AI/ML prerequisites (numpy, scipy, pandas)
 
 ## Automated Installation
 
@@ -143,7 +166,11 @@ Signed-By: /usr/share/keyrings/cx-archive-keyring.gpg
 ./repository/scripts/repo-manage.sh init
 
 # Add package
+<<<<<<< HEAD
 ./repository/scripts/repo-manage.sh add packages/cx-core_0.1.0-1_all.deb
+=======
+./repository/scripts/repo-manage.sh add packages/cortex-branding_1.0.0_all.deb
+>>>>>>> aa34a92 (Refactor Cortex Linux documentation and build scripts)
 
 # Publish (sign and generate metadata)
 CX_GPG_KEY_ID=ABCD1234 ./repository/scripts/repo-manage.sh publish
@@ -174,14 +201,19 @@ CX_GPG_KEY_ID=ABCD1234 ./repository/scripts/repo-manage.sh publish
 
 ```bash
 make help           # Show all targets
+<<<<<<< HEAD
 make iso            # Build full offline ISO
 make iso-netinst    # Build minimal network installer
 make package        # Build all Debian packages
 make package PKG=cx-core  # Build specific package
+=======
+make iso            # Build ISO
+make iso ARCH=arm64 # Build ARM64 ISO
+>>>>>>> aa34a92 (Refactor Cortex Linux documentation and build scripts)
 make sbom           # Generate SBOM
 make test           # Run verification tests
 make clean          # Remove build artifacts
-make deps           # Install build dependencies
+make install-deps   # Install build dependencies
 ```
 
 ## Topics Covered
@@ -207,7 +239,7 @@ This repository implements 9 major topics from the CX Linux planning:
 - Root/sudo access
 
 ### Target Hardware
-- x86_64 (amd64) architecture
+- x86_64 (amd64) or ARM64 architecture
 - UEFI or Legacy BIOS
 - 2GB+ RAM (4GB+ recommended)
 - 20GB+ storage

@@ -7,7 +7,10 @@ Guide for contributing to Cortex Linux distribution development.
 ### Prerequisites
 
 ```bash
-# Debian/Ubuntu
+# Debian/Ubuntu - use the install-deps script
+sudo ./scripts/install-deps.sh
+
+# Or manually install
 sudo apt update
 sudo apt install live-build gpg python3 shellcheck debootstrap
 
@@ -33,31 +36,19 @@ make check-deps
 ### Quick Build
 
 ```bash
-# Build full desktop ISO (amd64)
-make iso-full
+# Build ISO (amd64)
+make iso
 
-# Build minimal ISO
-make iso-core
-
-# Build security-hardened ISO
-make iso-secops
-```
-
-### ARM64 Builds
-
-```bash
-make iso-arm64-full
-# or
-ARCH=arm64 make iso-full
+# Build for ARM64
+make iso ARCH=arm64
 ```
 
 ### Output Location
 
 ISOs are created in `output/`:
 ```
-output/cortex-linux-full-20250109-amd64.iso
-output/cortex-linux-core-20250109-amd64.iso
-output/cortex-linux-secops-20250109-amd64.iso
+output/cortex-linux-20250109-amd64.iso
+output/cortex-linux-20250109-arm64.iso
 ```
 
 ## Project Structure
@@ -65,6 +56,9 @@ output/cortex-linux-secops-20250109-amd64.iso
 ```
 cortex-distro/
 ├── Makefile                 # Build orchestration
+├── scripts/
+│   ├── build.sh             # Main build script
+│   └── install-deps.sh      # Dependency installer
 ├── iso/
 │   ├── live-build/          # Debian live-build configuration
 │   │   └── config/
@@ -74,14 +68,10 @@ cortex-distro/
 │   │       ├── includes.binary/ # Files on ISO root
 │   │       └── bootloaders/     # GRUB configuration
 │   ├── preseed/             # Automated installation configs
-│   │   ├── profiles/        # core, full, secops profiles
 │   │   └── partitioning/    # Disk layout templates
 │   └── provisioning/        # First-boot setup scripts
 ├── packages/                # Debian package definitions
-│   ├── cortex-branding/     # Branding package
-│   ├── cortex-core/         # Core meta-package
-│   ├── cortex-full/         # Full meta-package
-│   └── cortex-secops/       # SecOps meta-package
+│   └── cortex-branding/     # Branding package
 ├── branding/                # Visual assets
 │   ├── plymouth/            # Boot splash
 │   ├── grub/                # Bootloader theme
@@ -95,14 +85,16 @@ cortex-distro/
 | File | Purpose |
 |------|---------|
 | `Makefile` | Build targets and orchestration |
-| `iso/live-build/config/package-lists/live.list.chroot` | Packages in live ISO |
+| `scripts/install-deps.sh` | Install build dependencies |
+| `iso/live-build/config/package-lists/cortex.list.chroot` | Packages in ISO |
+| `iso/live-build/config/package-lists/live.list.chroot` | Live environment packages |
 | `iso/live-build/config/hooks/live/*.hook.chroot` | Build-time customization |
-| `iso/preseed/profiles/*.preseed` | Installation automation |
+| `iso/preseed/cortex.preseed` | Installation automation |
 | `iso/provisioning/first-boot.sh` | Post-install setup |
 
 ## Adding Packages to ISO
 
-Edit `iso/live-build/config/package-lists/live.list.chroot`:
+Edit `iso/live-build/config/package-lists/cortex.list.chroot`:
 
 ```bash
 # Add your package (one per line)
@@ -143,10 +135,10 @@ make lint              # Run shellcheck on scripts
 
 ```bash
 # QEMU (amd64)
-qemu-system-x86_64 -m 4G -cdrom output/cortex-linux-full-*.iso -boot d
+qemu-system-x86_64 -m 4G -cdrom output/cortex-linux-*.iso -boot d
 
 # QEMU (arm64)
-qemu-system-aarch64 -M virt -cpu cortex-a72 -m 4G -cdrom output/cortex-linux-full-*-arm64.iso
+qemu-system-aarch64 -M virt -cpu cortex-a72 -m 4G -cdrom output/cortex-linux-*-arm64.iso
 ```
 
 ### Test in VirtualBox/UTM
@@ -209,7 +201,7 @@ sudo lb build
 
 ### Package not found in ISO
 
-1. Verify package in `live.list.chroot`
+1. Verify package in `cortex.list.chroot`
 2. Check package exists in Debian repos: `apt-cache search package-name`
 3. Run `make clean` and rebuild
 

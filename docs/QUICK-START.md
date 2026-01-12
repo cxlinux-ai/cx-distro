@@ -13,7 +13,7 @@ echo "deb [signed-by=/usr/share/keyrings/cortex-linux.gpg] https://apt.cortexlin
 
 # Update and install
 sudo apt update
-sudo apt install cortex-core
+sudo apt install cortex
 ```
 
 This installs:
@@ -21,31 +21,24 @@ This installs:
 - `cortex-gpu` - GPU detection and driver setup
 - `cortex-verify` - System integrity verification
 
-## Option 2: Install Full Desktop
+## Option 2: Install from ISO
 
-```bash
-sudo apt install cortex-full
-```
-
-Adds GNOME desktop, dev tools (Python, Node, Go, Rust, Docker), and productivity apps.
-
-## Option 3: Security Operations Profile
-
-```bash
-sudo apt install cortex-secops
-```
-
-Adds security tools: AppArmor, auditd, AIDE, fail2ban, ClamAV, Lynis.
+Download the Cortex Linux ISO and install directly for a complete system with:
+- GNOME desktop environment
+- Development tools (Python, Node, Go, Rust, Docker)
+- Container runtime (Docker, Podman)
+- GPU support (NVIDIA, AMD)
+- Security tools (AppArmor, auditd, fail2ban)
+- AI/ML prerequisites
 
 ---
 
 ## System Requirements
 
-| Profile | RAM | Disk | Use Case |
-|---------|-----|------|----------|
-| cortex-core | 512MB | 2GB | Servers, embedded, minimal |
-| cortex-full | 4GB | 20GB | Workstations, development |
-| cortex-secops | 4GB | 20GB | Security-critical systems |
+| Component | Minimum | Recommended |
+|-----------|---------|-------------|
+| RAM | 2GB | 4GB+ |
+| Disk | 10GB | 20GB+ |
 
 ## After Installation
 
