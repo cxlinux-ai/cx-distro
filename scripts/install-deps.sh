@@ -21,8 +21,12 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
+<<<<<<< HEAD
 # Architecture detection: use ARCH env var if set, otherwise detect from system
 ARCH="${ARCH:-$(dpkg --print-architecture 2>/dev/null || echo amd64)}"
+=======
+ARCH=$(dpkg --print-architecture)
+>>>>>>> 3b68a92 (Refactor Makefile and GitHub Actions workflow for streamlined ISO build process)
 
 log "Installing Cortex Linux build dependencies for ${ARCH}..."
 
@@ -31,7 +35,14 @@ apt-get update
 
 # Common packages for all architectures
 COMMON_PACKAGES=(
+<<<<<<< HEAD
     binutils
+=======
+    git
+    make
+    sudo
+    live-build
+>>>>>>> 3b68a92 (Refactor Makefile and GitHub Actions workflow for streamlined ISO build process)
     debootstrap
     squashfs-tools
     xorriso
@@ -39,16 +50,22 @@ COMMON_PACKAGES=(
     syslinux-efi
     mtools
     dosfstools
+<<<<<<< HEAD
     grub2-common
+=======
+>>>>>>> 3b68a92 (Refactor Makefile and GitHub Actions workflow for streamlined ISO build process)
     imagemagick
     gnupg
     python3
     shellcheck
     dpkg-dev
+<<<<<<< HEAD
     lz4
     git
     make
     sudo
+=======
+>>>>>>> 3b68a92 (Refactor Makefile and GitHub Actions workflow for streamlined ISO build process)
 )
 
 log "Installing common packages..."
@@ -64,7 +81,13 @@ elif [ "$ARCH" = "arm64" ]; then
 else
     warn "Unknown architecture: ${ARCH}"
     warn "You may need to install bootloader packages manually"
+<<<<<<< HEAD
     warn "Supported architectures: amd64, arm64"
 fi
 
 log "All dependencies installed successfully for ${ARCH}!"
+=======
+fi
+
+log "All dependencies installed successfully!"
+>>>>>>> 3b68a92 (Refactor Makefile and GitHub Actions workflow for streamlined ISO build process)
