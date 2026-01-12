@@ -446,6 +446,14 @@ prepare_build_dir() {
         log "Copied includes.chroot"
     fi
 
+    # Copy GRUB theme to includes.chroot for the installed system
+    local grub_theme_dest="${BUILD_DIR}/config/includes.chroot/boot/grub/themes/cortex"
+    if [ -d "${BRANDING_DIR}/grub/cortex" ]; then
+        mkdir -p "$grub_theme_dest"
+        cp -r "${BRANDING_DIR}/grub/cortex/"* "$grub_theme_dest/"
+        log "Copied GRUB theme to includes.chroot"
+    fi
+
     # Copy includes.binary
     if [ -d "${ISO_DIR}/live-build/config/includes.binary" ]; then
         cp -r "${ISO_DIR}/live-build/config/includes.binary" "${BUILD_DIR}/config/"
@@ -651,6 +659,11 @@ cmd_sync() {
             cp -r "${ISO_DIR}/live-build/config/includes.chroot" "${BUILD_DIR}/config/"
         [ -d "${ISO_DIR}/live-build/config/includes.binary" ] && \
             cp -r "${ISO_DIR}/live-build/config/includes.binary" "${BUILD_DIR}/config/"
+        # Copy GRUB theme to includes.chroot
+        if [ -d "${BRANDING_DIR}/grub/cortex" ]; then
+            mkdir -p "${BUILD_DIR}/config/includes.chroot/boot/grub/themes/cortex"
+            cp -r "${BRANDING_DIR}/grub/cortex/"* "${BUILD_DIR}/config/includes.chroot/boot/grub/themes/cortex/"
+        fi
         log "Config synced"
     else
         warn "Build directory not found: ${BUILD_DIR}"
