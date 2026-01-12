@@ -23,14 +23,10 @@ BRANDING_DIR="${PROJECT_ROOT}/branding"
 PACKAGES_DIR="${PROJECT_ROOT}/packages"
 
 # Defaults
-PROFILE="${PROFILE:-full}"
 ARCH="${ARCH:-amd64}"
 DEBIAN_VERSION="${DEBIAN_VERSION:-bookworm}"
 ISO_NAME="${ISO_NAME:-cortex-linux}"
 ISO_VERSION="${ISO_VERSION:-$(date +%Y%m%d)}"
-
-# Profiles
-PROFILES=(core full secops)
 
 # Colors
 RED='\033[0;31m'
@@ -330,17 +326,14 @@ cmd_test() {
 
     header "Running Test Suite"
 
-    # Test preseed profiles exist
-    log "Testing preseed profiles..."
-    for profile in "${PROFILES[@]}"; do
-        local preseed_file="${PRESEED_DIR}/profiles/cortex-${profile}.preseed"
-        if [ -f "$preseed_file" ]; then
-            pass "Profile ${profile}: found"
-        else
-            fail "Profile ${profile}: MISSING"
-            errors=$((errors + 1))
-        fi
-    done
+    # Test preseed file exists
+    log "Testing preseed files..."
+    if [ -f "${PRESEED_DIR}/cortex.preseed" ]; then
+        pass "cortex.preseed: found"
+    else
+        fail "cortex.preseed: MISSING"
+        errors=$((errors + 1))
+    fi
 
     echo ""
 
@@ -431,48 +424,43 @@ cmd_test() {
 # =============================================================================
 
 prepare_build_dir() {
-    local profile="$1"
-    local build_path="${BUILD_DIR}/${profile}"
+    header "Preparing build directory"
 
-    header "Preparing build directory for ${profile}"
-
-    mkdir -p "${build_path}/config/package-lists"
-    mkdir -p "${build_path}/config/hooks/live"
+    mkdir -p "${BUILD_DIR}/config/package-lists"
+    mkdir -p "${BUILD_DIR}/config/hooks/live"
 
     # Copy package lists
-    if copy_glob_if_exists "${ISO_DIR}/live-build/config/package-lists/*.list.chroot" "${build_path}/config/package-lists/"; then
+    if copy_glob_if_exists "${ISO_DIR}/live-build/config/package-lists/*.list.chroot" "${BUILD_DIR}/config/package-lists/"; then
         log "Copied package lists"
     fi
 
     # Copy hooks
     if [ -d "${ISO_DIR}/live-build/config/hooks" ]; then
-        cp -r "${ISO_DIR}/live-build/config/hooks" "${build_path}/config/"
+        cp -r "${ISO_DIR}/live-build/config/hooks" "${BUILD_DIR}/config/"
         log "Copied hooks"
     fi
 
     # Copy includes.chroot
     if [ -d "${ISO_DIR}/live-build/config/includes.chroot" ]; then
-        cp -r "${ISO_DIR}/live-build/config/includes.chroot" "${build_path}/config/"
+        cp -r "${ISO_DIR}/live-build/config/includes.chroot" "${BUILD_DIR}/config/"
         log "Copied includes.chroot"
     fi
 
     # Copy includes.binary
     if [ -d "${ISO_DIR}/live-build/config/includes.binary" ]; then
-        cp -r "${ISO_DIR}/live-build/config/includes.binary" "${build_path}/config/"
+        cp -r "${ISO_DIR}/live-build/config/includes.binary" "${BUILD_DIR}/config/"
         log "Copied includes.binary"
     fi
 
     # Copy bootloaders
     if [ -d "${ISO_DIR}/live-build/config/bootloaders" ]; then
-        cp -r "${ISO_DIR}/live-build/config/bootloaders" "${build_path}/config/"
+        cp -r "${ISO_DIR}/live-build/config/bootloaders" "${BUILD_DIR}/config/"
         log "Copied bootloaders"
     fi
 }
 
 copy_grub_theme() {
-    local profile="$1"
-    local build_path="${BUILD_DIR}/${profile}"
-    local theme_dest="${build_path}/config/bootloaders/grub-pc/live-theme"
+    local theme_dest="${BUILD_DIR}/config/bootloaders/grub-pc/live-theme"
 
     header "Copying GRUB theme from branding"
 
@@ -501,24 +489,21 @@ copy_grub_theme() {
 }
 
 configure_live_build() {
-    local profile="$1"
-    local build_path="${BUILD_DIR}/${profile}"
+    header "Configuring live-build"
 
-    header "Configuring live-build for ${profile}"
-
-    cd "$build_path"
+    cd "$BUILD_DIR"
 
     lb config \
         --distribution "$DEBIAN_VERSION" \
         --archive-areas "main contrib non-free non-free-firmware" \
         --architectures "$ARCH" \
         --binary-images iso-hybrid \
-        --bootappend-live "boot=live components username=cortex splash quiet preseed/file=/cdrom/preseed/profiles/cortex-${profile}.preseed" \
+        --bootappend-live "boot=live components username=cortex splash quiet preseed/file=/cdrom/preseed/cortex.preseed" \
         --debian-installer live \
         --debian-installer-gui false \
         --iso-application "Cortex Linux" \
         --iso-publisher "AI Venture Holdings LLC" \
-        --iso-volume "CORTEX_$(echo "$profile" | tr '[:lower:]' '[:upper:]')" \
+        --iso-volume "CORTEX_LINUX" \
         --cache true \
         --cache-packages true \
         --cache-indices true \
@@ -528,44 +513,30 @@ configure_live_build() {
 }
 
 copy_preseed_files() {
-    local profile="$1"
-    local build_path="${BUILD_DIR}/${profile}"
-    local preseed_dest="${build_path}/config/includes.binary/preseed"
+    local preseed_dest="${BUILD_DIR}/config/includes.binary/preseed"
 
     header "Copying preseed and provisioning files"
 
-    mkdir -p "${preseed_dest}/profiles"
-    mkdir -p "${preseed_dest}/partitioning"
-    mkdir -p "${build_path}/config/includes.binary/provisioning"
+    mkdir -p "$preseed_dest"
+    mkdir -p "${BUILD_DIR}/config/includes.binary/provisioning"
 
     # Copy preseed files
     if copy_glob_if_exists "${PRESEED_DIR}/*.preseed" "$preseed_dest/"; then
-        log "Copied base preseed files"
-    fi
-
-    if copy_glob_if_exists "${PRESEED_DIR}/profiles/*.preseed" "${preseed_dest}/profiles/"; then
-        log "Copied profile preseed files"
-    fi
-
-    if copy_glob_if_exists "${PRESEED_DIR}/partitioning/*.preseed" "${preseed_dest}/partitioning/"; then
-        log "Copied partitioning preseed files"
+        log "Copied preseed files"
     fi
 
     # Copy provisioning files
     if [ -d "$PROVISION_DIR" ]; then
-        if copy_glob_if_exists "${PROVISION_DIR}/*" "${build_path}/config/includes.binary/provisioning/"; then
+        if copy_glob_if_exists "${PROVISION_DIR}/*" "${BUILD_DIR}/config/includes.binary/provisioning/"; then
             log "Copied provisioning files"
         fi
     fi
 }
 
 build_iso() {
-    local profile="$1"
-    local build_path="${BUILD_DIR}/${profile}"
+    header "Building ISO"
 
-    header "Building ISO for ${profile}"
-
-    cd "$build_path"
+    cd "$BUILD_DIR"
 
     log "Starting live-build (this may take a while)..."
     sudo lb build
@@ -574,10 +545,8 @@ build_iso() {
 }
 
 move_output() {
-    local profile="$1"
-    local build_path="${BUILD_DIR}/${profile}"
-    local iso_file="${build_path}/live-image-${ARCH}.hybrid.iso"
-    local output_name="${ISO_NAME}-${profile}-${ISO_VERSION}-${ARCH}.iso"
+    local iso_file="${BUILD_DIR}/live-image-${ARCH}.hybrid.iso"
+    local output_name="${ISO_NAME}-${ISO_VERSION}-${ARCH}.iso"
 
     header "Moving output"
 
@@ -610,18 +579,16 @@ generate_sbom() {
 }
 
 cmd_build() {
-    local profile="${1:-$PROFILE}"
-
-    header "Building Cortex Linux ISO: ${profile}"
+    header "Building Cortex Linux ISO"
     log "Architecture: ${ARCH}"
     log "Debian version: ${DEBIAN_VERSION}"
 
-    prepare_build_dir "$profile"
-    copy_grub_theme "$profile"
-    configure_live_build "$profile"
-    copy_preseed_files "$profile"
-    build_iso "$profile"
-    move_output "$profile"
+    prepare_build_dir
+    copy_grub_theme
+    configure_live_build
+    copy_preseed_files
+    build_iso
+    move_output
     generate_sbom
 
     header "Build Complete"
@@ -632,33 +599,15 @@ cmd_build() {
 # Clean Functions
 # =============================================================================
 
-clean_build() {
-    local profile="$1"
-    local build_path="${BUILD_DIR}/${profile}"
+cmd_clean() {
+    header "Cleaning build"
 
-    header "Cleaning build for ${profile}"
-
-    if [ -d "$build_path" ]; then
-        cd "$build_path"
+    if [ -d "$BUILD_DIR" ]; then
+        cd "$BUILD_DIR"
         sudo lb clean
         log "Clean complete"
     else
-        warn "Build directory not found: ${build_path}"
-    fi
-}
-
-cmd_clean() {
-    local profile="${1:-$PROFILE}"
-
-    # If "all" is specified, clean all profiles
-    if [ "$profile" = "all" ]; then
-        for p in "${PROFILES[@]}"; do
-            if [ -d "${BUILD_DIR}/${p}" ]; then
-                clean_build "$p"
-            fi
-        done
-    else
-        clean_build "$profile"
+        warn "Build directory not found: ${BUILD_DIR}"
     fi
 }
 
@@ -674,13 +623,11 @@ cmd_clean_all() {
 cmd_clean_hooks() {
     header "Cleaning hook markers"
 
-    for profile in "${PROFILES[@]}"; do
-        if [ -d "${BUILD_DIR}/${profile}/.build" ]; then
-            rm -f "${BUILD_DIR}/${profile}/.build/chroot_hooks"
-            rm -f "${BUILD_DIR}/${profile}/.build/binary_hooks"
-            log "Cleaned hooks for ${profile}"
-        fi
-    done
+    if [ -d "${BUILD_DIR}/.build" ]; then
+        rm -f "${BUILD_DIR}/.build/chroot_hooks"
+        rm -f "${BUILD_DIR}/.build/binary_hooks"
+        log "Cleaned hook markers"
+    fi
 
     log "Hooks will re-run on next build"
 }
@@ -690,36 +637,18 @@ cmd_clean_hooks() {
 # =============================================================================
 
 cmd_sync() {
-    local profile="${1:-$PROFILE}"
+    header "Syncing config"
 
-    # If "all" is specified, sync all profiles
-    if [ "$profile" = "all" ]; then
-        for p in "${PROFILES[@]}"; do
-            if [ -d "${BUILD_DIR}/${p}" ]; then
-                sync_config "$p"
-            fi
-        done
-    else
-        sync_config "$profile"
-    fi
-}
-
-sync_config() {
-    local profile="$1"
-    local build_path="${BUILD_DIR}/${profile}"
-
-    header "Syncing config for ${profile}"
-
-    if [ -d "$build_path" ]; then
+    if [ -d "$BUILD_DIR" ]; then
         [ -d "${ISO_DIR}/live-build/config/hooks" ] && \
-            cp -r "${ISO_DIR}/live-build/config/hooks" "${build_path}/config/"
+            cp -r "${ISO_DIR}/live-build/config/hooks" "${BUILD_DIR}/config/"
         [ -d "${ISO_DIR}/live-build/config/includes.chroot" ] && \
-            cp -r "${ISO_DIR}/live-build/config/includes.chroot" "${build_path}/config/"
+            cp -r "${ISO_DIR}/live-build/config/includes.chroot" "${BUILD_DIR}/config/"
         [ -d "${ISO_DIR}/live-build/config/includes.binary" ] && \
-            cp -r "${ISO_DIR}/live-build/config/includes.binary" "${build_path}/config/"
+            cp -r "${ISO_DIR}/live-build/config/includes.binary" "${BUILD_DIR}/config/"
         log "Config synced"
     else
-        warn "Build directory not found: ${build_path}"
+        warn "Build directory not found: ${BUILD_DIR}"
     fi
 }
 
@@ -828,7 +757,7 @@ Cortex Linux Build Script
 Usage: $0 <command> [args]
 
 Build Commands:
-    build [profile]         Build ISO for profile (default: full)
+    build                   Build Cortex Linux ISO
     branding-package        Build cortex-branding .deb package
 
 Validation Commands:
@@ -837,18 +766,13 @@ Validation Commands:
     test                    Run test suite
 
 Clean Commands:
-    clean [profile|all]     Clean build artifacts for profile
+    clean                   Clean build artifacts
     clean-all               Clean all build artifacts and output
     clean-hooks             Clean hook markers for re-run
 
 Utility Commands:
-    sync [profile|all]      Sync config files to build directory
+    sync                    Sync config files to build directory
     help                    Show this help
-
-Profiles:
-    core                    Minimal system
-    full                    Full desktop (default)
-    secops                  Security-focused
 
 Environment Variables:
     ARCH                    Architecture (default: amd64)
@@ -857,12 +781,11 @@ Environment Variables:
     ISO_VERSION             ISO version (default: YYYYMMDD)
 
 Examples:
-    $0 build full
-    $0 build core
-    ARCH=arm64 $0 build full
+    $0 build
+    ARCH=arm64 $0 build
     $0 validate
     $0 test
-    $0 clean all
+    $0 clean
     $0 clean-all
     $0 branding-package
 EOF

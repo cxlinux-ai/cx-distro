@@ -25,17 +25,6 @@ on:
       - 'scripts/**'
       - 'Makefile'
   workflow_dispatch:
-    inputs:
-      profile:
-        description: 'ISO profile to build'
-        required: true
-        default: 'full'
-        type: choice
-        options:
-          - core
-          - full
-          - secops
-          - all
 
 env:
   DEBIAN_FRONTEND: noninteractive
@@ -84,14 +73,17 @@ jobs:
           retention-days: 7
 
   build-iso:
-    name: Build ISO (${{ matrix.profile }})
-    runs-on: ubuntu-24.04
+    name: Build ISO (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
     needs: [validate, build-branding-package]
     strategy:
       fail-fast: false
       matrix:
-        profile: [core, full]
-        arch: [amd64]
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
     steps:
       - name: Free disk space
         uses: jlumbroso/free-disk-space@main
@@ -136,38 +128,21 @@ jobs:
             -e DEBIAN_FRONTEND=noninteractive \
             debian:bookworm /bin/bash -c '
               set -e
-              apt-get update
-              apt-get install -y \
-                git \
-                make \
-                sudo \
-                live-build \
-                debootstrap \
-                squashfs-tools \
-                xorriso \
-                isolinux \
-                syslinux-efi \
-                grub-pc-bin \
-                grub-efi-amd64-bin \
-                mtools \
-                dosfstools \
-                imagemagick \
-                gnupg \
-                python3
+              ./scripts/install-deps.sh
               make check-deps
-              make iso-${{ matrix.profile }}
+              make iso
             '
 
       - name: List output
         if: always()
         run: |
           ls -la output/ || echo "No output directory"
-          ls -la build/${{ matrix.profile }}/ || echo "No build directory"
+          ls -la build/ || echo "No build directory"
 
       - name: Upload ISO
         uses: actions/upload-artifact@v4
         with:
-          name: cortex-linux-${{ matrix.profile }}-${{ matrix.arch }}
+          name: cortex-linux-${{ matrix.arch }}
           path: |
             output/*.iso
             output/*.sha256
@@ -176,7 +151,7 @@ jobs:
       - name: Upload SBOM
         uses: actions/upload-artifact@v4
         with:
-          name: sbom-${{ matrix.profile }}-${{ matrix.arch }}
+          name: sbom-${{ matrix.arch }}
           path: output/sbom/
           retention-days: 14
         continue-on-error: true
@@ -185,23 +160,27 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: build-log-${{ matrix.profile }}-${{ matrix.arch }}
+          name: build-log-${{ matrix.arch }}
           path: build.log
           retention-days: 7
 
   test-iso:
-    name: Test ISO (${{ matrix.profile }})
-    runs-on: ubuntu-24.04
+    name: Test ISO (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
     needs: build-iso
     strategy:
+      fail-fast: false
       matrix:
-        profile: [core, full]
-        arch: [amd64]
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
     steps:
       - name: Download ISO
         uses: actions/download-artifact@v4
         with:
-          name: cortex-linux-${{ matrix.profile }}-${{ matrix.arch }}
+          name: cortex-linux-${{ matrix.arch }}
 
       - name: Verify checksums
         run: |
@@ -269,8 +248,7 @@ jobs:
             ## Cortex Linux ${{ github.ref_name }}
 
             ### Downloads
-            - **cortex-linux-core-*.iso** - Minimal core system
-            - **cortex-linux-full-*.iso** - Full desktop system
+            - **cortex-linux-*.iso** - Cortex Linux ISO
             - **cortex-branding_*.deb** - Branding package
 
             ### Verification

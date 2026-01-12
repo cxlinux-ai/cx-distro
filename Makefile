@@ -7,15 +7,12 @@
 #
 # Usage:
 #   make help           - Show available targets
-#   make iso            - Build default ISO (full profile)
-#   make iso-core       - Build minimal ISO
-#   make iso-secops     - Build security-focused ISO
+#   make iso            - Build ISO
 #   make validate       - Validate preseed files
 #   make clean          - Clean build artifacts
 
-.PHONY: all help iso iso-core iso-full iso-secops iso-all \
-        iso-arm64 iso-arm64-core iso-arm64-full iso-arm64-secops iso-arm64-all \
-        validate clean clean-all clean-hooks sync-config test check-deps \
+.PHONY: all help iso iso-arm64 \
+        validate clean clean-all clean-hooks sync-config test check-deps install-deps \
         preseed-check provision-check lint branding-install branding-package \
         chroot-shell config
 
@@ -47,22 +44,9 @@ help:
 	@echo "Cortex Linux Distribution Build System"
 	@echo "Copyright 2025 AI Venture Holdings LLC (Apache-2.0)"
 	@echo ""
-	@echo "ISO Build Targets (AMD64):"
-	@echo "  make iso              Build default ISO (full profile)"
-	@echo "  make iso-core         Build minimal core ISO"
-	@echo "  make iso-full         Build full desktop ISO"
-	@echo "  make iso-secops       Build security-focused ISO"
-	@echo "  make iso-all          Build all ISO profiles"
-	@echo ""
-	@echo "ISO Build Targets (ARM64):"
-	@echo "  make iso-arm64        Build default ARM64 ISO (full profile)"
-	@echo "  make iso-arm64-core   Build minimal ARM64 core ISO"
-	@echo "  make iso-arm64-full   Build full ARM64 desktop ISO"
-	@echo "  make iso-arm64-secops Build security-focused ARM64 ISO"
-	@echo "  make iso-arm64-all    Build all ARM64 ISO profiles"
-	@echo ""
-	@echo "Architecture Selection:"
-	@echo "  ARCH=arm64 make iso   Build ISO for specified architecture"
+	@echo "ISO Build Targets:"
+	@echo "  make iso              Build Cortex Linux ISO"
+	@echo "  make iso-arm64        Build ARM64 ISO"
 	@echo ""
 	@echo "Validation Targets:"
 	@echo "  make validate         Run all validation checks"
@@ -78,6 +62,7 @@ help:
 	@echo "  make chroot-shell     Enter interactive shell in chroot filesystem"
 	@echo ""
 	@echo "Utility Targets:"
+	@echo "  make install-deps     Install build dependencies (requires sudo)"
 	@echo "  make check-deps       Check build dependencies"
 	@echo "  make clean            Clean build artifacts"
 	@echo "  make clean-all        Clean everything including output"
@@ -92,6 +77,9 @@ help:
 # =============================================================================
 # Dependencies & Validation
 # =============================================================================
+
+install-deps:
+	@sudo scripts/install-deps.sh
 
 check-deps:
 	@$(BUILD_SCRIPT) check-deps
@@ -112,37 +100,12 @@ validate:
 # ISO Build Targets
 # =============================================================================
 
-iso: iso-full
-
-iso-core: check-deps validate
+iso: check-deps validate
 	@ARCH=$(ARCH) DEBIAN_VERSION=$(DEBIAN_VERSION) ISO_NAME=$(ISO_NAME) ISO_VERSION=$(ISO_VERSION) \
-		$(BUILD_SCRIPT) build core
+		$(BUILD_SCRIPT) build
 
-iso-full: check-deps validate
-	@ARCH=$(ARCH) DEBIAN_VERSION=$(DEBIAN_VERSION) ISO_NAME=$(ISO_NAME) ISO_VERSION=$(ISO_VERSION) \
-		$(BUILD_SCRIPT) build full
-
-iso-secops: check-deps validate
-	@ARCH=$(ARCH) DEBIAN_VERSION=$(DEBIAN_VERSION) ISO_NAME=$(ISO_NAME) ISO_VERSION=$(ISO_VERSION) \
-		$(BUILD_SCRIPT) build secops
-
-iso-all: iso-core iso-full iso-secops
-	@echo "All ISOs built successfully."
-
-# ARM64 ISO targets
-iso-arm64: iso-arm64-full
-
-iso-arm64-core:
-	$(MAKE) ARCH=arm64 iso-core
-
-iso-arm64-full:
-	$(MAKE) ARCH=arm64 iso-full
-
-iso-arm64-secops:
-	$(MAKE) ARCH=arm64 iso-secops
-
-iso-arm64-all: iso-arm64-core iso-arm64-full iso-arm64-secops
-	@echo "All ARM64 ISOs built successfully."
+iso-arm64:
+	$(MAKE) ARCH=arm64 iso
 
 # =============================================================================
 # Clean Targets
@@ -187,13 +150,12 @@ branding-package:
 
 # Enter interactive shell inside the chroot filesystem
 chroot-shell:
-	@PROFILE=$${PROFILE:-full}; \
-	if [ -d "$(BUILD_DIR)/$$PROFILE/chroot" ]; then \
-		echo "Entering chroot for profile '$$PROFILE'..."; \
-		sudo chroot "$(BUILD_DIR)/$$PROFILE/chroot" /bin/bash; \
+	@if [ -d "$(BUILD_DIR)/chroot" ]; then \
+		echo "Entering chroot..."; \
+		sudo chroot "$(BUILD_DIR)/chroot" /bin/bash; \
 	else \
-		echo "ERROR: Chroot for profile '$$PROFILE' not found."; \
-		echo "Run 'make iso-$$PROFILE' first or specify PROFILE=<core|full|secops>"; \
+		echo "ERROR: Chroot not found at $(BUILD_DIR)/chroot"; \
+		echo "Run 'make iso' first to create it"; \
 		exit 1; \
 	fi
 
