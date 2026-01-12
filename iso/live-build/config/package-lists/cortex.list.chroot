@@ -1,0 +1,239 @@
+# Cortex Linux Package List
+# Complete system installation with GPU support, containers, and AI/ML tools
+# Copyright 2025 AI Venture Holdings LLC
+# SPDX-License-Identifier: Apache-2.0
+
+# =============================================================================
+# SYSTEM BASE
+# =============================================================================
+# Essential system utilities
+systemd
+systemd-sysv
+dbus
+udev
+init
+
+# Core utilities
+coreutils
+util-linux
+procps
+psmisc
+lsof
+strace
+file
+less
+vim-tiny
+nano
+
+# Networking base
+iproute2
+iputils-ping
+netbase
+netcat-openbsd
+curl
+wget
+openssh-server
+openssh-client
+
+# System management
+sudo
+acl
+apt-transport-https
+ca-certificates
+gnupg
+gpg-agent
+
+# Hardware detection
+pciutils
+usbutils
+dmidecode
+hwinfo
+lshw
+
+# Filesystem
+e2fsprogs
+xfsprogs
+btrfs-progs
+lvm2
+mdadm
+parted
+gdisk
+cryptsetup
+
+# Compression
+xz-utils
+bzip2
+gzip
+zstd
+unzip
+zip
+
+# =============================================================================
+# CORTEX REQUIREMENTS
+# =============================================================================
+# Python runtime (Cortex core dependency)
+python3
+python3-pip
+python3-venv
+python3-dev
+
+# Build essentials for Python packages
+build-essential
+gcc
+g++
+make
+
+# JSON/YAML processing
+jq
+python3-yaml
+
+# Security sandbox
+firejail
+apparmor
+apparmor-utils
+
+# Logging and monitoring
+rsyslog
+logrotate
+
+# =============================================================================
+# FIRMWARE & DRIVERS
+# =============================================================================
+# Essential firmware
+firmware-linux-free
+firmware-misc-nonfree
+
+# =============================================================================
+# EXTENDED NETWORKING
+# =============================================================================
+nftables
+iptables
+tcpdump
+nmap
+dnsutils
+bind9-dnsutils
+whois
+traceroute
+mtr-tiny
+ethtool
+bridge-utils
+vlan
+
+# =============================================================================
+# STORAGE & BACKUP
+# =============================================================================
+rsync
+rclone
+restic
+borgbackup
+smartmontools
+hdparm
+nvme-cli
+
+# =============================================================================
+# CONTAINERS & VIRTUALIZATION
+# =============================================================================
+docker.io
+docker-compose
+containerd
+runc
+crun
+podman
+buildah
+skopeo
+qemu-utils
+libvirt-clients
+virtinst
+
+# =============================================================================
+# GPU SUPPORT (NVIDIA)
+# =============================================================================
+# Base NVIDIA support (actual driver installed via Cortex)
+nvidia-detect
+nvidia-kernel-common
+nvidia-modprobe
+nvidia-settings
+nvidia-smi
+
+# CUDA prerequisites
+ocl-icd-libopencl1
+
+# =============================================================================
+# GPU SUPPORT (AMD)
+# =============================================================================
+firmware-amd-graphics
+libdrm-amdgpu1
+mesa-vulkan-drivers
+radeontop
+
+# =============================================================================
+# AI/ML PREREQUISITES
+# =============================================================================
+# Python ML libraries prerequisites
+python3-numpy
+python3-scipy
+python3-pandas
+
+# Local LLM support (Ollama installed separately)
+libopenblas0
+libblas3
+liblapack3
+
+# =============================================================================
+# DEVELOPMENT TOOLS
+# =============================================================================
+git
+git-lfs
+tmux
+screen
+htop
+btop
+neofetch
+iotop
+iftop
+ncdu
+tree
+fzf
+ripgrep
+fd-find
+bat
+exa
+
+# =============================================================================
+# MONITORING & OBSERVABILITY
+# =============================================================================
+prometheus-node-exporter
+collectd
+
+# =============================================================================
+# DATABASE CLIENTS
+# =============================================================================
+postgresql-client
+mariadb-client
+redis-tools
+sqlite3
+
+# =============================================================================
+# WEB CONSOLE PREREQUISITES
+# =============================================================================
+nginx-light
+certbot
+python3-certbot-nginx
+
+# =============================================================================
+# EXTENDED SECURITY
+# =============================================================================
+fail2ban
+rkhunter
+chkrootkit
+aide
+auditd
+audispd-plugins
+
+# =============================================================================
+# CORTEX PACKAGES (from Cortex repository)
+# =============================================================================
+# These will be installed from the Cortex APT repository when available
+# cortex-archive-keyring
+# cortex-core
+# cortex-console
