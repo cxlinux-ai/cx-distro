@@ -495,7 +495,7 @@ configure_live_build() {
 
     # Use lz4 compression for faster builds (CI), xz for release builds
     # lz4: ~2-3 min vs xz: ~20 min, but ISO is ~20% larger
-    local compression="${LB_COMPRESSION:-lz4}"
+    local compression="${SQUASHFS_COMP:-lz4}"
 
     lb config \
         --distribution "$DEBIAN_VERSION" \
