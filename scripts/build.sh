@@ -493,6 +493,10 @@ configure_live_build() {
 
     cd "$BUILD_DIR"
 
+    # Use lz4 compression for faster builds (CI), xz for release builds
+    # lz4: ~2-3 min vs xz: ~20 min, but ISO is ~20% larger
+    local compression="${LB_COMPRESSION:-lz4}"
+
     lb config \
         --distribution "$DEBIAN_VERSION" \
         --archive-areas "main contrib non-free non-free-firmware" \
@@ -507,9 +511,10 @@ configure_live_build() {
         --cache true \
         --cache-packages true \
         --cache-indices true \
-        --cache-stages bootstrap
+        --cache-stages bootstrap \
+        --chroot-squashfs-compression-type "$compression"
 
-    log "Live-build configured"
+    log "Live-build configured (compression: ${compression})"
 }
 
 copy_preseed_files() {

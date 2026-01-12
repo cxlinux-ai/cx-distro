@@ -60,12 +60,16 @@ COMMON_PACKAGES=(
     shellcheck
     dpkg-dev
 <<<<<<< HEAD
+<<<<<<< HEAD
     lz4
     git
     make
     sudo
 =======
 >>>>>>> 3b68a92 (Refactor Makefile and GitHub Actions workflow for streamlined ISO build process)
+=======
+    liblz4-tool
+>>>>>>> 070ed6b (Enhance build scripts and workflows with compression options)
 )
 
 log "Installing common packages..."
