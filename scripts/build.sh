@@ -510,7 +510,7 @@ configure_live_build() {
         --archive-areas "main contrib non-free non-free-firmware" \
         --architectures "$ARCH" \
         --binary-images iso-hybrid \
-        --bootappend-live "boot=live components username=cortex splash quiet preseed/file=/cdrom/preseed/cortex.preseed" \
+        --bootappend-live "boot=live components username=cortex quiet splash plymouth.ignore-serial-consoles preseed/file=/cdrom/preseed/cortex.preseed" \
         --debian-installer live \
         --debian-installer-gui false \
         --iso-application "Cortex Linux" \
