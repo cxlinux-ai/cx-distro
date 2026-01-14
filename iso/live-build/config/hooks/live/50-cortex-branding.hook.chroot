@@ -68,12 +68,40 @@ echo "  -> Configuring Plymouth theme..."
 # Plymouth theme files are pre-installed via includes.chroot from branding/plymouth/cortex/
 # Verify they exist
 if [ ! -f /usr/share/plymouth/themes/cortex/cortex.plymouth ]; then
-    echo "    WARNING: Plymouth theme not found in includes.chroot"
+    echo "    ERROR: Plymouth theme not found in includes.chroot"
+    exit 1
 fi
 
-# Set Plymouth theme as default
+# Set theme using update-alternatives (more reliable)
+update-alternatives --install /usr/share/plymouth/themes/default.plymouth default.plymouth \
+    /usr/share/plymouth/themes/cortex/cortex.plymouth 100
+
+update-alternatives --set default.plymouth \
+    /usr/share/plymouth/themes/cortex/cortex.plymouth
+
+# Also set in plymouthd.defaults as a fallback
+if [ -f /usr/share/plymouth/plymouthd.defaults ]; then
+    sed -i 's|^Theme=.*|Theme=cortex|' /usr/share/plymouth/plymouthd.defaults
+else
+    mkdir -p /usr/share/plymouth
+    echo "[Daemon]" > /usr/share/plymouth/plymouthd.defaults
+    echo "Theme=cortex" >> /usr/share/plymouth/plymouthd.defaults
+fi
+
+# Set theme via plymouth-set-default-theme (triple redundancy)
 if command -v plymouth-set-default-theme &>/dev/null; then
-    plymouth-set-default-theme cortex || true
+    plymouth-set-default-theme cortex
+    if [ $? -ne 0 ]; then
+        echo "    WARNING: plymouth-set-default-theme failed"
+    fi
+fi
+
+# Verify theme is set
+CURRENT_THEME=$(plymouth-set-default-theme)
+if [ "$CURRENT_THEME" != "cortex" ]; then
+    echo "    WARNING: Plymouth theme is '$CURRENT_THEME', expected 'cortex'"
+else
+    echo "    Plymouth theme set to: $CURRENT_THEME"
 fi
 
 # ============================================================================
@@ -367,9 +395,19 @@ EOF
 # Update initramfs with new Plymouth theme
 # ============================================================================
 
-echo "  -> Updating initramfs..."
+echo "  -> Updating initramfs with Plymouth theme..."
 if command -v update-initramfs &>/dev/null; then
-    update-initramfs -u
+    # Update ALL kernels
+    update-initramfs -u -k all
+
+    if [ $? -eq 0 ]; then
+        echo "    Initramfs updated successfully"
+    else
+        echo "    ERROR: Failed to update initramfs"
+        exit 1
+    fi
+else
+    echo "    WARNING: update-initramfs command not found"
 fi
 
 echo "Cortex Linux branding installation complete."
