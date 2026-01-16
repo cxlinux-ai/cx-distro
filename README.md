@@ -2,7 +2,7 @@
 
 **Debian-based Distribution Engineering for Cortex Linux**
 
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-BSL%201.1-orange.svg)](LICENSE)
 [![Debian](https://img.shields.io/badge/base-Debian%2013%20trixie-A81D33.svg)](https://debian.org)
 [![Build](https://img.shields.io/github/actions/workflow/status/cortexlinux/cortex-distro/build-iso.yml?branch=main)](https://github.com/cortexlinux/cortex-distro/actions)
 
@@ -231,7 +231,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
-Apache 2.0 - See [LICENSE](LICENSE)
+BSL 1.1 - See [LICENSE](LICENSE)
 
 ## Support
 
