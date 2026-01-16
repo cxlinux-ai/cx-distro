@@ -15,19 +15,31 @@ Cortex Linux is an AI-powered Linux distribution that combines the stability of 
 
 ### Primary Logo
 
-The Cortex logo represents a stylized brain with neural pathways, symbolizing:
-- AI and machine learning capabilities
-- The "cortex" (brain's outer layer) connection
-- Network connectivity and intelligence
+The Cortex logo is a "CX" monogram in a circular badge, featuring:
+- **CX monogram**: Bold, stylized letters representing "Cortex"
+- **Circular badge**: A ring with a purple-to-cyan gradient (matching the brand color palette)
+- **Circuit board traces**: Horizontal lines extending from the badge, representing technology and connectivity
+- **Two versions**: Light version (white/light background) and Dark version (dark space-like background)
+
+The design conveys:
+- AI and machine learning capabilities through the circuit aesthetics
+- Modern, tech-forward identity fitting the "Cortex" name
+- Professional and enterprise-ready appearance
 
 ### Logo Variations
 
 | Variant | Usage |
 |---------|-------|
-| Full color | Primary use on dark backgrounds |
-| Monochrome light | Light backgrounds |
-| Monochrome dark | Dark backgrounds |
+| Full color (dark bg) | Primary use on dark backgrounds |
+| Full color (light bg) | Light backgrounds |
+| Transparent | Overlay on images or colored backgrounds |
 | Icon only | Favicons, app icons, small contexts |
+
+### Source Files
+
+Master logo files are located in `branding/source/`:
+- `cx-logo-dark.png` - Logo on dark space-like background
+- `cx-logo-transparent.png` - Logo with transparent background
 
 ### Clear Space
 
