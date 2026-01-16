@@ -2,13 +2,31 @@
 #
 # Cortex Linux Branding Asset Generator
 #
-# Generates placeholder image assets for branding using ImageMagick.
-# These can be replaced with professional designs later.
+# Generates branding assets from source logo images using ImageMagick.
+# Uses the CX monogram logo from branding/source/ directory.
 #
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SOURCE_DIR="${SCRIPT_DIR}/source"
+
+# Source logo images
+LOGO_TRANSPARENT="${SOURCE_DIR}/cx-logo-transparent.png"
+LOGO_DARK="${SOURCE_DIR}/cx-logo-dark.png"
+
+# Verify source images exist
+if [ ! -f "${LOGO_TRANSPARENT}" ]; then
+    echo "ERROR: Source logo not found: ${LOGO_TRANSPARENT}"
+    echo "Please add cx-logo-transparent.png to branding/source/"
+    exit 1
+fi
+
+if [ ! -f "${LOGO_DARK}" ]; then
+    echo "ERROR: Source logo not found: ${LOGO_DARK}"
+    echo "Please add cx-logo-dark.png to branding/source/"
+    exit 1
+fi
 
 # Colors (Cortex brand)
 PRIMARY_PURPLE="#6B21A8"
@@ -24,6 +42,26 @@ TEXT_LIGHT="#E2E8F0"
 TEXT_MUTED="#94A3B8"
 
 echo "Generating Cortex Linux branding assets..."
+echo "Using source logos from: ${SOURCE_DIR}"
+
+# ============================================================================
+# Helper function to extract and resize the circular logo
+# The source image is 1536x1024, we need to extract the centered logo portion
+# ============================================================================
+extract_logo() {
+    local output_size="$1"
+    local output_file="$2"
+    local source_file="${3:-${LOGO_TRANSPARENT}}"
+    
+    # The logo is centered in the 1536x1024 image
+    # Extract a square region from the center, then resize
+    magick "${source_file}" \
+        -gravity center \
+        -crop 1024x1024+0+0 +repage \
+        -resize "${output_size}x${output_size}" \
+        -background none \
+        "${output_file}"
+}
 
 # ============================================================================
 # Plymouth Assets
@@ -32,31 +70,8 @@ echo "Creating Plymouth assets..."
 PLYMOUTH_DIR="${SCRIPT_DIR}/plymouth/cortex"
 mkdir -p "${PLYMOUTH_DIR}"
 
-# Logo - Stylized brain/neural network icon (200x200)
-magick -size 200x200 xc:transparent \
-    -fill "${DARK_PURPLE}" -draw "circle 100,100 100,30" \
-    -fill "${PRIMARY_PURPLE}" -draw "circle 100,100 100,40" \
-    -fill "transparent" -stroke "${LIGHT_PURPLE}" -strokewidth 3 \
-    -draw "circle 100,100 100,60" \
-    -fill "transparent" -stroke "${ELECTRIC_CYAN}" -strokewidth 2 \
-    -draw "line 60,60 80,80" \
-    -draw "line 140,60 120,80" \
-    -draw "line 60,140 80,120" \
-    -draw "line 140,140 120,120" \
-    -draw "line 100,40 100,70" \
-    -draw "line 100,130 100,160" \
-    -draw "line 40,100 70,100" \
-    -draw "line 130,100 160,100" \
-    -fill "${ELECTRIC_CYAN}" \
-    -draw "circle 100,70 100,75" \
-    -draw "circle 100,130 100,135" \
-    -draw "circle 70,100 70,105" \
-    -draw "circle 130,100 130,135" \
-    -draw "circle 80,80 80,84" \
-    -draw "circle 120,80 120,84" \
-    -draw "circle 80,120 80,124" \
-    -draw "circle 120,120 120,124" \
-    "${PLYMOUTH_DIR}/logo.png"
+# Logo - CX monogram (200x200)
+extract_logo 200 "${PLYMOUTH_DIR}/logo.png"
 
 # Wordmark - "CORTEX LINUX" text (300x50)
 magick -size 300x50 xc:transparent \
@@ -65,19 +80,51 @@ magick -size 300x50 xc:transparent \
     -gravity center -annotate 0 "CORTEX LINUX" \
     "${PLYMOUTH_DIR}/wordmark.png"
 
-# Progress box - Container for progress bar (400x20)
-magick -size 400x20 xc:transparent \
-    -fill "${SURFACE}" \
-    -stroke "${BORDER}" -strokewidth 1 \
-    -draw "roundrectangle 0,0 399,19 10,10" \
-    "${PLYMOUTH_DIR}/progress-box.png"
+# Circular spinner - Multi-frame animation (36 frames for ultra-smooth rotation)
+# Clean white/grey design for professional look on black background
+echo "  Creating circular spinner frames (36 frames)..."
 
-# Progress bar - Gradient fill (390x10)
-magick -size 390x10 \
-    -define gradient:direction=east \
-    "gradient:${PRIMARY_PURPLE}-${ELECTRIC_CYAN}" \
-    -alpha set -channel A -evaluate set 100% \
-    "${PLYMOUTH_DIR}/progress-bar.png"
+SPINNER_SIZE=80
+SPINNER_FRAMES=36
+
+# Create spinner frames directory
+mkdir -p "${PLYMOUTH_DIR}"
+
+# Generate each frame of the spinner animation
+# Using white with fading opacity for smooth, professional look
+for i in $(seq 0 $((SPINNER_FRAMES - 1))); do
+    # Calculate rotation angle for this frame
+    ANGLE=$((i * 360 / SPINNER_FRAMES))
+    
+    # Frame number with leading zeros (throbber-0001.png format for Plymouth)
+    FRAME_NUM=$(printf "%04d" $i)
+    
+    # Create a smooth white/grey spinner with fading trail
+    # Professional, clean look - white fading to transparent
+    magick -size ${SPINNER_SIZE}x${SPINNER_SIZE} xc:transparent \
+        -fill none \
+        -strokewidth 4 \
+        \( -clone 0 -stroke "rgba(255,255,255,1.0)" -draw "arc 6,6 74,74 0,40" \) \
+        \( -clone 0 -stroke "rgba(255,255,255,0.85)" -draw "arc 6,6 74,74 40,70" \) \
+        \( -clone 0 -stroke "rgba(255,255,255,0.65)" -draw "arc 6,6 74,74 70,100" \) \
+        \( -clone 0 -stroke "rgba(255,255,255,0.45)" -draw "arc 6,6 74,74 100,130" \) \
+        \( -clone 0 -stroke "rgba(255,255,255,0.28)" -draw "arc 6,6 74,74 130,160" \) \
+        \( -clone 0 -stroke "rgba(255,255,255,0.15)" -draw "arc 6,6 74,74 160,190" \) \
+        \( -clone 0 -stroke "rgba(255,255,255,0.06)" -draw "arc 6,6 74,74 190,220" \) \
+        -delete 0 -background transparent -flatten \
+        -distort SRT "${ANGLE}" \
+        "${PLYMOUTH_DIR}/throbber-${FRAME_NUM}.png"
+    
+    echo -n "."
+done
+echo " done"
+
+# Static track ring - very subtle grey circle
+magick -size ${SPINNER_SIZE}x${SPINNER_SIZE} xc:transparent \
+    -fill none \
+    -stroke "rgba(255,255,255,0.12)" -strokewidth 4 \
+    -draw "circle 40,40 40,6" \
+    "${PLYMOUTH_DIR}/spinner-track.png"
 
 # Entry box - Password input field (300x40)
 magick -size 300x40 xc:transparent \
@@ -169,13 +216,8 @@ magick -size 10x100 xc:transparent \
     "${GRUB_DIR}/scrollbar_frame.png"
 
 # Boot menu icons (32x32)
-# Cortex icon
-magick -size 32x32 xc:transparent \
-    -fill "${PRIMARY_PURPLE}" -draw "circle 16,16 16,4" \
-    -fill "${ELECTRIC_CYAN}" -draw "circle 16,16 16,8" \
-    -fill "${DARK_BG}" -draw "circle 16,16 16,12" \
-    -fill "${LIGHT_PURPLE}" -draw "circle 16,16 16,14" \
-    "${GRUB_DIR}/icons/cortex.png"
+# Cortex icon - use the CX logo
+extract_logo 32 "${GRUB_DIR}/icons/cortex.png"
 
 # Linux icon
 magick -size 32x32 xc:transparent \
@@ -196,70 +238,13 @@ magick -size 32x32 xc:transparent \
 echo "  GRUB assets created."
 
 # ============================================================================
-# Wallpapers
+# Wallpapers (removed per user request - only circuit-board.png kept)
 # ============================================================================
 echo "Creating wallpaper assets..."
 WALLPAPER_DIR="${SCRIPT_DIR}/wallpapers/images"
 mkdir -p "${WALLPAPER_DIR}"
 
-# Neural Dark (default) - 1920x1080
-echo "  Creating neural-dark.png..."
-magick -size 1920x1080 "gradient:${DARK_BG}-${DARKER_BG}" -rotate 135 \
-    -fill "rgba(107,33,168,0.04)" \
-    -draw "line 0,200 1920,200" -draw "line 0,400 1920,400" \
-    -draw "line 0,600 1920,600" -draw "line 0,800 1920,800" \
-    -draw "line 400,0 400,1080" -draw "line 800,0 800,1080" \
-    -draw "line 1200,0 1200,1080" -draw "line 1600,0 1600,1080" \
-    -fill "rgba(6,182,212,0.12)" \
-    -draw "circle 300,200 300,206" -draw "circle 600,400 600,406" \
-    -draw "circle 900,300 900,305" -draw "circle 1200,500 1200,507" \
-    -draw "circle 1500,350 1500,356" -draw "circle 400,700 400,705" \
-    -draw "circle 800,800 800,806" -draw "circle 1100,650 1100,656" \
-    -fill "rgba(107,33,168,0.10)" \
-    -draw "circle 200,400 200,206" -draw "circle 500,600 500,607" \
-    -draw "circle 1000,450 1000,456" -draw "circle 1600,600 1600,607" \
-    -stroke "rgba(107,33,168,0.05)" -strokewidth 1 \
-    -draw "line 300,200 600,400" -draw "line 600,400 900,300" \
-    -draw "line 900,300 1200,500" -draw "line 400,700 800,800" \
-    -stroke "rgba(6,182,212,0.04)" \
-    -draw "line 200,400 500,600" -draw "line 1000,450 1300,300" \
-    "${WALLPAPER_DIR}/neural-dark.png"
-
-# Neural Light - 1920x1080
-echo "  Creating neural-light.png..."
-magick -size 1920x1080 "gradient:#F8FAFC-#E2E8F0" -rotate 135 \
-    -fill "rgba(107,33,168,0.06)" \
-    -draw "line 0,200 1920,200" -draw "line 0,400 1920,400" \
-    -draw "line 0,600 1920,600" -draw "line 0,800 1920,800" \
-    -draw "line 400,0 400,1080" -draw "line 800,0 800,1080" \
-    -draw "line 1200,0 1200,1080" -draw "line 1600,0 1600,1080" \
-    -fill "rgba(107,33,168,0.12)" \
-    -draw "circle 400,300 400,308" -draw "circle 800,500 800,508" \
-    -draw "circle 1200,400 1200,407" -draw "circle 600,700 600,707" \
-    -draw "circle 1000,800 1000,808" \
-    -stroke "rgba(107,33,168,0.06)" -strokewidth 1 \
-    -draw "line 400,300 800,500" -draw "line 800,500 1200,400" \
-    -draw "line 600,700 1000,800" \
-    "${WALLPAPER_DIR}/neural-light.png"
-
-# Gradient Purple - 1920x1080
-echo "  Creating gradient-purple.png..."
-magick -size 1920x1080 "gradient:#1E1B4B-#4C1D95" -rotate 135 \
-    "${WALLPAPER_DIR}/gradient-purple.png"
-
-# Gradient Cyan - 1920x1080
-echo "  Creating gradient-cyan.png..."
-magick -size 1920x1080 "gradient:#042F2E-#0E7490" -rotate 180 \
-    "${WALLPAPER_DIR}/gradient-cyan.png"
-
-# Minimal Dark - 1920x1080
-echo "  Creating minimal-dark.png..."
-magick -size 1920x1080 xc:"${DARK_BG}" \
-    -fill "rgba(107,33,168,0.08)" -draw "circle 960,540 960,440" \
-    -fill "rgba(6,182,212,0.06)" -draw "circle 960,540 960,480" \
-    "${WALLPAPER_DIR}/minimal-dark.png"
-
-# Circuit Board - 1920x1080
+# Circuit Board - 1920x1080 (kept as default wallpaper)
 echo "  Creating circuit-board.png..."
 magick -size 1920x1080 xc:"${DARK_BG}" \
     -stroke "rgba(107,33,168,0.10)" -strokewidth 2 \
@@ -292,104 +277,27 @@ echo "Creating logo assets..."
 LOGO_DIR="${SCRIPT_DIR}/logos"
 mkdir -p "${LOGO_DIR}"
 
-# Full logo with text (400x100)
-magick -size 400x100 xc:transparent \
-    \( -size 80x80 xc:transparent \
-       -fill "${PRIMARY_PURPLE}" -draw "circle 40,40 40,10" \
-       -fill "${ELECTRIC_CYAN}" -draw "circle 40,40 40,20" \
-       -fill "${DARK_BG}" -draw "circle 40,40 40,28" \
-       -fill "${LIGHT_PURPLE}" -draw "circle 40,40 40,32" \
-    \) -geometry +10+10 -composite \
-    -font "Helvetica-Bold" -pointsize 36 \
-    -fill "${TEXT_LIGHT}" \
-    -draw "text 100,60 'CORTEX'" \
-    -font "Helvetica" -pointsize 36 \
-    -fill "${TEXT_MUTED}" \
-    -draw "text 245,60 'LINUX'" \
-    "${LOGO_DIR}/cortex-logo-full-dark.png"
-
-# Full logo light version
-magick -size 400x100 xc:transparent \
-    \( -size 80x80 xc:transparent \
-       -fill "${PRIMARY_PURPLE}" -draw "circle 40,40 40,10" \
-       -fill "${ELECTRIC_CYAN}" -draw "circle 40,40 40,20" \
-       -fill "white" -draw "circle 40,40 40,28" \
-       -fill "${LIGHT_PURPLE}" -draw "circle 40,40 40,32" \
-    \) -geometry +10+10 -composite \
-    -font "Helvetica-Bold" -pointsize 36 \
-    -fill "#1E1B4B" \
-    -draw "text 100,60 'CORTEX'" \
-    -font "Helvetica" -pointsize 36 \
-    -fill "#64748B" \
-    -draw "text 245,60 'LINUX'" \
-    "${LOGO_DIR}/cortex-logo-full-light.png"
-
 # Icon only (128x128)
-magick -size 128x128 xc:transparent \
-    -fill "${DARK_PURPLE}" -draw "circle 64,64 64,14" \
-    -fill "${PRIMARY_PURPLE}" -draw "circle 64,64 64,24" \
-    -fill "transparent" -stroke "${LIGHT_PURPLE}" -strokewidth 4 \
-    -draw "circle 64,64 64,40" \
-    -fill "transparent" -stroke "${ELECTRIC_CYAN}" -strokewidth 2 \
-    -draw "line 34,34 50,50" \
-    -draw "line 94,34 78,50" \
-    -draw "line 34,94 50,78" \
-    -draw "line 94,94 78,78" \
-    -draw "line 64,20 64,44" \
-    -draw "line 64,84 64,108" \
-    -draw "line 20,64 44,64" \
-    -draw "line 84,64 108,64" \
-    -fill "${ELECTRIC_CYAN}" \
-    -draw "circle 64,44 64,48" \
-    -draw "circle 64,84 64,88" \
-    -draw "circle 44,64 44,68" \
-    -draw "circle 84,64 84,88" \
-    "${LOGO_DIR}/cortex-icon-128.png"
+echo "  Creating cortex-icon-128.png..."
+extract_logo 128 "${LOGO_DIR}/cortex-icon-128.png"
 
 # Favicon (32x32)
-magick -size 32x32 xc:transparent \
-    -fill "${PRIMARY_PURPLE}" -draw "circle 16,16 16,4" \
-    -fill "${ELECTRIC_CYAN}" -draw "circle 16,16 16,8" \
-    -fill "${DARK_BG}" -draw "circle 16,16 16,11" \
-    -fill "${LIGHT_PURPLE}" -draw "circle 16,16 16,13" \
-    "${LOGO_DIR}/favicon-32.png"
-
-# SVG logo (text-based for scalability)
-cat > "${LOGO_DIR}/cortex-logo.svg" << 'SVGEOF'
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100">
-  <defs>
-    <linearGradient id="iconGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#6B21A8"/>
-      <stop offset="100%" style="stop-color:#06B6D4"/>
-    </linearGradient>
-  </defs>
-  <!-- Icon -->
-  <circle cx="50" cy="50" r="35" fill="#4C1D95"/>
-  <circle cx="50" cy="50" r="28" fill="url(#iconGrad)"/>
-  <circle cx="50" cy="50" r="18" fill="#0F0F23"/>
-  <circle cx="50" cy="50" r="12" fill="#A855F7"/>
-  <!-- Text -->
-  <text x="100" y="62" font-family="Helvetica, Arial, sans-serif" font-weight="bold" font-size="36" fill="#E2E8F0">CORTEX</text>
-  <text x="245" y="62" font-family="Helvetica, Arial, sans-serif" font-size="36" fill="#94A3B8">LINUX</text>
-</svg>
-SVGEOF
+echo "  Creating favicon-32.png..."
+extract_logo 32 "${LOGO_DIR}/favicon-32.png"
 
 echo "  Logo assets created."
 
 # ============================================================================
-# GDM Assets
+# GDM Assets (removed - cortex-login-bg.png and cortex-logo.svg no longer needed)
 # ============================================================================
-echo "Creating GDM assets..."
 GDM_DIR="${SCRIPT_DIR}/gdm"
 mkdir -p "${GDM_DIR}"
+# GDM assets generation removed per user request
 
-# Login background (same as neural-dark but optimized)
-cp "${WALLPAPER_DIR}/neural-dark.png" "${GDM_DIR}/cortex-login-bg.png"
-
-# Copy SVG logo for GDM
-cp "${LOGO_DIR}/cortex-logo.svg" "${GDM_DIR}/cortex-logo.svg"
-
-echo "  GDM assets created."
+# ============================================================================
+# Icon Theme (removed per user request)
+# ============================================================================
+# Icon theme generation removed - no longer needed
 
 # ============================================================================
 # Summary
@@ -403,9 +311,12 @@ echo "Generated assets:"
 find "${SCRIPT_DIR}" -name "*.png" -o -name "*.svg" | wc -l | xargs echo "  Total images:"
 echo ""
 echo "Locations:"
-echo "  Plymouth: ${PLYMOUTH_DIR}"
-echo "  GRUB:     ${GRUB_DIR}"
+echo "  Plymouth:   ${PLYMOUTH_DIR}"
+echo "  GRUB:       ${GRUB_DIR}"
 echo "  Wallpapers: ${WALLPAPER_DIR}"
-echo "  Logos:    ${LOGO_DIR}"
-echo "  GDM:      ${GDM_DIR}"
+echo "  Logos:      ${LOGO_DIR}"
+echo ""
+echo "Source logos used:"
+echo "  ${LOGO_TRANSPARENT}"
+echo "  ${LOGO_DARK}"
 echo ""

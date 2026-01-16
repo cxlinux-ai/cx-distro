@@ -1,17 +1,13 @@
 /**
  * Cortex Linux Plymouth Theme
  *
- * A modern boot splash with neural network-inspired animation
- * representing the AI-powered nature of Cortex Linux.
+ * A modern boot splash with circular spinner animation
+ * featuring a smooth multi-frame animated spinner.
  */
 
-// Color definitions (Cortex brand colors)
-// Primary: Deep Purple (#6B21A8)
-// Accent: Electric Cyan (#06B6D4)
-// Background: Dark (#0F0F23)
-
-Window.SetBackgroundTopColor(0.06, 0.06, 0.14);     // Dark purple-black
-Window.SetBackgroundBottomColor(0.02, 0.02, 0.08);  // Darker at bottom
+// Pure black background
+Window.SetBackgroundTopColor(0, 0, 0);
+Window.SetBackgroundBottomColor(0, 0, 0);
 
 // Screen dimensions
 screen_width = Window.GetWidth();
@@ -24,7 +20,7 @@ logo.image = Image("logo.png");
 logo.width = logo.image.GetWidth();
 logo.height = logo.image.GetHeight();
 logo.x = screen_x + screen_width / 2 - logo.width / 2;
-logo.y = screen_y + screen_height / 2 - logo.height / 2 - 50;
+logo.y = screen_y + screen_height / 2 - logo.height / 2 - 80;
 logo.sprite = Sprite(logo.image);
 logo.sprite.SetPosition(logo.x, logo.y, 10);
 logo.sprite.SetOpacity(1);
@@ -39,29 +35,55 @@ wordmark.sprite = Sprite(wordmark.image);
 wordmark.sprite.SetPosition(wordmark.x, wordmark.y, 10);
 wordmark.sprite.SetOpacity(1);
 
-// Progress bar
-progress_box.image = Image("progress-box.png");
-progress_box.sprite = Sprite(progress_box.image);
-progress_box.x = screen_x + screen_width / 2 - progress_box.image.GetWidth() / 2;
-progress_box.y = screen_y + screen_height - 100;
-progress_box.sprite.SetPosition(progress_box.x, progress_box.y, 1);
+// Spinner track (background ring)
+spinner_track.image = Image("spinner-track.png");
+spinner_track.width = spinner_track.image.GetWidth();
+spinner_track.height = spinner_track.image.GetHeight();
+spinner_track.x = screen_x + screen_width / 2 - spinner_track.width / 2;
+spinner_track.y = wordmark.y + wordmark.height + 40;
+spinner_track.sprite = Sprite(spinner_track.image);
+spinner_track.sprite.SetPosition(spinner_track.x, spinner_track.y, 1);
 
-progress_bar.original_image = Image("progress-bar.png");
-progress_bar.sprite = Sprite();
-progress_bar.x = progress_box.x + 5;
-progress_bar.y = progress_box.y + 5;
-progress_bar.sprite.SetPosition(progress_bar.x, progress_bar.y, 2);
+// Load spinner animation frames (36 frames for ultra-smooth animation)
+NUM_SPINNER_FRAMES = 36;
+for (i = 0; i < NUM_SPINNER_FRAMES; i++) {
+    spinner_frames[i] = Image("throbber-" + String(i).PadLeft(4, "0") + ".png");
+}
+
+// Create spinner sprite
+spinner.sprite = Sprite(spinner_frames[0]);
+spinner.x = screen_x + screen_width / 2 - spinner_frames[0].GetWidth() / 2;
+spinner.y = spinner_track.y;
+spinner.sprite.SetPosition(spinner.x, spinner.y, 2);
 
 // Animation variables
-global.progress = 0;
+global.spinner_frame = 0;
+global.frame_counter = 0;
 global.pulse_opacity = 1;
 global.pulse_direction = -1;
 
+// Animate spinner (cycle through frames)
+fun animate_spinner() {
+    global.frame_counter++;
+    
+    // Change frame every 2 refresh cycles for smoother animation
+    if (global.frame_counter >= 2) {
+        global.frame_counter = 0;
+        global.spinner_frame++;
+        
+        if (global.spinner_frame >= NUM_SPINNER_FRAMES) {
+            global.spinner_frame = 0;
+        }
+        
+        spinner.sprite.SetImage(spinner_frames[global.spinner_frame]);
+    }
+}
+
 // Pulsing animation for logo
 fun pulse_logo() {
-    global.pulse_opacity += global.pulse_direction * 0.01;
+    global.pulse_opacity += global.pulse_direction * 0.006;
 
-    if (global.pulse_opacity <= 0.7) {
+    if (global.pulse_opacity <= 0.75) {
         global.pulse_direction = 1;
     } else if (global.pulse_opacity >= 1) {
         global.pulse_direction = -1;
@@ -70,30 +92,25 @@ fun pulse_logo() {
     logo.sprite.SetOpacity(global.pulse_opacity);
 }
 
-// Progress callback
+// Progress callback - animates spinner during boot
 fun progress_callback(duration, progress) {
-    if (progress_bar.original_image.GetWidth() > 0) {
-        new_width = progress_bar.original_image.GetWidth() * progress;
-        if (new_width > 1) {
-            progress_bar.image = progress_bar.original_image.Scale(new_width, progress_bar.original_image.GetHeight());
-            progress_bar.sprite.SetImage(progress_bar.image);
-        }
-    }
+    animate_spinner();
     pulse_logo();
 }
 Plymouth.SetBootProgressFunction(progress_callback);
 
 // System update progress
 fun system_update_callback(progress) {
-    if (progress_bar.original_image.GetWidth() > 0) {
-        new_width = progress_bar.original_image.GetWidth() * progress / 100;
-        if (new_width > 1) {
-            progress_bar.image = progress_bar.original_image.Scale(new_width, progress_bar.original_image.GetHeight());
-            progress_bar.sprite.SetImage(progress_bar.image);
-        }
-    }
+    animate_spinner();
 }
 Plymouth.SetSystemUpdateFunction(system_update_callback);
+
+// Refresh callback - called continuously for smooth animation
+fun refresh_callback() {
+    animate_spinner();
+    pulse_logo();
+}
+Plymouth.SetRefreshFunction(refresh_callback);
 
 // Password prompt
 fun password_dialogue_setup(title, bullet) {
@@ -104,7 +121,7 @@ fun password_dialogue_setup(title, bullet) {
     entry.image = Image("entry.png");
     entry.sprite = Sprite(entry.image);
     entry.x = screen_x + screen_width / 2 - entry.image.GetWidth() / 2;
-    entry.y = screen_y + screen_height / 2 + 80;
+    entry.y = screen_y + screen_height / 2 + 100;
     entry.sprite.SetPosition(entry.x, entry.y, 10);
 
     global.password_entry = entry;
@@ -149,7 +166,7 @@ Plymouth.SetMessageFunction(message_callback);
 fun quit_callback() {
     logo.sprite.SetOpacity(0);
     wordmark.sprite.SetOpacity(0);
-    progress_box.sprite.SetOpacity(0);
-    progress_bar.sprite.SetOpacity(0);
+    spinner_track.sprite.SetOpacity(0);
+    spinner.sprite.SetOpacity(0);
 }
 Plymouth.SetQuitFunction(quit_callback);
