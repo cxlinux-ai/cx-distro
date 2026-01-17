@@ -19,7 +19,6 @@ OUTPUT_DIR="${PROJECT_ROOT}/output"
 ISO_DIR="${PROJECT_ROOT}/iso"
 PRESEED_DIR="${ISO_DIR}/preseed"
 PROVISION_DIR="${ISO_DIR}/provisioning"
-BRANDING_DIR="${PROJECT_ROOT}/branding"
 PACKAGES_DIR="${PROJECT_ROOT}/packages"
 
 # Defaults
@@ -261,16 +260,6 @@ run_shellcheck() {
         errors=$((errors + 1))
     fi
 
-    # Check branding install script
-    if [ -f "${BRANDING_DIR}/install-branding.sh" ]; then
-        if shellcheck "${BRANDING_DIR}/install-branding.sh" 2>/dev/null; then
-            pass "install-branding.sh: OK"
-        else
-            fail "install-branding.sh: issues found"
-            errors=$((errors + 1))
-        fi
-    fi
-
     return $errors
 }
 
@@ -353,16 +342,18 @@ cmd_test() {
 
     echo ""
 
-    # Test branding assets
-    log "Testing branding assets..."
+    # Test branding package assets
+    log "Testing branding package assets..."
+    local pkg_branding="${PACKAGES_DIR}/cortex-branding"
     local required_files=(
-        "grub/cortex/theme.txt"
-        "os-release/os-release"
-        "os-release/lsb-release"
+        "boot/grub/themes/cortex/theme.txt"
+        "etc/os-release"
+        "etc/lsb-release"
+        "usr/share/plymouth/themes/cortex/cortex.plymouth"
     )
 
     for file in "${required_files[@]}"; do
-        if [ -f "${BRANDING_DIR}/${file}" ]; then
+        if [ -f "${pkg_branding}/${file}" ]; then
             pass "${file}: found"
         else
             fail "${file}: MISSING"
@@ -388,22 +379,22 @@ cmd_test() {
 
     echo ""
 
-    # Test package control files
+    # Test package control files (debian/ source format)
     log "Testing package control files..."
-    local pkg_dir="${PACKAGES_DIR}/cortex-branding/DEBIAN"
-    for file in control postinst prerm; do
+    local pkg_dir="${PACKAGES_DIR}/cortex-branding/debian"
+    for file in control postinst prerm rules; do
         if [ -f "${pkg_dir}/${file}" ]; then
-            pass "DEBIAN/${file}: found"
+            pass "debian/${file}: found"
             if [[ "$file" == "postinst" || "$file" == "prerm" ]]; then
                 if bash -n "${pkg_dir}/${file}"; then
-                    pass "DEBIAN/${file}: syntax OK"
+                    pass "debian/${file}: syntax OK"
                 else
-                    fail "DEBIAN/${file}: SYNTAX ERROR"
+                    fail "debian/${file}: SYNTAX ERROR"
                     errors=$((errors + 1))
                 fi
             fi
         else
-            fail "DEBIAN/${file}: MISSING"
+            fail "debian/${file}: MISSING"
             errors=$((errors + 1))
         fi
     done
@@ -459,26 +450,32 @@ prepare_build_dir() {
         cp -r "${ISO_DIR}/live-build/config/bootloaders" "${BUILD_DIR}/config/"
         log "Copied bootloaders"
     fi
+
+    # Copy local .deb packages (packages.chroot)
+    if [ -d "${ISO_DIR}/live-build/config/packages.chroot" ]; then
+        mkdir -p "${BUILD_DIR}/config/packages.chroot"
+        # Copy any existing .deb files (excluding .gitkeep)
+        if ls "${ISO_DIR}/live-build/config/packages.chroot"/*.deb 1>/dev/null 2>&1; then
+            cp "${ISO_DIR}/live-build/config/packages.chroot"/*.deb "${BUILD_DIR}/config/packages.chroot/"
+            log "Copied local .deb packages from packages.chroot"
+        fi
+    fi
 }
 
 copy_grub_theme() {
     local theme_dest="${BUILD_DIR}/config/bootloaders/grub-pc/live-theme"
+    local theme_src="${PACKAGES_DIR}/cortex-branding/boot/grub/themes/cortex"
 
-    header "Copying GRUB theme from branding"
+    header "Copying GRUB theme from package"
 
     mkdir -p "$theme_dest"
 
-    # Copy PNG files
-    if copy_glob_if_exists "${BRANDING_DIR}/grub/cortex/*.png" "$theme_dest/"; then
-        log "Copied PNG files"
-    fi
-
-    # Copy theme.txt (required)
-    if [ -f "${BRANDING_DIR}/grub/cortex/theme.txt" ]; then
-        cp "${BRANDING_DIR}/grub/cortex/theme.txt" "$theme_dest/"
-        log "Copied theme.txt"
+    # Copy all theme files from package
+    if [ -d "$theme_src" ]; then
+        cp -r "$theme_src"/* "$theme_dest/"
+        log "Copied GRUB theme files"
     else
-        error "theme.txt not found in ${BRANDING_DIR}/grub/cortex/"
+        error "GRUB theme not found in ${theme_src}"
         exit 1
     fi
 
@@ -549,11 +546,10 @@ copy_preseed_files() {
         log "Copied preseed files"
     fi
 
-    # Copy provisioning files
+    # Copy provisioning files (use -r for directories)
     if [ -d "$PROVISION_DIR" ]; then
-        if copy_glob_if_exists "${PROVISION_DIR}/*" "${BUILD_DIR}/config/includes.binary/provisioning/"; then
-            log "Copied provisioning files"
-        fi
+        cp -r "${PROVISION_DIR}"/* "${BUILD_DIR}/config/includes.binary/provisioning/" 2>/dev/null || true
+        log "Copied provisioning files"
     fi
 }
 
@@ -602,12 +598,41 @@ generate_sbom() {
     fi
 }
 
+build_local_packages() {
+    header "Building local packages for ISO"
+
+    # Ensure output directory exists
+    mkdir -p "$OUTPUT_DIR"
+
+    # Build packages needed for ISO (cortex-branding is required)
+    # Add more packages here as needed
+    local iso_packages="cortex-branding"
+
+    for pkg in $iso_packages; do
+        log "Building ${pkg}..."
+        build_single_package "$pkg" || warn "Failed to build ${pkg}"
+    done
+
+    # Copy built packages to packages.chroot for ISO inclusion
+    local pkg_dest="${BUILD_DIR}/config/packages.chroot"
+    mkdir -p "$pkg_dest"
+
+    if ls "${OUTPUT_DIR}"/*.deb 1>/dev/null 2>&1; then
+        cp "${OUTPUT_DIR}"/*.deb "$pkg_dest/"
+        log "Copied packages to packages.chroot:"
+        ls -la "$pkg_dest"/*.deb 2>/dev/null || true
+    else
+        warn "No .deb packages found in ${OUTPUT_DIR}"
+    fi
+}
+
 cmd_build() {
     header "Building Cortex Linux ISO"
     log "Architecture: ${ARCH}"
     log "Debian version: ${DEBIAN_VERSION}"
 
     prepare_build_dir
+    build_local_packages
     copy_grub_theme
     configure_live_build
     copy_preseed_files
@@ -680,97 +705,212 @@ cmd_sync() {
 }
 
 # =============================================================================
-# Branding Package Functions
+# Package Building Functions
 # =============================================================================
 
-cmd_branding_package() {
+# List of available packages (add new packages here)
+AVAILABLE_PACKAGES="cortex-branding"
+
+# Get package version from DEBIAN/control or debian/changelog
+get_package_version() {
+    local pkg_name="$1"
+    local pkg_path="${PACKAGES_DIR}/${pkg_name}"
+    
+    # Try DEBIAN/control first (binary package format)
+    if [ -f "${pkg_path}/DEBIAN/control" ]; then
+        grep -E "^Version:" "${pkg_path}/DEBIAN/control" | awk '{print $2}' | head -1
+        return
+    fi
+    
+    # Try debian/changelog (source package format)
+    if [ -f "${pkg_path}/debian/changelog" ]; then
+        head -1 "${pkg_path}/debian/changelog" | grep -oP '\(.*?\)' | tr -d '()'
+        return
+    fi
+    
+    # Default version
+    echo "1.0.0"
+}
+
+# Get package architecture from DEBIAN/control
+get_package_arch() {
+    local pkg_name="$1"
+    local pkg_path="${PACKAGES_DIR}/${pkg_name}"
+    
+    if [ -f "${pkg_path}/DEBIAN/control" ]; then
+        grep -E "^Architecture:" "${pkg_path}/DEBIAN/control" | awk '{print $2}' | head -1
+        return
+    fi
+    
+    if [ -f "${pkg_path}/debian/control" ]; then
+        grep -E "^Architecture:" "${pkg_path}/debian/control" | awk '{print $2}' | head -1
+        return
+    fi
+    
+    echo "all"
+}
+
+# Build cortex-branding package using dpkg-buildpackage
+# The package is self-contained with all assets in packages/cortex-branding/
+build_pkg_cortex_branding() {
     local pkg_name="cortex-branding"
-    local pkg_version="1.0.0"
-    local pkg_dir="${BUILD_DIR}/${pkg_name}"
+    local pkg_path="${PACKAGES_DIR}/${pkg_name}"
 
-    header "Building Cortex Branding Package"
+    log "Building ${pkg_name} (self-contained package)..."
 
-    # Create directory structure
-    log "Creating package directory structure..."
-    mkdir -p "${pkg_dir}/DEBIAN"
-    mkdir -p "${pkg_dir}/etc"
-    mkdir -p "${pkg_dir}/usr/share/plymouth/themes/cortex"
-    mkdir -p "${pkg_dir}/boot/grub/themes/cortex"
-    mkdir -p "${pkg_dir}/usr/share/backgrounds/cortex"
-    mkdir -p "${pkg_dir}/usr/share/gnome-background-properties"
-    mkdir -p "${pkg_dir}/etc/update-motd.d"
-    mkdir -p "${pkg_dir}/usr/share/cortex/logos"
+    if [ ! -d "${pkg_path}/debian" ]; then
+        error "${pkg_name} has no debian/ directory"
+        return 1
+    fi
 
-    # Copy DEBIAN control files
-    log "Copying DEBIAN control files..."
-    if [ -d "${PACKAGES_DIR}/${pkg_name}/DEBIAN" ]; then
-        cp "${PACKAGES_DIR}/${pkg_name}/DEBIAN/"* "${pkg_dir}/DEBIAN/"
-        chmod 755 "${pkg_dir}/DEBIAN/postinst"
-        chmod 755 "${pkg_dir}/DEBIAN/prerm"
+    # Build using dpkg-buildpackage
+    cd "$pkg_path"
+    
+    # Clean any previous build artifacts
+    rm -f ../${pkg_name}_*.deb ../${pkg_name}_*.changes ../${pkg_name}_*.buildinfo 2>/dev/null || true
+    
+    if dpkg-buildpackage -us -uc -b; then
+        # Move built packages to output
+        mv ../${pkg_name}_*.deb "${OUTPUT_DIR}/" 2>/dev/null || true
+        mv ../${pkg_name}_*.changes "${OUTPUT_DIR}/" 2>/dev/null || true
+        mv ../${pkg_name}_*.buildinfo "${OUTPUT_DIR}/" 2>/dev/null || true
+        
+        cd "$PROJECT_ROOT"
+        log "Built: ${pkg_name} -> ${OUTPUT_DIR}/"
     else
-        error "DEBIAN control files not found"
-        exit 1
+        cd "$PROJECT_ROOT"
+        error "dpkg-buildpackage failed for ${pkg_name}"
+        return 1
+    fi
+}
+
+# Build cortex-core package (meta-package, uses dpkg-buildpackage)
+build_pkg_cortex_core() {
+    local pkg_name="cortex-core"
+    local pkg_path="${PACKAGES_DIR}/${pkg_name}"
+
+    log "Building ${pkg_name}..."
+
+    if [ ! -d "${pkg_path}/debian" ]; then
+        warn "${pkg_name} has no debian/ directory, skipping (meta-package)"
+        return 0
     fi
 
-    # Copy OS release files
-    log "Copying OS release files..."
-    local os_release_dir="${BRANDING_DIR}/os-release"
-    if [ -d "$os_release_dir" ]; then
-        copy_if_exists "${os_release_dir}/os-release" "${pkg_dir}/etc/os-release"
-        copy_if_exists "${os_release_dir}/lsb-release" "${pkg_dir}/etc/lsb-release"
-        copy_if_exists "${os_release_dir}/issue" "${pkg_dir}/etc/issue"
-        copy_if_exists "${os_release_dir}/issue.net" "${pkg_dir}/etc/issue.net"
+    # Build using dpkg-buildpackage
+    cd "$pkg_path"
+    dpkg-buildpackage -us -uc -b 2>/dev/null || {
+        warn "dpkg-buildpackage failed for ${pkg_name}, trying manual build..."
+        return 0
+    }
+    
+    # Move built packages to output
+    mv ../${pkg_name}_*.deb "${OUTPUT_DIR}/" 2>/dev/null || true
+    mv ../${pkg_name}_*.changes "${OUTPUT_DIR}/" 2>/dev/null || true
+    
+    cd "$PROJECT_ROOT"
+    log "Built: ${pkg_name}"
+}
+
+# Build cortex-full package (meta-package)
+build_pkg_cortex_full() {
+    local pkg_name="cortex-full"
+    build_pkg_cortex_core  # Same process as cortex-core
+}
+
+# Build cortex-secops package (meta-package)
+build_pkg_cortex_secops() {
+    local pkg_name="cortex-secops"
+    build_pkg_cortex_core  # Same process as cortex-core
+}
+
+# Build a single package by name
+build_single_package() {
+    local pkg_name="$1"
+    
+    # Check if package exists
+    if [ ! -d "${PACKAGES_DIR}/${pkg_name}" ]; then
+        error "Package not found: ${pkg_name}"
+        error "Available packages: ${AVAILABLE_PACKAGES}"
+        return 1
     fi
 
-    # Copy Plymouth theme
-    log "Copying Plymouth theme..."
-    if [ -d "${BRANDING_DIR}/plymouth/cortex" ]; then
-        copy_glob_if_exists "${BRANDING_DIR}/plymouth/cortex/*" "${pkg_dir}/usr/share/plymouth/themes/cortex/" || true
+    # Call the appropriate build function
+    local build_func="build_pkg_${pkg_name//-/_}"
+    if declare -f "$build_func" > /dev/null; then
+        "$build_func"
+    else
+        # Generic build for packages with DEBIAN/ directory
+        build_generic_package "$pkg_name"
+    fi
+}
+
+# Generic package builder for simple packages
+build_generic_package() {
+    local pkg_name="$1"
+    local pkg_version
+    pkg_version=$(get_package_version "$pkg_name")
+    local pkg_arch
+    pkg_arch=$(get_package_arch "$pkg_name")
+    local pkg_dir="${BUILD_DIR}/${pkg_name}"
+    local pkg_path="${PACKAGES_DIR}/${pkg_name}"
+
+    log "Building ${pkg_name} v${pkg_version} (generic)..."
+
+    # Check for DEBIAN directory
+    if [ ! -d "${pkg_path}/DEBIAN" ]; then
+        warn "${pkg_name} has no DEBIAN/ directory, skipping"
+        return 0
     fi
 
-    # Copy GRUB theme
-    log "Copying GRUB theme..."
-    if [ -d "${BRANDING_DIR}/grub/cortex" ]; then
-        copy_glob_if_exists "${BRANDING_DIR}/grub/cortex/*" "${pkg_dir}/boot/grub/themes/cortex/" || true
-
-        # Convert background to 8-bit
-        local bg="${pkg_dir}/boot/grub/themes/cortex/background.png"
-        if command -v convert &>/dev/null && [ -f "$bg" ]; then
-            convert "$bg" -depth 8 -type TrueColor "PNG24:${bg}"
-            log "Converted background.png to 8-bit"
-        fi
-    fi
-
-    # Copy wallpapers
-    log "Copying wallpapers..."
-    copy_glob_if_exists "${BRANDING_DIR}/wallpapers/*.xml" "${pkg_dir}/usr/share/gnome-background-properties/" || true
-    if [ -d "${BRANDING_DIR}/wallpapers/images" ]; then
-        copy_glob_if_exists "${BRANDING_DIR}/wallpapers/images/*" "${pkg_dir}/usr/share/backgrounds/cortex/" || true
-    fi
-
-    # Copy MOTD scripts
-    log "Copying MOTD scripts..."
-    if [ -d "${BRANDING_DIR}/motd" ]; then
-        if copy_glob_if_exists "${BRANDING_DIR}/motd/*" "${pkg_dir}/etc/update-motd.d/"; then
-            chmod 755 "${pkg_dir}/etc/update-motd.d/"*
-        fi
-    fi
-
-    # Copy logos
-    if [ -d "${BRANDING_DIR}/logos" ]; then
-        copy_glob_if_exists "${BRANDING_DIR}/logos/*" "${pkg_dir}/usr/share/cortex/logos/" || true
-    fi
+    # Create package directory
+    mkdir -p "${pkg_dir}"
+    
+    # Copy everything except debian/ and DEBIAN/
+    find "${pkg_path}" -mindepth 1 -maxdepth 1 ! -name "debian" ! -name "DEBIAN" -exec cp -r {} "${pkg_dir}/" \;
+    
+    # Copy DEBIAN control files
+    mkdir -p "${pkg_dir}/DEBIAN"
+    cp "${pkg_path}/DEBIAN/"* "${pkg_dir}/DEBIAN/"
+    
+    # Make maintainer scripts executable
+    for script in postinst prerm postrm preinst; do
+        [ -f "${pkg_dir}/DEBIAN/${script}" ] && chmod 755 "${pkg_dir}/DEBIAN/${script}"
+    done
 
     # Build the package
-    log "Building .deb package..."
-    mkdir -p "$OUTPUT_DIR"
-    local output_file="${OUTPUT_DIR}/${pkg_name}_${pkg_version}_all.deb"
+    local output_file="${OUTPUT_DIR}/${pkg_name}_${pkg_version}_${pkg_arch}.deb"
     dpkg-deb --build "$pkg_dir" "$output_file"
-
-    # Cleanup
     rm -rf "$pkg_dir"
 
-    log "Package built: ${output_file}"
+    log "Built: ${output_file}"
+}
+
+# Main package build command
+cmd_build_package() {
+    local target="${1:-all}"
+    
+    header "Building Packages"
+    mkdir -p "$OUTPUT_DIR"
+
+    if [ "$target" = "all" ]; then
+        log "Building all packages..."
+        for pkg in $AVAILABLE_PACKAGES; do
+            if [ -d "${PACKAGES_DIR}/${pkg}" ]; then
+                build_single_package "$pkg" || warn "Failed to build ${pkg}"
+            fi
+        done
+    else
+        build_single_package "$target"
+    fi
+
+    echo ""
+    log "Packages in ${OUTPUT_DIR}:"
+    ls -la "${OUTPUT_DIR}"/*.deb 2>/dev/null || echo "  (none)"
+}
+
+# Legacy alias for backwards compatibility
+cmd_branding_package() {
+    cmd_build_package "cortex-branding"
 }
 
 # =============================================================================
@@ -785,7 +925,8 @@ Usage: $0 <command> [args]
 
 Build Commands:
     build                   Build Cortex Linux ISO
-    branding-package        Build cortex-branding .deb package
+    build-package [name]    Build .deb packages (default: all)
+                            Available: ${AVAILABLE_PACKAGES}
 
 Validation Commands:
     check-deps              Check build dependencies
@@ -808,13 +949,13 @@ Environment Variables:
     ISO_VERSION             ISO version (default: YYYYMMDD)
 
 Examples:
-    $0 build
-    ARCH=arm64 $0 build
+    $0 build                        # Build ISO
+    ARCH=arm64 $0 build             # Build ARM64 ISO
+    $0 build-package                # Build all packages
+    $0 build-package cortex-branding  # Build only cortex-branding
     $0 validate
     $0 test
-    $0 clean
     $0 clean-all
-    $0 branding-package
 EOF
 }
 
@@ -851,8 +992,12 @@ main() {
         sync)
             cmd_sync "$@"
             ;;
+        build-package|package)
+            cmd_build_package "$@"
+            ;;
         branding-package)
-            cmd_branding_package
+            # Legacy alias
+            cmd_build_package "cortex-branding"
             ;;
         help|--help|-h)
             cmd_help

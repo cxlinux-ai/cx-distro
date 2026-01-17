@@ -67,16 +67,24 @@ cx-distro/
 │   └── provisioning/           # First-boot setup scripts
 ├── packages/                   # Debian package definitions
 <<<<<<< HEAD
+<<<<<<< HEAD
 │   ├── cx-archive-keyring/ # GPG keyring package
 │   ├── cx-core/            # Minimal installation meta-package
 │   └── cx-full/            # Full installation meta-package
 =======
 │   └── cortex-branding/        # Branding package
 >>>>>>> aa34a92 (Refactor Cortex Linux documentation and build scripts)
+=======
+│   └── cortex-branding/        # Branding package (self-contained)
+│       ├── source/             # Master logo images
+│       ├── Makefile            # Asset generator
+│       └── debian/             # Package build files
+>>>>>>> 85a1b65 (Refactor Cortex Linux branding package and update asset management)
 ├── repository/                 # APT repository tooling
 │   └── scripts/                # repo-manage.sh
 ├── sbom/                       # SBOM generation (CycloneDX/SPDX)
-├── branding/                   # Plymouth theme, wallpapers
+├── docs/                       # Documentation
+│   └── branding/               # Brand guidelines and asset docs
 ├── scripts/                    # Build automation
 │   ├── build.sh                # Master build script
 │   └── install-deps.sh         # Dependency installer

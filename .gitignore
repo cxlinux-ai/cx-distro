@@ -6,13 +6,8 @@ build/
 output/
 .cache/
 
-# Generated theme copies (now using symlinks, but these folders may still be generated)
-iso/live-build/config/bootloaders/grub-pc/live-theme/
-iso/live-build/config/includes.binary/boot/grub/themes/
-# Note: includes.chroot/boot/grub/themes/cortex is now a symlink to branding/grub/cortex
-
-# Branding build artifacts
-packages/cortex-branding/pkg/
+# Built packages (regenerated during build)
+iso/live-build/config/packages.chroot/*.deb
 
 # Temporary files
 *.tmp

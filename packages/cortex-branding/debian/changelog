@@ -1,0 +1,14 @@
+cortex-branding (1.0.0) stable; urgency=medium
+
+  * Initial release
+  * OS identity files (os-release, lsb-release, issue)
+  * Plymouth boot splash theme
+  * GRUB bootloader theme with Cortex branding
+  * Desktop wallpapers collection
+  * GDM login screen dconf configuration
+  * Terminal MOTD scripts
+  * Neofetch configuration and custom ASCII art
+  * System logos and icons
+
+ -- Cortex Linux Team <team@cortexlinux.com>  Sat, 17 Jan 2026 00:00:00 +0000
+
