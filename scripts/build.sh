@@ -796,9 +796,9 @@ build_meta_package() {
     if [ -d "${pkg_path}/debian" ]; then
         cd "$pkg_path"
         if dpkg-buildpackage -us -uc -b 2>/dev/null; then
-            mv ../${pkg_name}_*.deb "${OUTPUT_DIR}/" 2>/dev/null || true
-            mv ../${pkg_name}_*.changes "${OUTPUT_DIR}/" 2>/dev/null || true
-            mv ../${pkg_name}_*.buildinfo "${OUTPUT_DIR}/" 2>/dev/null || true
+            mv ../"${pkg_name}"_*.deb "${OUTPUT_DIR}/" 2>/dev/null || true
+            mv ../"${pkg_name}"_*.changes "${OUTPUT_DIR}/" 2>/dev/null || true
+            mv ../"${pkg_name}"_*.buildinfo "${OUTPUT_DIR}/" 2>/dev/null || true
             cd "$PROJECT_ROOT"
             log "Built: ${pkg_name}"
             return 0
