@@ -347,8 +347,8 @@ cmd_test() {
     local pkg_branding="${PACKAGES_DIR}/cortex-branding"
     local required_files=(
         "boot/grub/themes/cortex/theme.txt"
-        "etc/os-release"
-        "etc/lsb-release"
+        "usr/share/cortex/templates/os-release"
+        "usr/share/cortex/templates/lsb-release"
         "usr/share/plymouth/themes/cortex/cortex.plymouth"
     )
 
@@ -784,43 +784,51 @@ build_pkg_cortex_branding() {
     fi
 }
 
-# Build cortex-core package (meta-package, uses dpkg-buildpackage)
-build_pkg_cortex_core() {
-    local pkg_name="cortex-core"
+# Build a meta-package using dpkg-buildpackage (for packages with debian/ dir)
+# Falls back to generic DEBIAN/ build if no debian/ dir
+build_meta_package() {
+    local pkg_name="$1"
     local pkg_path="${PACKAGES_DIR}/${pkg_name}"
 
     log "Building ${pkg_name}..."
 
-    if [ ! -d "${pkg_path}/debian" ]; then
-        warn "${pkg_name} has no debian/ directory, skipping (meta-package)"
-        return 0
+    # Try debian/ source format first
+    if [ -d "${pkg_path}/debian" ]; then
+        cd "$pkg_path"
+        if dpkg-buildpackage -us -uc -b 2>/dev/null; then
+            mv ../${pkg_name}_*.deb "${OUTPUT_DIR}/" 2>/dev/null || true
+            mv ../${pkg_name}_*.changes "${OUTPUT_DIR}/" 2>/dev/null || true
+            mv ../${pkg_name}_*.buildinfo "${OUTPUT_DIR}/" 2>/dev/null || true
+            cd "$PROJECT_ROOT"
+            log "Built: ${pkg_name}"
+            return 0
+        fi
+        cd "$PROJECT_ROOT"
     fi
 
-    # Build using dpkg-buildpackage
-    cd "$pkg_path"
-    dpkg-buildpackage -us -uc -b 2>/dev/null || {
-        warn "dpkg-buildpackage failed for ${pkg_name}, trying manual build..."
-        return 0
-    }
-    
-    # Move built packages to output
-    mv ../${pkg_name}_*.deb "${OUTPUT_DIR}/" 2>/dev/null || true
-    mv ../${pkg_name}_*.changes "${OUTPUT_DIR}/" 2>/dev/null || true
-    
-    cd "$PROJECT_ROOT"
-    log "Built: ${pkg_name}"
+    # Fall back to DEBIAN/ binary format
+    if [ -d "${pkg_path}/DEBIAN" ]; then
+        build_generic_package "$pkg_name"
+        return $?
+    fi
+
+    warn "${pkg_name} has no debian/ or DEBIAN/ directory, skipping"
+    return 0
+}
+
+# Build cortex-core package (meta-package)
+build_pkg_cortex_core() {
+    build_meta_package "cortex-core"
 }
 
 # Build cortex-full package (meta-package)
 build_pkg_cortex_full() {
-    local pkg_name="cortex-full"
-    build_pkg_cortex_core  # Same process as cortex-core
+    build_meta_package "cortex-full"
 }
 
 # Build cortex-secops package (meta-package)
 build_pkg_cortex_secops() {
-    local pkg_name="cortex-secops"
-    build_pkg_cortex_core  # Same process as cortex-core
+    build_meta_package "cortex-secops"
 }
 
 # Build a single package by name
@@ -908,10 +916,6 @@ cmd_build_package() {
     ls -la "${OUTPUT_DIR}"/*.deb 2>/dev/null || echo "  (none)"
 }
 
-# Legacy alias for backwards compatibility
-cmd_branding_package() {
-    cmd_build_package "cortex-branding"
-}
 
 # =============================================================================
 # Help
@@ -992,12 +996,8 @@ main() {
         sync)
             cmd_sync "$@"
             ;;
-        build-package|package)
+        build-package|package|branding-package)
             cmd_build_package "$@"
-            ;;
-        branding-package)
-            # Legacy alias
-            cmd_build_package "cortex-branding"
             ;;
         help|--help|-h)
             cmd_help

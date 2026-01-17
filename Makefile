@@ -116,7 +116,7 @@ iso-arm64:
 # =============================================================================
 
 clean:
-	@$(BUILD_SCRIPT) clean all
+	@$(BUILD_SCRIPT) clean
 
 clean-all:
 	@$(BUILD_SCRIPT) clean-all
@@ -125,7 +125,7 @@ clean-hooks:
 	@$(BUILD_SCRIPT) clean-hooks
 
 sync-config:
-	@$(BUILD_SCRIPT) sync all
+	@$(BUILD_SCRIPT) sync
 
 # =============================================================================
 # Test
