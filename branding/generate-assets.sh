@@ -5,6 +5,9 @@
 # Generates branding assets from source logo images using ImageMagick.
 # Uses the CX monogram logo from branding/source/ directory.
 #
+# NOTE: Assets are automatically used by live-build via symlinks.
+#       No manual copying needed - just run this script and rebuild ISO.
+#
 
 set -e
 
@@ -14,6 +17,7 @@ SOURCE_DIR="${SCRIPT_DIR}/source"
 # Source logo images
 LOGO_TRANSPARENT="${SOURCE_DIR}/cx-logo-transparent.png"
 LOGO_DARK="${SOURCE_DIR}/cx-logo-dark.png"
+LOGO_LIGHT="${SOURCE_DIR}/cx-logo-light.png"  # Logo with gradient ring (for Plymouth)
 
 # Verify source images exist
 if [ ! -f "${LOGO_TRANSPARENT}" ]; then
@@ -26,6 +30,11 @@ if [ ! -f "${LOGO_DARK}" ]; then
     echo "ERROR: Source logo not found: ${LOGO_DARK}"
     echo "Please add cx-logo-dark.png to branding/source/"
     exit 1
+fi
+
+if [ ! -f "${LOGO_LIGHT}" ]; then
+    echo "WARNING: cx-logo-light.png not found, Plymouth will use cx-logo-transparent.png"
+    LOGO_LIGHT="${LOGO_TRANSPARENT}"
 fi
 
 # Colors (Cortex brand)
@@ -41,12 +50,15 @@ BORDER="#2D2D5A"
 TEXT_LIGHT="#E2E8F0"
 TEXT_MUTED="#94A3B8"
 
-echo "Generating Cortex Linux branding assets..."
-echo "Using source logos from: ${SOURCE_DIR}"
+echo "=============================================="
+echo "  Cortex Linux Branding Asset Generator"
+echo "=============================================="
+echo ""
+echo "Source logos: ${SOURCE_DIR}"
+echo ""
 
 # ============================================================================
 # Helper function to extract and resize the circular logo
-# The source image is 1536x1024, we need to extract the centered logo portion
 # ============================================================================
 extract_logo() {
     local output_size="$1"
@@ -64,67 +76,20 @@ extract_logo() {
 }
 
 # ============================================================================
-# Plymouth Assets
+# Plymouth Theme (minimal - just logo on black)
 # ============================================================================
-echo "Creating Plymouth assets..."
+echo "[1/4] Plymouth theme..."
 PLYMOUTH_DIR="${SCRIPT_DIR}/plymouth/cortex"
 mkdir -p "${PLYMOUTH_DIR}"
 
-# Logo - CX monogram (200x200)
-extract_logo 200 "${PLYMOUTH_DIR}/logo.png"
-
-# Wordmark - "CORTEX LINUX" text (300x50)
-magick -size 300x50 xc:transparent \
-    -font "Helvetica-Bold" -pointsize 28 \
-    -fill "${TEXT_LIGHT}" \
-    -gravity center -annotate 0 "CORTEX LINUX" \
-    "${PLYMOUTH_DIR}/wordmark.png"
-
-# Circular spinner - Multi-frame animation (36 frames for ultra-smooth rotation)
-# Clean white/grey design for professional look on black background
-echo "  Creating circular spinner frames (36 frames)..."
-
-SPINNER_SIZE=80
-SPINNER_FRAMES=36
-
-# Create spinner frames directory
-mkdir -p "${PLYMOUTH_DIR}"
-
-# Generate each frame of the spinner animation
-# Using white with fading opacity for smooth, professional look
-for i in $(seq 0 $((SPINNER_FRAMES - 1))); do
-    # Calculate rotation angle for this frame
-    ANGLE=$((i * 360 / SPINNER_FRAMES))
-    
-    # Frame number with leading zeros (throbber-0001.png format for Plymouth)
-    FRAME_NUM=$(printf "%04d" $i)
-    
-    # Create a smooth white/grey spinner with fading trail
-    # Professional, clean look - white fading to transparent
-    magick -size ${SPINNER_SIZE}x${SPINNER_SIZE} xc:transparent \
-        -fill none \
-        -strokewidth 4 \
-        \( -clone 0 -stroke "rgba(255,255,255,1.0)" -draw "arc 6,6 74,74 0,40" \) \
-        \( -clone 0 -stroke "rgba(255,255,255,0.85)" -draw "arc 6,6 74,74 40,70" \) \
-        \( -clone 0 -stroke "rgba(255,255,255,0.65)" -draw "arc 6,6 74,74 70,100" \) \
-        \( -clone 0 -stroke "rgba(255,255,255,0.45)" -draw "arc 6,6 74,74 100,130" \) \
-        \( -clone 0 -stroke "rgba(255,255,255,0.28)" -draw "arc 6,6 74,74 130,160" \) \
-        \( -clone 0 -stroke "rgba(255,255,255,0.15)" -draw "arc 6,6 74,74 160,190" \) \
-        \( -clone 0 -stroke "rgba(255,255,255,0.06)" -draw "arc 6,6 74,74 190,220" \) \
-        -delete 0 -background transparent -flatten \
-        -distort SRT "${ANGLE}" \
-        "${PLYMOUTH_DIR}/throbber-${FRAME_NUM}.png"
-    
-    echo -n "."
-done
-echo " done"
-
-# Static track ring - very subtle grey circle
-magick -size ${SPINNER_SIZE}x${SPINNER_SIZE} xc:transparent \
-    -fill none \
-    -stroke "rgba(255,255,255,0.12)" -strokewidth 4 \
-    -draw "circle 40,40 40,6" \
-    "${PLYMOUTH_DIR}/spinner-track.png"
+# Logo - CX monogram with gradient ring (300x300)
+# Uses cx-logo-light.png which has the visible gradient ring
+magick "${LOGO_LIGHT}" \
+    -gravity center \
+    -crop 1024x1024+0+0 +repage \
+    -resize 300x300 \
+    -background transparent \
+    "${PLYMOUTH_DIR}/logo.png"
 
 # Entry box - Password input field (300x40)
 magick -size 300x40 xc:transparent \
@@ -139,16 +104,16 @@ magick -size 15x15 xc:transparent \
     -draw "circle 7,7 7,2" \
     "${PLYMOUTH_DIR}/bullet.png"
 
-echo "  Plymouth assets created."
+echo "  ✓ logo.png, entry.png, bullet.png"
 
 # ============================================================================
-# GRUB Assets
+# GRUB Theme
 # ============================================================================
-echo "Creating GRUB assets..."
+echo "[2/4] GRUB theme..."
 GRUB_DIR="${SCRIPT_DIR}/grub/cortex"
 mkdir -p "${GRUB_DIR}/icons"
 
-# Background (1920x1080) - Dark gradient with subtle pattern
+# Background (1920x1080)
 magick -size 1920x1080 \
     "gradient:${DARK_BG}-${DARKER_BG}" \
     -rotate 180 \
@@ -165,27 +130,10 @@ magick -size 1920x1080 \
     \) -composite \
     "${GRUB_DIR}/background.png"
 
-# Selection bar components (9-slice)
-# Center (tileable)
-magick -size 10x40 xc:transparent \
-    -fill "rgba(107,33,168,0.6)" \
-    -draw "rectangle 0,0 9,39" \
-    "${GRUB_DIR}/select_c.png"
-
-# West cap
-magick -size 10x40 xc:transparent \
-    -fill "rgba(107,33,168,0.6)" \
-    -draw "roundrectangle 0,0 19,39 8,8" \
-    -crop 10x40+0+0 +repage \
-    "${GRUB_DIR}/select_w.png"
-
-# East cap
-magick -size 10x40 xc:transparent \
-    -fill "rgba(107,33,168,0.6)" \
-    -draw "roundrectangle -10,0 9,39 8,8" \
-    "${GRUB_DIR}/select_e.png"
-
-# Corners and edges (simplified)
+# Selection bar (9-slice)
+magick -size 10x40 xc:transparent -fill "rgba(107,33,168,0.6)" -draw "rectangle 0,0 9,39" "${GRUB_DIR}/select_c.png"
+magick -size 10x40 xc:transparent -fill "rgba(107,33,168,0.6)" -draw "roundrectangle 0,0 19,39 8,8" -crop 10x40+0+0 +repage "${GRUB_DIR}/select_w.png"
+magick -size 10x40 xc:transparent -fill "rgba(107,33,168,0.6)" -draw "roundrectangle -10,0 9,39 8,8" "${GRUB_DIR}/select_e.png"
 magick -size 10x10 xc:"rgba(107,33,168,0.6)" "${GRUB_DIR}/select_nw.png"
 magick -size 10x10 xc:"rgba(107,33,168,0.6)" "${GRUB_DIR}/select_ne.png"
 magick -size 10x10 xc:"rgba(107,33,168,0.6)" "${GRUB_DIR}/select_sw.png"
@@ -193,59 +141,30 @@ magick -size 10x10 xc:"rgba(107,33,168,0.6)" "${GRUB_DIR}/select_se.png"
 magick -size 40x10 xc:"rgba(107,33,168,0.6)" "${GRUB_DIR}/select_n.png"
 magick -size 40x10 xc:"rgba(107,33,168,0.6)" "${GRUB_DIR}/select_s.png"
 
-# Terminal box (for GRUB command line)
-magick -size 10x10 xc:"rgba(15,15,35,0.9)" "${GRUB_DIR}/terminal_box_c.png"
-magick -size 10x10 xc:"rgba(15,15,35,0.9)" "${GRUB_DIR}/terminal_box_nw.png"
-magick -size 10x10 xc:"rgba(15,15,35,0.9)" "${GRUB_DIR}/terminal_box_n.png"
-magick -size 10x10 xc:"rgba(15,15,35,0.9)" "${GRUB_DIR}/terminal_box_ne.png"
-magick -size 10x10 xc:"rgba(15,15,35,0.9)" "${GRUB_DIR}/terminal_box_w.png"
-magick -size 10x10 xc:"rgba(15,15,35,0.9)" "${GRUB_DIR}/terminal_box_e.png"
-magick -size 10x10 xc:"rgba(15,15,35,0.9)" "${GRUB_DIR}/terminal_box_sw.png"
-magick -size 10x10 xc:"rgba(15,15,35,0.9)" "${GRUB_DIR}/terminal_box_s.png"
-magick -size 10x10 xc:"rgba(15,15,35,0.9)" "${GRUB_DIR}/terminal_box_se.png"
+# Terminal box
+for pos in c nw n ne w e sw s se; do
+    magick -size 10x10 xc:"rgba(15,15,35,0.9)" "${GRUB_DIR}/terminal_box_${pos}.png"
+done
 
 # Scrollbar
-magick -size 10x30 xc:transparent \
-    -fill "${PRIMARY_PURPLE}" \
-    -draw "roundrectangle 2,2 7,27 3,3" \
-    "${GRUB_DIR}/scrollbar_thumb.png"
-
-magick -size 10x100 xc:transparent \
-    -fill "${SURFACE}" \
-    -draw "roundrectangle 3,3 6,96 2,2" \
-    "${GRUB_DIR}/scrollbar_frame.png"
+magick -size 10x30 xc:transparent -fill "${PRIMARY_PURPLE}" -draw "roundrectangle 2,2 7,27 3,3" "${GRUB_DIR}/scrollbar_thumb.png"
+magick -size 10x100 xc:transparent -fill "${SURFACE}" -draw "roundrectangle 3,3 6,96 2,2" "${GRUB_DIR}/scrollbar_frame.png"
 
 # Boot menu icons (32x32)
-# Cortex icon - use the CX logo
 extract_logo 32 "${GRUB_DIR}/icons/cortex.png"
+magick -size 32x32 xc:transparent -fill "${TEXT_LIGHT}" -draw "polygon 16,4 6,28 26,28" -fill "${DARK_BG}" -draw "polygon 16,10 10,24 22,24" "${GRUB_DIR}/icons/linux.png"
+magick -size 32x32 xc:transparent -fill "${ELECTRIC_CYAN}" -stroke "${ELECTRIC_CYAN}" -strokewidth 2 -draw "arc 6,6 26,26 0,270" -draw "polygon 24,6 28,12 20,12" "${GRUB_DIR}/icons/recovery.png"
 
-# Linux icon
-magick -size 32x32 xc:transparent \
-    -fill "${TEXT_LIGHT}" \
-    -draw "polygon 16,4 6,28 26,28" \
-    -fill "${DARK_BG}" \
-    -draw "polygon 16,10 10,24 22,24" \
-    "${GRUB_DIR}/icons/linux.png"
-
-# Recovery icon
-magick -size 32x32 xc:transparent \
-    -fill "${ELECTRIC_CYAN}" \
-    -stroke "${ELECTRIC_CYAN}" -strokewidth 2 \
-    -draw "arc 6,6 26,26 0,270" \
-    -draw "polygon 24,6 28,12 20,12" \
-    "${GRUB_DIR}/icons/recovery.png"
-
-echo "  GRUB assets created."
+echo "  ✓ background.png, selection bars, icons"
 
 # ============================================================================
-# Wallpapers (removed per user request - only circuit-board.png kept)
+# Wallpapers
 # ============================================================================
-echo "Creating wallpaper assets..."
+echo "[3/4] Wallpapers..."
 WALLPAPER_DIR="${SCRIPT_DIR}/wallpapers/images"
 mkdir -p "${WALLPAPER_DIR}"
 
-# Circuit Board - 1920x1080 (kept as default wallpaper)
-echo "  Creating circuit-board.png..."
+# Circuit Board - 1920x1080
 magick -size 1920x1080 xc:"${DARK_BG}" \
     -stroke "rgba(107,33,168,0.10)" -strokewidth 2 \
     -draw "line 100,0 100,300" -draw "line 100,300 300,300" \
@@ -268,55 +187,34 @@ magick -size 1920x1080 xc:"${DARK_BG}" \
     -draw "circle 1500,800 1500,207" -draw "circle 1700,800 1700,206" \
     "${WALLPAPER_DIR}/circuit-board.png"
 
-echo "  Wallpaper assets created."
+echo "  ✓ circuit-board.png"
 
 # ============================================================================
-# Logos
+# Logos (for pixmaps, etc)
 # ============================================================================
-echo "Creating logo assets..."
+echo "[4/4] Logos..."
 LOGO_DIR="${SCRIPT_DIR}/logos"
 mkdir -p "${LOGO_DIR}"
 
-# Icon only (128x128)
-echo "  Creating cortex-icon-128.png..."
 extract_logo 128 "${LOGO_DIR}/cortex-icon-128.png"
-
-# Favicon (32x32)
-echo "  Creating favicon-32.png..."
 extract_logo 32 "${LOGO_DIR}/favicon-32.png"
 
-echo "  Logo assets created."
-
-# ============================================================================
-# GDM Assets (removed - cortex-login-bg.png and cortex-logo.svg no longer needed)
-# ============================================================================
-GDM_DIR="${SCRIPT_DIR}/gdm"
-mkdir -p "${GDM_DIR}"
-# GDM assets generation removed per user request
-
-# ============================================================================
-# Icon Theme (removed per user request)
-# ============================================================================
-# Icon theme generation removed - no longer needed
+echo "  ✓ cortex-icon-128.png, favicon-32.png"
 
 # ============================================================================
 # Summary
 # ============================================================================
 echo ""
 echo "=============================================="
-echo "  Asset generation complete!"
+echo "  ✓ Asset generation complete!"
 echo "=============================================="
 echo ""
-echo "Generated assets:"
-find "${SCRIPT_DIR}" -name "*.png" -o -name "*.svg" | wc -l | xargs echo "  Total images:"
+TOTAL_IMAGES=$(find "${SCRIPT_DIR}" -name "*.png" | wc -l)
+echo "  Total images: ${TOTAL_IMAGES}"
 echo ""
-echo "Locations:"
-echo "  Plymouth:   ${PLYMOUTH_DIR}"
-echo "  GRUB:       ${GRUB_DIR}"
-echo "  Wallpapers: ${WALLPAPER_DIR}"
-echo "  Logos:      ${LOGO_DIR}"
-echo ""
-echo "Source logos used:"
-echo "  ${LOGO_TRANSPARENT}"
-echo "  ${LOGO_DARK}"
+echo "  Locations (symlinked to live-build):"
+echo "    branding/plymouth/cortex/  → Plymouth boot splash"
+echo "    branding/grub/cortex/      → GRUB bootloader theme"
+echo "    branding/wallpapers/images/→ Desktop wallpapers"
+echo "    branding/logos/            → System icons/pixmaps"
 echo ""
