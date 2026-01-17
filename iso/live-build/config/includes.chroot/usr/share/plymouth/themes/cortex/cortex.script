@@ -1,8 +1,8 @@
 /**
  * Cortex Linux Plymouth Theme
  *
- * A modern boot splash with circular spinner animation
- * featuring a smooth multi-frame animated spinner.
+ * Minimal design - CX logo centered on pure black background.
+ * No animations, no progress bar, no wordmark. Just the logo.
  */
 
 // Pure black background
@@ -15,104 +15,17 @@ screen_height = Window.GetHeight();
 screen_x = Window.GetX();
 screen_y = Window.GetY();
 
-// Load logo
+// Load and center the CX logo
 logo.image = Image("logo.png");
 logo.width = logo.image.GetWidth();
 logo.height = logo.image.GetHeight();
 logo.x = screen_x + screen_width / 2 - logo.width / 2;
-logo.y = screen_y + screen_height / 2 - logo.height / 2 - 80;
+logo.y = screen_y + screen_height / 2 - logo.height / 2;
 logo.sprite = Sprite(logo.image);
 logo.sprite.SetPosition(logo.x, logo.y, 10);
 logo.sprite.SetOpacity(1);
 
-// Load wordmark
-wordmark.image = Image("wordmark.png");
-wordmark.width = wordmark.image.GetWidth();
-wordmark.height = wordmark.image.GetHeight();
-wordmark.x = screen_x + screen_width / 2 - wordmark.width / 2;
-wordmark.y = logo.y + logo.height + 20;
-wordmark.sprite = Sprite(wordmark.image);
-wordmark.sprite.SetPosition(wordmark.x, wordmark.y, 10);
-wordmark.sprite.SetOpacity(1);
-
-// Spinner track (background ring)
-spinner_track.image = Image("spinner-track.png");
-spinner_track.width = spinner_track.image.GetWidth();
-spinner_track.height = spinner_track.image.GetHeight();
-spinner_track.x = screen_x + screen_width / 2 - spinner_track.width / 2;
-spinner_track.y = wordmark.y + wordmark.height + 40;
-spinner_track.sprite = Sprite(spinner_track.image);
-spinner_track.sprite.SetPosition(spinner_track.x, spinner_track.y, 1);
-
-// Load spinner animation frames (36 frames for ultra-smooth animation)
-NUM_SPINNER_FRAMES = 36;
-for (i = 0; i < NUM_SPINNER_FRAMES; i++) {
-    spinner_frames[i] = Image("throbber-" + String(i).PadLeft(4, "0") + ".png");
-}
-
-// Create spinner sprite
-spinner.sprite = Sprite(spinner_frames[0]);
-spinner.x = screen_x + screen_width / 2 - spinner_frames[0].GetWidth() / 2;
-spinner.y = spinner_track.y;
-spinner.sprite.SetPosition(spinner.x, spinner.y, 2);
-
-// Animation variables
-global.spinner_frame = 0;
-global.frame_counter = 0;
-global.pulse_opacity = 1;
-global.pulse_direction = -1;
-
-// Animate spinner (cycle through frames)
-fun animate_spinner() {
-    global.frame_counter++;
-    
-    // Change frame every 2 refresh cycles for smoother animation
-    if (global.frame_counter >= 2) {
-        global.frame_counter = 0;
-        global.spinner_frame++;
-        
-        if (global.spinner_frame >= NUM_SPINNER_FRAMES) {
-            global.spinner_frame = 0;
-        }
-        
-        spinner.sprite.SetImage(spinner_frames[global.spinner_frame]);
-    }
-}
-
-// Pulsing animation for logo
-fun pulse_logo() {
-    global.pulse_opacity += global.pulse_direction * 0.006;
-
-    if (global.pulse_opacity <= 0.75) {
-        global.pulse_direction = 1;
-    } else if (global.pulse_opacity >= 1) {
-        global.pulse_direction = -1;
-    }
-
-    logo.sprite.SetOpacity(global.pulse_opacity);
-}
-
-// Progress callback - animates spinner during boot
-fun progress_callback(duration, progress) {
-    animate_spinner();
-    pulse_logo();
-}
-Plymouth.SetBootProgressFunction(progress_callback);
-
-// System update progress
-fun system_update_callback(progress) {
-    animate_spinner();
-}
-Plymouth.SetSystemUpdateFunction(system_update_callback);
-
-// Refresh callback - called continuously for smooth animation
-fun refresh_callback() {
-    animate_spinner();
-    pulse_logo();
-}
-Plymouth.SetRefreshFunction(refresh_callback);
-
-// Password prompt
+// Password prompt (only shown when needed)
 fun password_dialogue_setup(title, bullet) {
     local.entry;
     local.bullet_image;
@@ -121,7 +34,7 @@ fun password_dialogue_setup(title, bullet) {
     entry.image = Image("entry.png");
     entry.sprite = Sprite(entry.image);
     entry.x = screen_x + screen_width / 2 - entry.image.GetWidth() / 2;
-    entry.y = screen_y + screen_height / 2 + 100;
+    entry.y = screen_y + screen_height / 2 + 200;
     entry.sprite.SetPosition(entry.x, entry.y, 10);
 
     global.password_entry = entry;
@@ -152,7 +65,7 @@ fun display_normal_callback() {
 }
 Plymouth.SetDisplayNormalFunction(display_normal_callback);
 
-// Message display
+// Message display (for system messages)
 fun message_callback(text) {
     message.image = Image.Text(text, 0.6, 0.6, 0.7, 1, "Sans 11");
     message.sprite = Sprite(message.image);
@@ -165,8 +78,5 @@ Plymouth.SetMessageFunction(message_callback);
 // Quit callback
 fun quit_callback() {
     logo.sprite.SetOpacity(0);
-    wordmark.sprite.SetOpacity(0);
-    spinner_track.sprite.SetOpacity(0);
-    spinner.sprite.SetOpacity(0);
 }
 Plymouth.SetQuitFunction(quit_callback);
