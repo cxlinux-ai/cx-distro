@@ -10,7 +10,6 @@
 
 # Source logo (in this directory)
 LOGO_PRIMARY := source/cx-logo-primary.png
-LOGO_FALLBACK := source/cx-logo-light.png source/cx-logo-transparent.png
 
 # Colors
 DARK_BG := \#0F0F23
