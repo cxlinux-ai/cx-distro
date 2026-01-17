@@ -11,18 +11,18 @@ on:
     tags: ['v*']
     paths:
       - 'iso/**'
-      - 'branding/**'
       - 'packages/**'
       - 'scripts/**'
+      - 'docs/branding/**'
       - 'Makefile'
       - '.github/workflows/build-iso.yml'
   pull_request:
     branches: [main]
     paths:
       - 'iso/**'
-      - 'branding/**'
       - 'packages/**'
       - 'scripts/**'
+      - 'docs/branding/**'
       - 'Makefile'
   workflow_dispatch:
 
@@ -47,35 +47,10 @@ jobs:
       - name: Run validation
         run: make validate
 
-  build-branding-package:
-    name: Build Branding Package
-    runs-on: ubuntu-24.04
-    container:
-      image: debian:bookworm
-    needs: validate
-    steps:
-      - name: Install dependencies
-        run: |
-          apt-get update
-          apt-get install -y git dpkg-dev sudo imagemagick
-
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Build cortex-branding package
-        run: make branding-package
-
-      - name: Upload branding package
-        uses: actions/upload-artifact@v4
-        with:
-          name: cortex-branding
-          path: output/*.deb
-          retention-days: 7
-
   build-iso:
     name: Build ISO (${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
-    needs: [validate, build-branding-package]
+    needs: validate
     strategy:
       fail-fast: false
       matrix:
@@ -113,12 +88,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download branding package
-        uses: actions/download-artifact@v4
-        with:
-          name: cortex-branding
-          path: output/
-
       - name: Build in Debian container
         run: |
           # Use xz compression for releases (smaller), lz4 for PR/branch builds (faster)
@@ -153,6 +122,13 @@ jobs:
           path: |
             output/*.iso
             output/*.sha256
+          retention-days: 14
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ matrix.arch }}
+          path: output/*.deb
           retention-days: 14
 
       - name: Upload SBOM
@@ -222,10 +198,11 @@ jobs:
           merge-multiple: true
           path: release/
 
-      - name: Download branding package
+      - name: Download packages
         uses: actions/download-artifact@v4
         with:
-          name: cortex-branding
+          pattern: packages-*
+          merge-multiple: true
           path: release/
 
       - name: Download SBOMs
@@ -239,8 +216,8 @@ jobs:
       - name: Generate combined checksums
         run: |
           cd release
-          sha256sum *.iso *.deb > SHA256SUMS
-          sha512sum *.iso *.deb > SHA512SUMS
+          sha256sum *.iso *.deb > SHA256SUMS 2>/dev/null || sha256sum *.iso > SHA256SUMS
+          sha512sum *.iso *.deb > SHA512SUMS 2>/dev/null || sha512sum *.iso > SHA512SUMS
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -256,7 +233,7 @@ jobs:
 
             ### Downloads
             - **cortex-linux-*.iso** - Cortex Linux ISO
-            - **cortex-branding_*.deb** - Branding package
+            - **cortex-branding_*.deb** - Branding package (standalone install)
 
             ### Verification
             ```bash
