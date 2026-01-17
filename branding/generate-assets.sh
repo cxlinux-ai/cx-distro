@@ -14,27 +14,20 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE_DIR="${SCRIPT_DIR}/source"
 
-# Source logo images
-LOGO_TRANSPARENT="${SOURCE_DIR}/cx-logo-transparent.png"
-LOGO_DARK="${SOURCE_DIR}/cx-logo-dark.png"
-LOGO_LIGHT="${SOURCE_DIR}/cx-logo-light.png"  # Logo with gradient ring (for Plymouth)
+# Primary source logo (the main CX logo with gradient ring)
+LOGO_PRIMARY="${SOURCE_DIR}/cx-logo-primary.png"
 
-# Verify source images exist
-if [ ! -f "${LOGO_TRANSPARENT}" ]; then
-    echo "ERROR: Source logo not found: ${LOGO_TRANSPARENT}"
-    echo "Please add cx-logo-transparent.png to branding/source/"
-    exit 1
-fi
-
-if [ ! -f "${LOGO_DARK}" ]; then
-    echo "ERROR: Source logo not found: ${LOGO_DARK}"
-    echo "Please add cx-logo-dark.png to branding/source/"
-    exit 1
-fi
-
-if [ ! -f "${LOGO_LIGHT}" ]; then
-    echo "WARNING: cx-logo-light.png not found, Plymouth will use cx-logo-transparent.png"
-    LOGO_LIGHT="${LOGO_TRANSPARENT}"
+# Fallback to other logos if primary doesn't exist
+if [ ! -f "${LOGO_PRIMARY}" ]; then
+    if [ -f "${SOURCE_DIR}/cx-logo-light.png" ]; then
+        LOGO_PRIMARY="${SOURCE_DIR}/cx-logo-light.png"
+    elif [ -f "${SOURCE_DIR}/cx-logo-transparent.png" ]; then
+        LOGO_PRIMARY="${SOURCE_DIR}/cx-logo-transparent.png"
+    else
+        echo "ERROR: No source logo found in ${SOURCE_DIR}"
+        echo "Please add cx-logo-primary.png to branding/source/"
+        exit 1
+    fi
 fi
 
 # Colors (Cortex brand)
@@ -54,42 +47,36 @@ echo "=============================================="
 echo "  Cortex Linux Branding Asset Generator"
 echo "=============================================="
 echo ""
-echo "Source logos: ${SOURCE_DIR}"
+echo "Primary logo: ${LOGO_PRIMARY}"
 echo ""
 
 # ============================================================================
-# Helper function to extract and resize the circular logo
+# Helper function to extract and resize the circular logo from center
 # ============================================================================
 extract_logo() {
     local output_size="$1"
     local output_file="$2"
-    local source_file="${3:-${LOGO_TRANSPARENT}}"
     
-    # The logo is centered in the 1536x1024 image
+    # The logo is centered in the source image
     # Extract a square region from the center, then resize
-    magick "${source_file}" \
+    magick "${LOGO_PRIMARY}" \
         -gravity center \
-        -crop 1024x1024+0+0 +repage \
+        -crop 800x800+0+0 +repage \
         -resize "${output_size}x${output_size}" \
         -background none \
+        -define png:color-type=6 \
         "${output_file}"
 }
 
 # ============================================================================
-# Plymouth Theme (minimal - just logo on black)
+# Plymouth Theme (minimal - just logo on black with loading dots)
 # ============================================================================
 echo "[1/4] Plymouth theme..."
 PLYMOUTH_DIR="${SCRIPT_DIR}/plymouth/cortex"
 mkdir -p "${PLYMOUTH_DIR}"
 
 # Logo - CX monogram with gradient ring (300x300)
-# Uses cx-logo-light.png which has the visible gradient ring
-magick "${LOGO_LIGHT}" \
-    -gravity center \
-    -crop 1024x1024+0+0 +repage \
-    -resize 300x300 \
-    -background transparent \
-    "${PLYMOUTH_DIR}/logo.png"
+extract_logo 300 "${PLYMOUTH_DIR}/logo.png"
 
 # Entry box - Password input field (300x40)
 magick -size 300x40 xc:transparent \
@@ -104,7 +91,18 @@ magick -size 15x15 xc:transparent \
     -draw "circle 7,7 7,2" \
     "${PLYMOUTH_DIR}/bullet.png"
 
-echo "  ✓ logo.png, entry.png, bullet.png"
+# Loading dots
+magick -size 12x12 xc:transparent -fill white \
+    -draw "circle 6,6 6,1" \
+    -define png:color-type=6 \
+    "${PLYMOUTH_DIR}/dot-on.png"
+
+magick -size 12x12 xc:transparent -fill "rgb(80,80,80)" \
+    -draw "circle 6,6 6,1" \
+    -define png:color-type=6 \
+    "${PLYMOUTH_DIR}/dot-off.png"
+
+echo "  ✓ logo.png, entry.png, bullet.png, dot-on.png, dot-off.png"
 
 # ============================================================================
 # GRUB Theme
@@ -113,21 +111,10 @@ echo "[2/4] GRUB theme..."
 GRUB_DIR="${SCRIPT_DIR}/grub/cortex"
 mkdir -p "${GRUB_DIR}/icons"
 
-# Background (1920x1080)
-magick -size 1920x1080 \
-    "gradient:${DARK_BG}-${DARKER_BG}" \
-    -rotate 180 \
-    \( -size 1920x1080 xc:transparent \
-       -fill "rgba(107,33,168,0.03)" \
-       -draw "line 0,200 1920,200" \
-       -draw "line 0,400 1920,400" \
-       -draw "line 0,600 1920,600" \
-       -draw "line 0,800 1920,800" \
-       -draw "line 400,0 400,1080" \
-       -draw "line 800,0 800,1080" \
-       -draw "line 1200,0 1200,1080" \
-       -draw "line 1600,0 1600,1080" \
-    \) -composite \
+# Background (1920x1080) - dark with centered logo
+magick -size 1920x1080 xc:"${DARK_BG}" \
+    \( "${LOGO_PRIMARY}" -gravity center -crop 800x800+0+0 +repage -resize 200x200 \) \
+    -gravity center -composite \
     "${GRUB_DIR}/background.png"
 
 # Selection bar (9-slice)
@@ -158,13 +145,21 @@ magick -size 32x32 xc:transparent -fill "${ELECTRIC_CYAN}" -stroke "${ELECTRIC_C
 echo "  ✓ background.png, selection bars, icons"
 
 # ============================================================================
-# Wallpapers
+# Wallpapers (with centered CX logo)
 # ============================================================================
 echo "[3/4] Wallpapers..."
 WALLPAPER_DIR="${SCRIPT_DIR}/wallpapers/images"
 mkdir -p "${WALLPAPER_DIR}"
 
-# Circuit Board - 1920x1080
+# Minimal Dark - solid dark with centered logo (DEFAULT)
+magick -size 1920x1080 xc:"${DARK_BG}" \
+    \( "${LOGO_PRIMARY}" -gravity center -crop 800x800+0+0 +repage -resize 280x280 \) \
+    -gravity center -composite \
+    "${WALLPAPER_DIR}/minimal-dark.png"
+
+echo "  ✓ minimal-dark.png (default)"
+
+# Circuit Board - with centered logo
 magick -size 1920x1080 xc:"${DARK_BG}" \
     -stroke "rgba(107,33,168,0.10)" -strokewidth 2 \
     -draw "line 100,0 100,300" -draw "line 100,300 300,300" \
@@ -185,6 +180,8 @@ magick -size 1920x1080 xc:"${DARK_BG}" \
     -draw "circle 200,800 200,207" -draw "circle 400,800 400,206" \
     -draw "circle 800,900 800,207" -draw "circle 1000,900 1000,206" \
     -draw "circle 1500,800 1500,207" -draw "circle 1700,800 1700,206" \
+    \( "${LOGO_PRIMARY}" -gravity center -crop 800x800+0+0 +repage -resize 280x280 \) \
+    -gravity center -composite \
     "${WALLPAPER_DIR}/circuit-board.png"
 
 echo "  ✓ circuit-board.png"
@@ -202,6 +199,31 @@ extract_logo 32 "${LOGO_DIR}/favicon-32.png"
 echo "  ✓ cortex-icon-128.png, favicon-32.png"
 
 # ============================================================================
+# GDM (login screen)
+# ============================================================================
+echo "[5/5] GDM assets..."
+GDM_DIR="${SCRIPT_DIR}/gdm"
+mkdir -p "${GDM_DIR}"
+
+# GDM login background - dark with centered logo
+magick -size 1920x1080 xc:"${DARK_BG}" \
+    \( "${LOGO_PRIMARY}" -gravity center -crop 800x800+0+0 +repage -resize 200x200 \) \
+    -gravity center -composite \
+    "${GDM_DIR}/cortex-login-bg.png"
+
+# GDM logo SVG with embedded PNG
+extract_logo 200 /tmp/gdm-logo.png
+LOGO_BASE64=$(base64 -w0 /tmp/gdm-logo.png)
+cat > "${GDM_DIR}/cortex-logo.svg" << EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="200" height="200" viewBox="0 0 200 200">
+  <image width="200" height="200" xlink:href="data:image/png;base64,${LOGO_BASE64}"/>
+</svg>
+EOF
+
+echo "  ✓ cortex-login-bg.png, cortex-logo.svg"
+
+# ============================================================================
 # Summary
 # ============================================================================
 echo ""
@@ -212,9 +234,12 @@ echo ""
 TOTAL_IMAGES=$(find "${SCRIPT_DIR}" -name "*.png" | wc -l)
 echo "  Total images: ${TOTAL_IMAGES}"
 echo ""
+echo "  All assets use: ${LOGO_PRIMARY}"
+echo ""
 echo "  Locations (symlinked to live-build):"
 echo "    branding/plymouth/cortex/  → Plymouth boot splash"
 echo "    branding/grub/cortex/      → GRUB bootloader theme"
 echo "    branding/wallpapers/images/→ Desktop wallpapers"
 echo "    branding/logos/            → System icons/pixmaps"
+echo "    branding/gdm/              → GDM login screen"
 echo ""

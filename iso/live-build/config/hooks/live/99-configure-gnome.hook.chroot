@@ -82,13 +82,13 @@ cursor-theme='Adwaita'
 color-scheme='prefer-dark'
 
 [org/gnome/desktop/background]
-picture-uri='file:///usr/share/backgrounds/cortex/cortex-default.png'
-picture-uri-dark='file:///usr/share/backgrounds/cortex/cortex-default.png'
+picture-uri='file:///usr/share/backgrounds/cortex/minimal-dark.png'
+picture-uri-dark='file:///usr/share/backgrounds/cortex/minimal-dark.png'
 picture-options='zoom'
 primary-color='#0F0F23'
 
 [org/gnome/desktop/screensaver]
-picture-uri='file:///usr/share/backgrounds/cortex/cortex-default.png'
+picture-uri='file:///usr/share/backgrounds/cortex/minimal-dark.png'
 primary-color='#0F0F23'
 
 [org/gnome/shell]
@@ -137,13 +137,13 @@ cursor-theme='Adwaita'
 color-scheme='prefer-dark'
 
 [org.gnome.desktop.background]
-picture-uri='file:///usr/share/backgrounds/cortex/cortex-default.png'
-picture-uri-dark='file:///usr/share/backgrounds/cortex/cortex-default.png'
+picture-uri='file:///usr/share/backgrounds/cortex/minimal-dark.png'
+picture-uri-dark='file:///usr/share/backgrounds/cortex/minimal-dark.png'
 picture-options='zoom'
 primary-color='#0F0F23'
 
 [org.gnome.desktop.screensaver]
-picture-uri='file:///usr/share/backgrounds/cortex/cortex-default.png'
+picture-uri='file:///usr/share/backgrounds/cortex/minimal-dark.png'
 primary-color='#0F0F23'
 EOF
 
