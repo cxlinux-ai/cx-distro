@@ -18,9 +18,11 @@ Minimal Cortex Linux Plymouth theme - CX logo centered on pure black background.
 
 ## Asset Generation
 
-The logo is extracted from the source image. To regenerate:
+Assets are generated from `branding/source/cx-logo-primary.png` using Make.
 
 ```bash
 cd branding
-./generate-assets.sh
+make          # Only rebuild changed assets
+make clean    # Remove generated assets
+make all      # Force rebuild everything
 ```

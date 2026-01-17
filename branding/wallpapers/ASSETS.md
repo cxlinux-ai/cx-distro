@@ -42,3 +42,12 @@ Light Cyan:     #22D3EE
 ## Default Wallpaper
 
 `minimal-dark.png` is set as the default wallpaper via GNOME dconf configuration.
+
+## Asset Generation
+
+```bash
+cd branding
+make          # Only rebuild changed assets
+make clean    # Remove generated assets
+make all      # Force rebuild everything
+```
