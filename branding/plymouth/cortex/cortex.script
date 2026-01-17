@@ -1,8 +1,8 @@
 /**
  * Cortex Linux Plymouth Theme
  *
- * Minimal design - CX logo centered on pure black background.
- * No animations, no progress bar, no wordmark. Just the logo.
+ * Minimal design - CX logo centered on pure black background
+ * with three animated loading dots at the bottom.
  */
 
 // Pure black background
@@ -25,7 +25,71 @@ logo.sprite = Sprite(logo.image);
 logo.sprite.SetPosition(logo.x, logo.y, 10);
 logo.sprite.SetOpacity(1);
 
-// Password prompt (only shown when needed)
+// ============================================
+// THREE DOTS LOADING INDICATOR
+// ============================================
+
+// Load dot images
+dot_on = Image("dot-on.png");
+dot_off = Image("dot-off.png");
+
+// Create 3 dot sprites
+dot_count = 3;
+spacing = 30;  // pixels between dots
+dot_y = screen_y + screen_height - 80;  // 80px from bottom
+
+for (i = 0; i < dot_count; i++) {
+    dots[i].sprite = Sprite(dot_off);
+    dots[i].x = screen_x + screen_width / 2 + (i - 1) * spacing - dot_off.GetWidth() / 2;
+    dots[i].sprite.SetPosition(dots[i].x, dot_y, 10);
+    dots[i].sprite.SetOpacity(0.4);
+}
+
+// Animation state
+global.dot_frame = 0;
+global.dot_timer = 0;
+
+// Animate the dots - each dot lights up in sequence
+fun animate_dots() {
+    global.dot_timer++;
+    
+    // Change active dot every ~15 frames (roughly 0.25 seconds at 60fps)
+    if (global.dot_timer >= 15) {
+        global.dot_timer = 0;
+        global.dot_frame++;
+        if (global.dot_frame >= dot_count) {
+            global.dot_frame = 0;
+        }
+    }
+    
+    // Update dot appearances
+    for (i = 0; i < dot_count; i++) {
+        if (i == global.dot_frame) {
+            dots[i].sprite.SetImage(dot_on);
+            dots[i].sprite.SetOpacity(1.0);
+        } else {
+            dots[i].sprite.SetImage(dot_off);
+            dots[i].sprite.SetOpacity(0.4);
+        }
+    }
+}
+
+// Refresh callback - called continuously for animation
+fun refresh_callback() {
+    animate_dots();
+}
+Plymouth.SetRefreshFunction(refresh_callback);
+
+// Progress callback
+fun progress_callback(duration, progress) {
+    animate_dots();
+}
+Plymouth.SetBootProgressFunction(progress_callback);
+
+// ============================================
+// PASSWORD PROMPT
+// ============================================
+
 fun password_dialogue_setup(title, bullet) {
     local.entry;
     local.bullet_image;
@@ -65,7 +129,10 @@ fun display_normal_callback() {
 }
 Plymouth.SetDisplayNormalFunction(display_normal_callback);
 
-// Message display (for system messages)
+// ============================================
+// MESSAGES & QUIT
+// ============================================
+
 fun message_callback(text) {
     message.image = Image.Text(text, 0.6, 0.6, 0.7, 1, "Sans 11");
     message.sprite = Sprite(message.image);
@@ -75,8 +142,10 @@ fun message_callback(text) {
 }
 Plymouth.SetMessageFunction(message_callback);
 
-// Quit callback
 fun quit_callback() {
     logo.sprite.SetOpacity(0);
+    for (i = 0; i < dot_count; i++) {
+        dots[i].sprite.SetOpacity(0);
+    }
 }
 Plymouth.SetQuitFunction(quit_callback);
