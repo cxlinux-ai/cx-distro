@@ -111,10 +111,21 @@ echo "[2/4] GRUB theme..."
 GRUB_DIR="${SCRIPT_DIR}/grub/cortex"
 mkdir -p "${GRUB_DIR}/icons"
 
-# Background (1920x1080) - dark with centered logo
-magick -size 1920x1080 xc:"${DARK_BG}" \
-    \( "${LOGO_PRIMARY}" -gravity center -crop 800x800+0+0 +repage -resize 200x200 \) \
-    -gravity center -composite \
+# Background (1920x1080) - gradient with subtle grid lines
+magick -size 1920x1080 \
+    "gradient:${DARK_BG}-${DARKER_BG}" \
+    -rotate 180 \
+    \( -size 1920x1080 xc:transparent \
+       -fill "rgba(107,33,168,0.03)" \
+       -draw "line 0,200 1920,200" \
+       -draw "line 0,400 1920,400" \
+       -draw "line 0,600 1920,600" \
+       -draw "line 0,800 1920,800" \
+       -draw "line 400,0 400,1080" \
+       -draw "line 800,0 800,1080" \
+       -draw "line 1200,0 1200,1080" \
+       -draw "line 1600,0 1600,1080" \
+    \) -composite \
     "${GRUB_DIR}/background.png"
 
 # Selection bar (9-slice)
@@ -151,16 +162,20 @@ echo "[3/4] Wallpapers..."
 WALLPAPER_DIR="${SCRIPT_DIR}/wallpapers/images"
 mkdir -p "${WALLPAPER_DIR}"
 
-# Minimal Dark - solid dark with centered logo (DEFAULT)
-magick -size 1920x1080 xc:"${DARK_BG}" \
+# Minimal Dark - gradient with centered logo (DEFAULT)
+magick -size 1920x1080 \
+    "gradient:${DARK_BG}-${DARKER_BG}" \
+    -rotate 180 \
     \( "${LOGO_PRIMARY}" -gravity center -crop 800x800+0+0 +repage -resize 280x280 \) \
     -gravity center -composite \
     "${WALLPAPER_DIR}/minimal-dark.png"
 
 echo "  ✓ minimal-dark.png (default)"
 
-# Circuit Board - with centered logo
-magick -size 1920x1080 xc:"${DARK_BG}" \
+# Circuit Board - gradient with circuit traces and centered logo
+magick -size 1920x1080 \
+    "gradient:${DARK_BG}-${DARKER_BG}" \
+    -rotate 180 \
     -stroke "rgba(107,33,168,0.10)" -strokewidth 2 \
     -draw "line 100,0 100,300" -draw "line 100,300 300,300" \
     -draw "line 300,300 300,500" -draw "line 300,500 500,500" \
@@ -205,8 +220,10 @@ echo "[5/5] GDM assets..."
 GDM_DIR="${SCRIPT_DIR}/gdm"
 mkdir -p "${GDM_DIR}"
 
-# GDM login background - dark with centered logo
-magick -size 1920x1080 xc:"${DARK_BG}" \
+# GDM login background - gradient with centered logo
+magick -size 1920x1080 \
+    "gradient:${DARK_BG}-${DARKER_BG}" \
+    -rotate 180 \
     \( "${LOGO_PRIMARY}" -gravity center -crop 800x800+0+0 +repage -resize 200x200 \) \
     -gravity center -composite \
     "${GDM_DIR}/cortex-login-bg.png"
