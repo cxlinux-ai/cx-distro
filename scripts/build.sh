@@ -440,18 +440,12 @@ prepare_build_dir() {
         log "Copied hooks"
     fi
 
-    # Copy includes.chroot
+    # Copy includes.chroot (use -rL to follow symlinks and copy actual content)
     if [ -d "${ISO_DIR}/live-build/config/includes.chroot" ]; then
-        cp -r "${ISO_DIR}/live-build/config/includes.chroot" "${BUILD_DIR}/config/"
-        log "Copied includes.chroot"
-    fi
-
-    # Copy GRUB theme to includes.chroot for the installed system
-    local grub_theme_dest="${BUILD_DIR}/config/includes.chroot/boot/grub/themes/cortex"
-    if [ -d "${BRANDING_DIR}/grub/cortex" ]; then
-        mkdir -p "$grub_theme_dest"
-        cp -r "${BRANDING_DIR}/grub/cortex/"* "$grub_theme_dest/"
-        log "Copied GRUB theme to includes.chroot"
+        # Remove target first to avoid conflicts with symlinks
+        rm -rf "${BUILD_DIR}/config/includes.chroot"
+        cp -rL "${ISO_DIR}/live-build/config/includes.chroot" "${BUILD_DIR}/config/"
+        log "Copied includes.chroot (symlinks dereferenced)"
     fi
 
     # Copy includes.binary
@@ -505,6 +499,20 @@ configure_live_build() {
     # lz4: ~2-3 min vs xz: ~20 min, but ISO is ~20% larger
     local compression="${SQUASHFS_COMP:-lz4}"
 
+    # Check if apt-cacher-ng is running locally for package caching
+    local mirror_bootstrap="http://deb.debian.org/debian"
+    local mirror_chroot="http://deb.debian.org/debian"
+    local mirror_binary="http://deb.debian.org/debian"
+    
+    if curl -s --connect-timeout 2 http://localhost:3142 >/dev/null 2>&1; then
+        log "apt-cacher-ng detected, using local cache proxy"
+        mirror_bootstrap="http://localhost:3142/deb.debian.org/debian"
+        mirror_chroot="http://localhost:3142/deb.debian.org/debian"
+        mirror_binary="http://deb.debian.org/debian"  # Keep binary mirror direct for ISO
+    else
+        warn "apt-cacher-ng not running, using direct mirrors (slower)"
+    fi
+
     lb config \
         --distribution "$DEBIAN_VERSION" \
         --archive-areas "main contrib non-free non-free-firmware" \
@@ -516,6 +524,9 @@ configure_live_build() {
         --iso-application "Cortex Linux" \
         --iso-publisher "AI Venture Holdings LLC" \
         --iso-volume "CORTEX_LINUX" \
+        --mirror-bootstrap "$mirror_bootstrap" \
+        --mirror-chroot "$mirror_chroot" \
+        --mirror-binary "$mirror_binary" \
         --cache true \
         --cache-packages true \
         --cache-indices true \
@@ -655,16 +666,14 @@ cmd_sync() {
     if [ -d "$BUILD_DIR" ]; then
         [ -d "${ISO_DIR}/live-build/config/hooks" ] && \
             cp -r "${ISO_DIR}/live-build/config/hooks" "${BUILD_DIR}/config/"
-        [ -d "${ISO_DIR}/live-build/config/includes.chroot" ] && \
-            cp -r "${ISO_DIR}/live-build/config/includes.chroot" "${BUILD_DIR}/config/"
+        # Use -rL to follow symlinks and copy actual content
+        if [ -d "${ISO_DIR}/live-build/config/includes.chroot" ]; then
+            rm -rf "${BUILD_DIR}/config/includes.chroot"
+            cp -rL "${ISO_DIR}/live-build/config/includes.chroot" "${BUILD_DIR}/config/"
+        fi
         [ -d "${ISO_DIR}/live-build/config/includes.binary" ] && \
             cp -r "${ISO_DIR}/live-build/config/includes.binary" "${BUILD_DIR}/config/"
-        # Copy GRUB theme to includes.chroot
-        if [ -d "${BRANDING_DIR}/grub/cortex" ]; then
-            mkdir -p "${BUILD_DIR}/config/includes.chroot/boot/grub/themes/cortex"
-            cp -r "${BRANDING_DIR}/grub/cortex/"* "${BUILD_DIR}/config/includes.chroot/boot/grub/themes/cortex/"
-        fi
-        log "Config synced"
+        log "Config synced (symlinks dereferenced)"
     else
         warn "Build directory not found: ${BUILD_DIR}"
     fi
