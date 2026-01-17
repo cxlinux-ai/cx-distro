@@ -27,8 +27,8 @@ lb config noauto \
     --iso-publisher "AI Venture Holdings LLC; https://cortexlinux.com" \
     --iso-volume "Cortex Linux ${VERSION}" \
     --memtest none \
-    --security true \
-    --backports true \
+    --security false \
+    --backports false \
     --apt-indices true \
     --apt-recommends true \
     --apt-source-archives false \
