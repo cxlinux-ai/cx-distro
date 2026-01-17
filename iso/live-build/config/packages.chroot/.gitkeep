@@ -1,0 +1,15 @@
+# Local .deb packages placed here are automatically installed during ISO build
+# 
+# Usage:
+#   1. Build packages: make branding-package
+#   2. Copy to here: cp output/*.deb iso/live-build/config/packages.chroot/
+#   3. Build ISO: make iso
+#
+# Packages in this directory:
+#   - cortex-branding_*.deb - Branding, Plymouth, GRUB theme, wallpapers
+#   - cortex-core_*.deb - Core tools (when built)
+#   - etc.
+#
+# Note: These packages are installed via dpkg, not apt, so dependencies
+# must be satisfied by packages in package-lists/*.list.chroot
+

@@ -54,11 +54,15 @@ cortex-distro/
 │   ├── preseed/                # Automated installation preseeds
 │   └── provisioning/           # First-boot setup scripts
 ├── packages/                   # Debian package definitions
-│   └── cortex-branding/        # Branding package
+│   └── cortex-branding/        # Branding package (self-contained)
+│       ├── source/             # Master logo images
+│       ├── Makefile            # Asset generator
+│       └── debian/             # Package build files
 ├── repository/                 # APT repository tooling
 │   └── scripts/                # repo-manage.sh
 ├── sbom/                       # SBOM generation (CycloneDX/SPDX)
-├── branding/                   # Plymouth theme, wallpapers
+├── docs/                       # Documentation
+│   └── branding/               # Brand guidelines and asset docs
 ├── scripts/                    # Build automation
 │   ├── build.sh                # Master build script
 │   └── install-deps.sh         # Dependency installer

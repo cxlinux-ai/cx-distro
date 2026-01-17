@@ -13,8 +13,8 @@
 
 .PHONY: all help iso iso-arm64 \
         validate clean clean-all clean-hooks sync-config test check-deps install-deps \
-        preseed-check provision-check lint branding-install branding-package \
-        chroot-shell config
+        preseed-check provision-check lint branding-package \
+        build-package packages chroot-shell config
 
 # Configuration
 SHELL := /bin/bash
@@ -54,9 +54,14 @@ help:
 	@echo "  make provision-check  Validate provisioning scripts"
 	@echo "  make lint             Run shellcheck on scripts"
 	@echo ""
+	@echo "Package Targets:"
+	@echo "  make packages         Build all .deb packages"
+	@echo "  make build-package PKG=name  Build specific package"
+	@echo "                        Available: cortex-branding cortex-core cortex-full cortex-secops"
+	@echo ""
 	@echo "Branding Targets:"
-	@echo "  make branding-install Install branding to system (requires sudo)"
 	@echo "  make branding-package Build cortex-branding .deb package"
+	@echo "  (To install: sudo apt install ./output/cortex-branding_*.deb)"
 	@echo ""
 	@echo "Development Targets:"
 	@echo "  make chroot-shell     Enter interactive shell in chroot filesystem"
@@ -131,18 +136,33 @@ test:
 	@$(BUILD_SCRIPT) test
 
 # =============================================================================
+# Packages
+# =============================================================================
+
+# Build all packages
+packages:
+	@$(BUILD_SCRIPT) build-package all
+
+# Build specific package (usage: make build-package PKG=cortex-branding)
+build-package:
+ifdef PKG
+	@$(BUILD_SCRIPT) build-package $(PKG)
+else
+	@$(BUILD_SCRIPT) build-package all
+endif
+
+# =============================================================================
 # Branding
 # =============================================================================
 
-branding-install:
-	@if [ "$$(id -u)" -ne 0 ]; then \
-		echo "ERROR: Must run as root (sudo make branding-install)"; \
-		exit 1; \
-	fi
-	@bash branding/install-branding.sh
-
+# Build cortex-branding package (use 'make packages PKG=cortex-branding' instead)
 branding-package:
-	@$(BUILD_SCRIPT) branding-package
+	@$(BUILD_SCRIPT) build-package cortex-branding
+
+# To install branding on a system, use the package:
+#   sudo apt install ./output/cortex-branding_*.deb
+# Or:
+#   sudo dpkg -i output/cortex-branding_*.deb
 
 # =============================================================================
 # Development Helpers

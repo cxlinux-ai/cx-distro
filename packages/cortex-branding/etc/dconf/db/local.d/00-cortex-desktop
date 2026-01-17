@@ -1,0 +1,23 @@
+# Cortex Linux GNOME Desktop Branding
+# Applied system-wide via dconf
+
+[org/gnome/desktop/interface]
+gtk-theme='Adwaita-dark'
+icon-theme='Adwaita'
+cursor-theme='Adwaita'
+color-scheme='prefer-dark'
+
+[org/gnome/desktop/background]
+picture-uri='file:///usr/share/backgrounds/cortex/minimal-dark.png'
+picture-uri-dark='file:///usr/share/backgrounds/cortex/minimal-dark.png'
+picture-options='zoom'
+primary-color='#0F0F23'
+
+[org/gnome/desktop/screensaver]
+picture-uri='file:///usr/share/backgrounds/cortex/minimal-dark.png'
+primary-color='#0F0F23'
+
+[org/gnome/shell]
+welcome-dialog-last-shown-version='9999999999'
+favorite-apps=['firefox-esr.desktop', 'org.gnome.Nautilus.desktop', 'org.gnome.Terminal.desktop', 'org.gnome.Settings.desktop']
+

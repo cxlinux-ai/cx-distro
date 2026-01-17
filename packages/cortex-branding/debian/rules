@@ -1,0 +1,74 @@
+#!/usr/bin/make -f
+#
+# Cortex Branding Package Build Rules
+#
+# All branding assets are stored directly in this package directory.
+# Build with: dpkg-buildpackage -us -uc -b
+#
+
+export DH_VERBOSE = 1
+
+%:
+	dh $@
+
+override_dh_auto_install:
+	# Install OS identity templates (installed to /etc by postinst to avoid base-files conflict)
+	install -d $(CURDIR)/debian/cortex-branding/usr/share/cortex/templates
+	install -m 644 usr/share/cortex/templates/os-release $(CURDIR)/debian/cortex-branding/usr/share/cortex/templates/
+	install -m 644 usr/share/cortex/templates/lsb-release $(CURDIR)/debian/cortex-branding/usr/share/cortex/templates/
+	install -m 644 usr/share/cortex/templates/issue $(CURDIR)/debian/cortex-branding/usr/share/cortex/templates/
+	install -m 644 usr/share/cortex/templates/issue.net $(CURDIR)/debian/cortex-branding/usr/share/cortex/templates/
+	
+	# Install Plymouth theme
+	install -d $(CURDIR)/debian/cortex-branding/usr/share/plymouth/themes/cortex
+	cp -r usr/share/plymouth/themes/cortex/* $(CURDIR)/debian/cortex-branding/usr/share/plymouth/themes/cortex/
+	
+	# Install GRUB theme
+	install -d $(CURDIR)/debian/cortex-branding/boot/grub/themes/cortex
+	cp -r boot/grub/themes/cortex/* $(CURDIR)/debian/cortex-branding/boot/grub/themes/cortex/
+	
+	# Install wallpapers
+	install -d $(CURDIR)/debian/cortex-branding/usr/share/backgrounds/cortex
+	cp -r usr/share/backgrounds/cortex/* $(CURDIR)/debian/cortex-branding/usr/share/backgrounds/cortex/
+	install -d $(CURDIR)/debian/cortex-branding/usr/share/gnome-background-properties
+	cp usr/share/gnome-background-properties/*.xml $(CURDIR)/debian/cortex-branding/usr/share/gnome-background-properties/ 2>/dev/null || true
+	
+	# Install MOTD scripts
+	install -d $(CURDIR)/debian/cortex-branding/etc/update-motd.d
+	install -m 755 etc/update-motd.d/* $(CURDIR)/debian/cortex-branding/etc/update-motd.d/
+	
+	# Install logos
+	install -d $(CURDIR)/debian/cortex-branding/usr/share/cortex/logos
+	cp -r usr/share/cortex/logos/* $(CURDIR)/debian/cortex-branding/usr/share/cortex/logos/
+	
+	# Install dconf profile
+	install -d $(CURDIR)/debian/cortex-branding/etc/dconf/profile
+	install -m 644 etc/dconf/profile/user $(CURDIR)/debian/cortex-branding/etc/dconf/profile/
+	
+	# Install GDM dconf configuration
+	install -d $(CURDIR)/debian/cortex-branding/etc/dconf/db/gdm.d
+	install -m 644 etc/dconf/db/gdm.d/01-cortex-branding $(CURDIR)/debian/cortex-branding/etc/dconf/db/gdm.d/
+	
+	# Install desktop and terminal dconf configuration
+	install -d $(CURDIR)/debian/cortex-branding/etc/dconf/db/local.d
+	install -m 644 etc/dconf/db/local.d/00-cortex-desktop $(CURDIR)/debian/cortex-branding/etc/dconf/db/local.d/
+	install -m 644 etc/dconf/db/local.d/01-cortex-terminal $(CURDIR)/debian/cortex-branding/etc/dconf/db/local.d/
+	
+	# Install GSettings schema override
+	install -d $(CURDIR)/debian/cortex-branding/usr/share/glib-2.0/schemas
+	install -m 644 usr/share/glib-2.0/schemas/10-cortex-branding.gschema.override $(CURDIR)/debian/cortex-branding/usr/share/glib-2.0/schemas/
+	
+	# Install neofetch configuration
+	install -d $(CURDIR)/debian/cortex-branding/etc/neofetch
+	install -m 644 etc/neofetch/config.conf $(CURDIR)/debian/cortex-branding/etc/neofetch/
+	install -d $(CURDIR)/debian/cortex-branding/usr/share/neofetch/ascii/distro
+	install -m 644 usr/share/neofetch/ascii/distro/cortex $(CURDIR)/debian/cortex-branding/usr/share/neofetch/ascii/distro/
+	
+	# Install GDM theme (GNOME Shell login screen)
+	install -d $(CURDIR)/debian/cortex-branding/usr/share/gnome-shell/theme/Cortex
+	install -m 644 usr/share/gnome-shell/theme/Cortex/gnome-shell.css $(CURDIR)/debian/cortex-branding/usr/share/gnome-shell/theme/Cortex/
+
+override_dh_fixperms:
+	dh_fixperms
+	# Ensure MOTD scripts are executable
+	chmod 755 $(CURDIR)/debian/cortex-branding/etc/update-motd.d/* || true

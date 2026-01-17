@@ -1,413 +1,94 @@
 #!/bin/bash
 #
-# Cortex Linux Branding Installation Hook
+# Cortex Linux Branding - Build Verification Hook
 #
-# This hook installs Cortex Linux branding during ISO build,
-# replacing default Debian branding with Cortex identity.
+# This hook runs AFTER cortex-branding package is installed (via packages.chroot).
+# It only verifies that the package was installed correctly during ISO build.
+#
+# All branding configuration is handled by the cortex-branding package's postinst:
+#   - Plymouth theme registration and configuration
+#   - GRUB theme and distributor settings
+#   - MOTD script permissions
+#   - GDM/dconf branding
+#   - Neofetch configuration
 #
 
 set -e
 
-echo "Installing Cortex Linux branding..."
+echo "================================================"
+echo "  Cortex Linux Branding Verification"
+echo "================================================"
 
 # ============================================================================
-# OS Identity Files
+# Verify cortex-branding package was installed
 # ============================================================================
 
-echo "  -> Installing OS identity files..."
+echo "  -> Verifying cortex-branding package installation..."
 
-cat > /etc/os-release << 'EOF'
-PRETTY_NAME="Cortex Linux"
-NAME="Cortex Linux"
-VERSION_ID="1.0"
-VERSION="1.0 (Bookworm)"
-VERSION_CODENAME=bookworm
-ID=cortex
-ID_LIKE=debian
-HOME_URL="https://cortex.io"
-SUPPORT_URL="https://cortex.io/support"
-BUG_REPORT_URL="https://github.com/cortex/cortex-distro/issues"
-PRIVACY_POLICY_URL="https://cortex.io/privacy"
-EOF
-
-cat > /etc/lsb-release << 'EOF'
-DISTRIB_ID=Cortex
-DISTRIB_RELEASE=1.0
-DISTRIB_CODENAME=bookworm
-DISTRIB_DESCRIPTION="Cortex Linux 1.0"
-EOF
-
-cat > /etc/issue << 'EOF'
-Cortex Linux 1.0 \n \l
-
-EOF
-
-cat > /etc/issue.net << 'EOF'
-Cortex Linux 1.0
-EOF
-
-# ============================================================================
-# Cortex APT Repository
-# ============================================================================
-
-# TODO: Enable when apt.cortexlinux.com is available
-# echo "  -> Configuring Cortex APT repository..."
-# mkdir -p /usr/share/keyrings
-# curl -fsSL https://apt.cortexlinux.com/keys/cortex-linux.gpg.asc | gpg --dearmor -o /usr/share/keyrings/cortex-linux.gpg
-# echo "deb [signed-by=/usr/share/keyrings/cortex-linux.gpg] https://apt.cortexlinux.com stable main" > /etc/apt/sources.list.d/cortex-linux.list
-# echo "  -> Cortex repository configured"
-
-echo "  -> Skipping Cortex APT repository (not yet available)"
-
-# ============================================================================
-# Plymouth Boot Splash Theme
-# ============================================================================
-
-echo "  -> Configuring Plymouth theme..."
-
-# Plymouth theme files are pre-installed via includes.chroot from branding/plymouth/cortex/
-# Verify they exist
-if [ ! -f /usr/share/plymouth/themes/cortex/cortex.plymouth ]; then
-    echo "    ERROR: Plymouth theme not found in includes.chroot"
-    exit 1
-fi
-
-# Set theme using update-alternatives (more reliable)
-update-alternatives --install /usr/share/plymouth/themes/default.plymouth default.plymouth \
-    /usr/share/plymouth/themes/cortex/cortex.plymouth 100
-
-update-alternatives --set default.plymouth \
-    /usr/share/plymouth/themes/cortex/cortex.plymouth
-
-# Also set in plymouthd.defaults as a fallback
-if [ -f /usr/share/plymouth/plymouthd.defaults ]; then
-    sed -i 's|^Theme=.*|Theme=cortex|' /usr/share/plymouth/plymouthd.defaults
-else
-    mkdir -p /usr/share/plymouth
-    echo "[Daemon]" > /usr/share/plymouth/plymouthd.defaults
-    echo "Theme=cortex" >> /usr/share/plymouth/plymouthd.defaults
-fi
-
-# Set theme via plymouth-set-default-theme (triple redundancy)
-if command -v plymouth-set-default-theme &>/dev/null; then
-    plymouth-set-default-theme cortex
-    if [ $? -ne 0 ]; then
-        echo "    WARNING: plymouth-set-default-theme failed"
+MISSING=0
+check_file() {
+    if [ ! -f "$1" ]; then
+        echo "    WARNING: Missing $1"
+        MISSING=$((MISSING + 1))
     fi
-fi
-
-# Verify theme is set
-CURRENT_THEME=$(plymouth-set-default-theme)
-if [ "$CURRENT_THEME" != "cortex" ]; then
-    echo "    WARNING: Plymouth theme is '$CURRENT_THEME', expected 'cortex'"
-else
-    echo "    Plymouth theme set to: $CURRENT_THEME"
-fi
-
-# ============================================================================
-# GRUB Bootloader Theme
-# ============================================================================
-
-echo "  -> Configuring GRUB theme..."
-
-# GRUB theme files are pre-installed via includes.chroot from branding/grub/cortex/
-# Verify they exist
-if [ ! -f /boot/grub/themes/cortex/theme.txt ]; then
-    echo "    WARNING: GRUB theme not found in includes.chroot"
-fi
-
-# Update GRUB configuration
-if [ -f /etc/default/grub ]; then
-    if grep -q "^GRUB_THEME=" /etc/default/grub; then
-        sed -i 's|^GRUB_THEME=.*|GRUB_THEME="/boot/grub/themes/cortex/theme.txt"|' /etc/default/grub
-    else
-        echo 'GRUB_THEME="/boot/grub/themes/cortex/theme.txt"' >> /etc/default/grub
-    fi
-
-    # Also set timeout and other branding options
-    sed -i 's|^GRUB_DISTRIBUTOR=.*|GRUB_DISTRIBUTOR="Cortex Linux"|' /etc/default/grub || \
-        echo 'GRUB_DISTRIBUTOR="Cortex Linux"' >> /etc/default/grub
-fi
-
-# Update GRUB configuration to apply theme
-if command -v update-grub &>/dev/null; then
-    update-grub || true
-fi
-
-# ============================================================================
-# Desktop Wallpapers
-# ============================================================================
-
-echo "  -> Verifying desktop wallpapers..."
-
-# Wallpapers and XML are pre-installed via includes.chroot from branding/wallpapers/
-if [ ! -f /usr/share/backgrounds/cortex/cortex-default.png ]; then
-    echo "    WARNING: Default wallpaper not found in includes.chroot"
-fi
-if [ ! -f /usr/share/gnome-background-properties/cortex-wallpapers.xml ]; then
-    echo "    WARNING: Wallpapers XML not found in includes.chroot"
-fi
-
-# ============================================================================
-# GDM Login Screen Branding
-# ============================================================================
-
-echo "  -> Configuring GDM login branding..."
-
-if [ -d /etc/gdm3 ]; then
-    mkdir -p /etc/dconf/db/gdm.d
-    cat > /etc/dconf/db/gdm.d/01-cortex-branding << 'EOF'
-[org/gnome/desktop/background]
-picture-uri='file:///usr/share/backgrounds/cortex/cortex-default.png'
-picture-options='zoom'
-primary-color='#0F0F23'
-
-[org/gnome/login-screen]
-logo='/usr/share/pixmaps/cortex-logo.png'
-banner-message-enable=false
-
-[org/gnome/desktop/interface]
-gtk-theme='Adwaita-dark'
-EOF
-
-    # Logo is pre-installed via includes.chroot
-    if command -v dconf &>/dev/null; then
-        dconf update
-    fi
-fi
-
-# ============================================================================
-# MOTD (Message of the Day)
-# ============================================================================
-
-echo "  -> Installing terminal MOTD..."
-
-mkdir -p /etc/update-motd.d
-
-# Disable default Debian MOTD scripts
-for f in /etc/update-motd.d/*; do
-    [ -f "$f" ] && chmod -x "$f"
-done
-
-cat > /etc/update-motd.d/00-cortex-banner << 'MOTDEOF'
-#!/bin/bash
-#
-# Cortex Linux MOTD Banner
-#
-
-PURPLE='\033[0;35m'
-CYAN='\033[0;36m'
-WHITE='\033[1;37m'
-GRAY='\033[0;37m'
-NC='\033[0m'
-
-echo -e ""
-echo -e "${PURPLE}   ____          _            ${NC}"
-echo -e "${PURPLE}  / ___|___  _ _| |_ _____  __${NC}"
-echo -e "${PURPLE} | |   / _ \| '_|  _/ _ \ \/ /${NC}"
-echo -e "${PURPLE} | |__| (_) | |  | ||  __/>  < ${NC}"
-echo -e "${PURPLE}  \____\___/|_|   \__\___/_/\_\\${NC}"
-echo -e ""
-echo -e "${CYAN} Cortex Linux${NC} ${GRAY}| Debian-based AI-Powered OS${NC}"
-echo -e ""
-MOTDEOF
-
-cat > /etc/update-motd.d/10-cortex-sysinfo << 'MOTDEOF'
-#!/bin/bash
-#
-# Cortex Linux System Information
-#
-
-CYAN='\033[0;36m'
-GRAY='\033[0;37m'
-NC='\033[0m'
-
-# System info
-HOSTNAME=$(hostname)
-KERNEL=$(uname -r)
-UPTIME=$(uptime -p 2>/dev/null | sed 's/up //' || echo "unknown")
-LOAD=$(cat /proc/loadavg | awk '{print $1, $2, $3}')
-
-echo -e " ${CYAN}Hostname:${NC}  $HOSTNAME"
-echo -e " ${CYAN}Kernel:${NC}    $KERNEL"
-echo -e " ${CYAN}Uptime:${NC}    $UPTIME"
-echo -e " ${CYAN}Load:${NC}      $LOAD"
-echo -e ""
-MOTDEOF
-
-cat > /etc/update-motd.d/20-cortex-updates << 'MOTDEOF'
-#!/bin/bash
-#
-# Cortex Linux Update Notification
-# Shows available updates on login (if any)
-#
-
-# Colors
-PURPLE='\033[0;35m'
-CYAN='\033[0;36m'
-YELLOW='\033[0;33m'
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-GRAY='\033[0;90m'
-RESET='\033[0m'
-
-# Check for update-notifier data (created by apt hooks)
-UPDATES_FILE="/var/lib/update-notifier/updates-available"
-SECURITY_FILE="/var/lib/update-notifier/security-updates-available"
-REBOOT_FILE="/var/run/reboot-required"
-
-# Count updates if apt is available
-if command -v apt-get &>/dev/null; then
-    # Use cached data if available
-    if [ -f "$UPDATES_FILE" ]; then
-        UPDATES=$(grep -oP '\d+ updates' "$UPDATES_FILE" 2>/dev/null | grep -oP '\d+' || echo "0")
-        SECURITY=$(grep -oP '\d+ security' "$UPDATES_FILE" 2>/dev/null | grep -oP '\d+' || echo "0")
-    else
-        # Quick check (may not be accurate without apt update)
-        UPDATES=$(apt list --upgradable 2>/dev/null | grep -c upgradable || echo "0")
-        SECURITY="?"
-    fi
-else
-    UPDATES="0"
-    SECURITY="0"
-fi
-
-# Display update info
-if [ "$UPDATES" != "0" ] && [ "$UPDATES" != "" ]; then
-    echo -e "  ${YELLOW}◆${RESET} ${UPDATES} package update(s) available"
-    if [ "$SECURITY" != "0" ] && [ "$SECURITY" != "?" ] && [ "$SECURITY" != "" ]; then
-        echo -e "  ${RED}◆${RESET} ${SECURITY} security update(s)"
-    fi
-    echo -e "  ${GRAY}  Run: sudo apt update && sudo apt upgrade${RESET}"
-    echo ""
-fi
-
-# Check if reboot required
-if [ -f "$REBOOT_FILE" ]; then
-    echo -e "  ${RED}◆ System restart required${RESET}"
-    if [ -f "/var/run/reboot-required.pkgs" ]; then
-        REBOOT_PKGS=$(cat /var/run/reboot-required.pkgs | head -3 | tr '\n' ', ' | sed 's/,$//')
-        echo -e "  ${GRAY}  Packages: ${REBOOT_PKGS}${RESET}"
-    fi
-    echo -e "  ${GRAY}  Run: sudo reboot${RESET}"
-    echo ""
-fi
-
-# Cortex-specific notifications
-CORTEX_NOTICE="/opt/cortex/notice"
-if [ -f "$CORTEX_NOTICE" ]; then
-    echo -e "  ${CYAN}◆ Cortex Notice:${RESET}"
-    cat "$CORTEX_NOTICE" | sed 's/^/    /'
-    echo ""
-fi
-MOTDEOF
-
-cat > /etc/update-motd.d/99-cortex-footer << 'MOTDEOF'
-#!/bin/bash
-#
-# Cortex Linux MOTD Footer
-# Shows helpful links and tips
-#
-
-# Colors
-PURPLE='\033[0;35m'
-CYAN='\033[0;36m'
-GRAY='\033[0;90m'
-RESET='\033[0m'
-
-# Random tips
-TIPS=(
-    "Use 'cortex' command for AI-powered shell assistance"
-    "Run 'cortex-update' to check for Cortex component updates"
-    "Enable dark mode: gsettings set org.gnome.desktop.interface color-scheme prefer-dark"
-    "Check security status: sudo lynis audit system"
-    "View system logs: journalctl -xe"
-    "Monitor resources: htop or btop"
-)
-
-# Pick random tip
-TIP="${TIPS[$RANDOM % ${#TIPS[@]}]}"
-
-echo -e "  ${GRAY}─────────────────────────────────────────────────────────────────────${RESET}"
-echo -e "  ${PURPLE}Tip:${RESET} ${TIP}"
-echo -e "  ${GRAY}─────────────────────────────────────────────────────────────────────${RESET}"
-echo -e "  ${CYAN}Docs:${RESET} https://docs.cortexlinux.com  ${CYAN}Support:${RESET} https://cortexlinux.com/support"
-echo ""
-MOTDEOF
-
-chmod +x /etc/update-motd.d/00-cortex-banner
-chmod +x /etc/update-motd.d/10-cortex-sysinfo
-chmod +x /etc/update-motd.d/20-cortex-updates
-chmod +x /etc/update-motd.d/99-cortex-footer
-
-# ============================================================================
-# Neofetch Configuration
-# ============================================================================
-
-echo "  -> Installing neofetch configuration..."
-
-mkdir -p /etc/neofetch
-
-cat > /etc/neofetch/config.conf << 'EOF'
-# Cortex Linux Neofetch Configuration
-
-print_info() {
-    info title
-    info underline
-    info "OS" distro
-    info "Host" model
-    info "Kernel" kernel
-    info "Uptime" uptime
-    info "Packages" packages
-    info "Shell" shell
-    info "Resolution" resolution
-    info "DE" de
-    info "WM" wm
-    info "Terminal" term
-    info "CPU" cpu
-    info "GPU" gpu
-    info "Memory" memory
-    info cols
 }
 
-# Cortex branding colors (purple/cyan)
-colors=(5 6 7 5 6 7)
-bold="on"
-ascii_distro="cortex"
-EOF
+# Core branding files
+check_file "/etc/os-release"
+check_file "/etc/lsb-release"
 
-# Create custom ASCII art for neofetch
-mkdir -p /usr/share/neofetch/ascii/distro
+# Plymouth theme
+check_file "/usr/share/plymouth/themes/cortex/cortex.plymouth"
 
-cat > /usr/share/neofetch/ascii/distro/cortex << 'EOF'
-${c1}
-${c1}                 ██████╗ ██████╗ ██████╗ ████████╗███████╗██╗  ██╗
-${c1}                ██╔════╝██╔═══██╗██╔══██╗╚══██╔══╝██╔════╝╚██╗██╔╝
-${c2}                ██║     ██║   ██║██████╔╝   ██║   █████╗   ╚███╔╝
-${c2}                ██║     ██║   ██║██╔══██╗   ██║   ██╔══╝   ██╔██╗
-${c1}                ╚██████╗╚██████╔╝██║  ██║   ██║   ███████╗██╔╝ ██╗
-${c1}                 ╚═════╝ ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝
-${c2}
-${c2}                                 L I N U X
-EOF
+# GRUB theme
+check_file "/boot/grub/themes/cortex/theme.txt"
 
-# ============================================================================
-# Update initramfs with new Plymouth theme
-# ============================================================================
+# Wallpapers
+check_file "/usr/share/backgrounds/cortex/minimal-dark.png"
 
-echo "  -> Updating initramfs with Plymouth theme..."
-if command -v update-initramfs &>/dev/null; then
-    # Update ALL kernels
-    update-initramfs -u -k all
+# MOTD
+check_file "/etc/update-motd.d/00-cortex-banner"
 
-    if [ $? -eq 0 ]; then
-        echo "    Initramfs updated successfully"
-    else
-        echo "    ERROR: Failed to update initramfs"
-        exit 1
-    fi
+# Neofetch
+check_file "/etc/neofetch/config.conf"
+
+# dconf settings
+check_file "/etc/dconf/db/local.d/00-cortex-desktop"
+check_file "/etc/dconf/db/local.d/01-cortex-terminal"
+check_file "/etc/dconf/profile/user"
+
+# GSettings override
+check_file "/usr/share/glib-2.0/schemas/10-cortex-branding.gschema.override"
+
+# GDM theme
+check_file "/usr/share/gnome-shell/theme/Cortex/gnome-shell.css"
+check_file "/usr/share/cortex/logos/cortex-logo-light.svg"
+
+if [ $MISSING -gt 0 ]; then
+    echo ""
+    echo "    ⚠ WARNING: $MISSING expected files missing!"
+    echo "    Make sure cortex-branding.deb is in config/packages.chroot/"
+    echo "    Run: make branding-package && cp output/*.deb iso/live-build/config/packages.chroot/"
+    echo ""
 else
-    echo "    WARNING: update-initramfs command not found"
+    echo "    ✓ All branding files verified successfully"
 fi
 
-echo "Cortex Linux branding installation complete."
+# ============================================================================
+# Verify Plymouth theme is active
+# ============================================================================
+
+echo "  -> Checking Plymouth theme..."
+
+if command -v plymouth-set-default-theme &>/dev/null; then
+    THEME=$(plymouth-set-default-theme 2>/dev/null || echo "unknown")
+    if [ "$THEME" = "cortex" ]; then
+        echo "    ✓ Plymouth theme: $THEME"
+    else
+        echo "    ⚠ Plymouth theme is '$THEME', expected 'cortex'"
+    fi
+fi
+
+echo "================================================"
+echo "  Branding Verification Complete"
+echo "================================================"
