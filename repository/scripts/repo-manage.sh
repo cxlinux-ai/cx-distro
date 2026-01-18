@@ -2,7 +2,7 @@
 # Cortex Linux APT Repository Management
 # Manages package publishing, signing, and snapshots
 # Copyright 2025 AI Venture Holdings LLC
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: BUSL-1.1
 
 set -e
 

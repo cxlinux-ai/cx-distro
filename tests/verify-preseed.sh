@@ -2,7 +2,7 @@
 # Cortex Linux Preseed Verification Tests
 # Validates preseed files for automated installation
 # Copyright 2025 AI Venture Holdings LLC
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: BUSL-1.1
 
 set -e
 

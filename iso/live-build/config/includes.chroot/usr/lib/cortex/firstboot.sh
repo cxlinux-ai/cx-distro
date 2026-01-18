@@ -2,7 +2,7 @@
 # Cortex Linux First Boot Provisioning
 # Runs on first boot to complete system setup
 # Copyright 2025 AI Venture Holdings LLC
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: BUSL-1.1
 
 set -e
 

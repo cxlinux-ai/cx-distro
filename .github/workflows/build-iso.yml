@@ -12,6 +12,7 @@ on:
     paths:
       - 'iso/**'
       - 'packages/**'
+      - 'scripts/**'
       - 'Makefile'
       - '.github/workflows/build-iso.yml'
   pull_request:
@@ -19,18 +20,9 @@ on:
     paths:
       - 'iso/**'
       - 'packages/**'
+      - 'scripts/**'
       - 'Makefile'
   workflow_dispatch:
-    inputs:
-      iso_type:
-        description: 'ISO type to build'
-        required: true
-        default: 'offline'
-        type: choice
-        options:
-          - netinst
-          - offline
-          - both
 
 env:
   DEBIAN_FRONTEND: noninteractive
@@ -43,36 +35,34 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install build dependencies
+      - name: Build packages in Debian container
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            dpkg-dev \
-            devscripts \
-            debhelper \
-            fakeroot \
-            gnupg
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            -e DEBIAN_FRONTEND=noninteractive \
+            debian:bookworm /bin/bash -c '
+              set -e
+              apt-get update
+              apt-get install -y build-essential dpkg-dev devscripts debhelper fakeroot gnupg
 
-      - name: Build cortex-archive-keyring
-        run: |
-          cd packages/cortex-archive-keyring
-          dpkg-buildpackage -us -uc -b
+              for pkg in cortex-archive-keyring cortex-core cortex-full; do
+                echo "Building $pkg..."
+                cd /workspace/packages/$pkg
+                dpkg-buildpackage -us -uc -b
+                cd /workspace
+              done
 
-      - name: Build cortex-core
-        run: |
-          cd packages/cortex-core
-          dpkg-buildpackage -us -uc -b
-
-      - name: Build cortex-full
-        run: |
-          cd packages/cortex-full
-          dpkg-buildpackage -us -uc -b
+              mkdir -p /workspace/output/packages
+              mv /workspace/packages/*.deb /workspace/output/packages/ 2>/dev/null || true
+              ls -la /workspace/output/packages/
+            '
 
       - name: Upload packages
         uses: actions/upload-artifact@v4
         with:
           name: debian-packages
-          path: packages/*.deb
+          path: output/packages/*.deb
           retention-days: 7
 
   build-iso:
@@ -82,8 +72,18 @@ jobs:
     strategy:
       matrix:
         arch: [amd64]
-        # arm64 builds require self-hosted runner with ARM
     steps:
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false
+          swap-storage: true
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -93,51 +93,63 @@ jobs:
           name: debian-packages
           path: packages/
 
-      - name: Install live-build dependencies
+      - name: Build ISO in Debian container
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            live-build \
-            debootstrap \
-            squashfs-tools \
-            xorriso \
-            isolinux \
-            syslinux-efi \
-            grub-pc-bin \
-            grub-efi-amd64-bin \
-            mtools \
-            dosfstools
+          docker run --rm --privileged \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            -e ARCH=${{ matrix.arch }} \
+            -e DEBIAN_FRONTEND=noninteractive \
+            debian:bookworm /bin/bash -c '
+              set -e
+              echo "=== Installing build dependencies ==="
+              apt-get update
+              apt-get install -y \
+                live-build \
+                debootstrap \
+                squashfs-tools \
+                xorriso \
+                isolinux \
+                syslinux-efi \
+                grub-pc-bin \
+                grub-efi-amd64-bin \
+                mtools \
+                dosfstools \
+                gnupg \
+                debian-archive-keyring
 
-      - name: Configure live-build
-        run: |
-          cd iso/live-build
-          chmod +x auto/*
-          sudo lb config
+              echo "=== Configuring live-build ==="
+              cd /workspace/iso/live-build
+              chmod +x auto/* 2>/dev/null || true
+              lb config
 
-      - name: Copy packages to chroot
-        run: |
-          mkdir -p iso/live-build/config/packages.chroot/
-          cp packages/*.deb iso/live-build/config/packages.chroot/
+              echo "=== Building ISO (packages will be added post-install) ==="
+              lb build 2>&1 | tee /workspace/build.log
 
-      - name: Build ISO
-        run: |
-          cd iso/live-build
-          sudo lb build 2>&1 | tee build.log
+              echo "=== Generating checksums ==="
+              if ls *.iso 1>/dev/null 2>&1; then
+                sha256sum *.iso > SHA256SUMS
+                sha512sum *.iso > SHA512SUMS
+                mkdir -p /workspace/output
+                mv *.iso *.sha* /workspace/output/ 2>/dev/null || true
+                mv SHA256SUMS SHA512SUMS /workspace/output/ 2>/dev/null || true
+              else
+                echo "No ISO files generated"
+                exit 1
+              fi
 
-      - name: Generate checksums
-        run: |
-          cd iso/live-build
-          sha256sum *.iso > SHA256SUMS
-          sha512sum *.iso > SHA512SUMS
+              echo "=== Output ==="
+              ls -la /workspace/output/
+            '
 
       - name: Upload ISO
         uses: actions/upload-artifact@v4
         with:
           name: cortex-linux-${{ matrix.arch }}
           path: |
-            iso/live-build/*.iso
-            iso/live-build/SHA256SUMS
-            iso/live-build/SHA512SUMS
+            output/*.iso
+            output/SHA256SUMS
+            output/SHA512SUMS
           retention-days: 14
 
       - name: Upload build log
@@ -145,7 +157,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-log-${{ matrix.arch }}
-          path: iso/live-build/build.log
+          path: build.log
           retention-days: 7
 
   release:
@@ -177,21 +189,20 @@ jobs:
             SHA512SUMS
           body: |
             ## Cortex Linux ${{ github.ref_name }}
-            
+
             ### Downloads
             - **cortex-linux-*-amd64-offline.iso** - Full offline installer
-            - **cortex-linux-*-amd64-netinst.iso** - Minimal network installer
-            
+
             ### Verification
             ```bash
             sha256sum -c SHA256SUMS
             ```
-            
+
             ### Quick Start
             1. Write ISO to USB: `dd if=cortex-linux-*.iso of=/dev/sdX bs=4M status=progress`
             2. Boot from USB
             3. Follow installation prompts
-            
+
             ### Documentation
             See https://cortexlinux.com/docs for full documentation.
           draft: false
