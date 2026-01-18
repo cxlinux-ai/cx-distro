@@ -36,7 +36,6 @@ lb config noauto \
     --cache true \
     --cache-indices true \
     --cache-packages true \
-    --cache-stages true \
     --checksums sha256 \
     --chroot-filesystem squashfs \
     --clean \
@@ -47,7 +46,6 @@ lb config noauto \
     --firmware-chroot true \
     --hdd-size auto \
     --initramfs live-boot \
-    --initramfs-compression xz \
     --initsystem systemd \
     --interactive false \
     --linux-flavours "${ARCH}" \
