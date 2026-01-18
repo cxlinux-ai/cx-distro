@@ -123,11 +123,7 @@ jobs:
               chmod +x auto/* 2>/dev/null || true
               lb config
 
-              echo "=== Copying packages to chroot ==="
-              mkdir -p config/packages.chroot/
-              cp /workspace/packages/*.deb config/packages.chroot/ 2>/dev/null || echo "No packages to copy"
-
-              echo "=== Building ISO ==="
+              echo "=== Building ISO (packages will be added post-install) ==="
               lb build 2>&1 | tee /workspace/build.log
 
               echo "=== Generating checksums ==="
