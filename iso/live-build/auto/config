@@ -57,8 +57,9 @@ lb config noauto \
     "${@}"
 
 # Configure debootstrap options via config file
-mkdir -p config
-echo "--variant=minbase" > config/debootstrap
-echo "apt-transport-https ca-certificates gnupg" > config/package-lists/debootstrap-includes.list.chroot
+mkdir -p config config/package-lists
+# Use minbase but include gnupg for apt signature verification
+echo "--variant=minbase --include=gnupg,debian-archive-keyring" > config/debootstrap
+echo "apt-transport-https ca-certificates" > config/package-lists/base.list.chroot
 
 echo "Cortex Linux live-build configured successfully"

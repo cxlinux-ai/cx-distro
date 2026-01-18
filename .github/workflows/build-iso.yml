@@ -107,7 +107,9 @@ jobs:
             grub-pc-bin \
             grub-efi-amd64-bin \
             mtools \
-            dosfstools
+            dosfstools \
+            gnupg \
+            debian-archive-keyring
 
       - name: Configure live-build
         run: |
