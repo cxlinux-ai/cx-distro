@@ -1,151 +1,136 @@
 /**
  * Cortex Linux Plymouth Theme
  *
- * Minimal design - CX logo centered on pure black background
- * with three animated loading dots at the bottom.
+ * Animated boot splash - cyberpunk CX penguin mascot
+ * 240 frames at 30 FPS on pure black background.
  */
+
+// Screen size
+screen.w = Window.GetWidth(0);
+screen.h = Window.GetHeight(0);
+screen.half.w = Window.GetWidth(0) / 2;
+screen.half.h = Window.GetHeight(0) / 2;
 
 // Pure black background
 Window.SetBackgroundTopColor(0, 0, 0);
 Window.SetBackgroundBottomColor(0, 0, 0);
 
-// Screen dimensions
-screen_width = Window.GetWidth();
-screen_height = Window.GetHeight();
-screen_x = Window.GetX();
-screen_y = Window.GetY();
+// Question prompt
+question = null;
+answer = null;
 
-// Load and center the CX logo
-logo.image = Image("logo.png");
-logo.width = logo.image.GetWidth();
-logo.height = logo.image.GetHeight();
-logo.x = screen_x + screen_width / 2 - logo.width / 2;
-logo.y = screen_y + screen_height / 2 - logo.height / 2;
-logo.sprite = Sprite(logo.image);
-logo.sprite.SetPosition(logo.x, logo.y, 10);
-logo.sprite.SetOpacity(1);
+// Message
+message = null;
+
+// Password prompt
+bullets = null;
+prompt = null;
+bullet.image = Image.Text("*", 1, 1, 1);
+
+// Flow state
+state.status = "play";
+state.time = 0.0;
 
 // ============================================
-// THREE DOTS LOADING INDICATOR
+// ANIMATION SETUP (Production-grade style)
 // ============================================
 
-// Load dot images
-dot_on = Image("dot-on.png");
-dot_off = Image("dot-off.png");
+// Total number of frames (1-indexed: progress-1.png to progress-240.png)
+NUM = 240;
 
-// Create 3 dot sprites
-dot_count = 3;
-spacing = 30;  // pixels between dots
-dot_y = screen_y + screen_height - 80;  // 80px from bottom
+// Load all animation frames
+for (i = 1; i <= NUM; i++)
+  progress_image[i] = Image("progress-" + i + ".png");
 
-for (i = 0; i < dot_count; i++) {
-    dots[i].sprite = Sprite(dot_off);
-    dots[i].x = screen_x + screen_width / 2 + (i - 1) * spacing - dot_off.GetWidth() / 2;
-    dots[i].sprite.SetPosition(dots[i].x, dot_y, 10);
-    dots[i].sprite.SetOpacity(0.4);
-}
+// Create sprite and center it
+progress_sprite = Sprite();
+progress_sprite.SetX(Window.GetX() + (screen.half.w - progress_image[1].GetWidth() / 2));
+progress_sprite.SetY(Window.GetY() + (screen.half.h - progress_image[1].GetHeight() / 2));
 
-// Animation state
-global.dot_frame = 0;
-global.dot_timer = 0;
+// Animation counter
+progress = 0;
 
-// Animate the dots - each dot lights up in sequence
-fun animate_dots() {
-    global.dot_timer++;
-    
-    // Change active dot every ~15 frames (roughly 0.25 seconds at 60fps)
-    if (global.dot_timer >= 15) {
-        global.dot_timer = 0;
-        global.dot_frame++;
-        if (global.dot_frame >= dot_count) {
-            global.dot_frame = 0;
-        }
-    }
-    
-    // Update dot appearances
-    for (i = 0; i < dot_count; i++) {
-        if (i == global.dot_frame) {
-            dots[i].sprite.SetImage(dot_on);
-            dots[i].sprite.SetOpacity(1.0);
-        } else {
-            dots[i].sprite.SetImage(dot_off);
-            dots[i].sprite.SetOpacity(0.4);
-        }
-    }
-}
+// Speed divisor: lower = faster animation
+// At 60fps Plymouth refresh with SPEED=2, we get ~30fps playback (matches source)
+SPEED = 2;
 
-// Refresh callback - called continuously for animation
+// ============================================
+// REFRESH CALLBACK (Animation Loop)
+// ============================================
+
 fun refresh_callback() {
-    animate_dots();
+    if (state.status == "play") {
+        frame_index = Math.Int(progress / SPEED) % NUM + 1;
+        progress_sprite.SetImage(progress_image[frame_index]);
+        progress++;
+    }
 }
 Plymouth.SetRefreshFunction(refresh_callback);
-
-// Progress callback
-fun progress_callback(duration, progress) {
-    animate_dots();
-}
-Plymouth.SetBootProgressFunction(progress_callback);
 
 // ============================================
 // PASSWORD PROMPT
 // ============================================
 
-fun password_dialogue_setup(title, bullet) {
-    local.entry;
-    local.bullet_image;
+fun DisplayQuestionCallback(prompt_text, entry) {
+    question = null;
+    answer = null;
 
-    bullet_image = Image(bullet);
-    entry.image = Image("entry.png");
-    entry.sprite = Sprite(entry.image);
-    entry.x = screen_x + screen_width / 2 - entry.image.GetWidth() / 2;
-    entry.y = screen_y + screen_height / 2 + 200;
-    entry.sprite.SetPosition(entry.x, entry.y, 10);
+    if (entry == "")
+        entry = "<answer>";
 
-    global.password_entry = entry;
-    global.password_bullet = bullet_image;
-    global.password_bullets = [];
+    question.image = Image.Text(prompt_text, 1, 1, 1);
+    question.sprite = Sprite(question.image);
+    question.sprite.SetX(screen.half.w - question.image.GetWidth() / 2);
+    question.sprite.SetY(screen.h - 4 * question.image.GetHeight());
 
-    prompt.image = Image.Text(title, 0.8, 0.8, 0.9, 1, "Sans 14");
+    answer.image = Image.Text(entry, 1, 1, 1);
+    answer.sprite = Sprite(answer.image);
+    answer.sprite.SetX(screen.half.w - answer.image.GetWidth() / 2);
+    answer.sprite.SetY(screen.h - 2 * answer.image.GetHeight());
+}
+Plymouth.SetDisplayQuestionFunction(DisplayQuestionCallback);
+
+fun DisplayPasswordCallback(nil, bulletCount) {
+    state.status = "pause";
+    totalWidth = bulletCount * bullet.image.GetWidth();
+    startPos = screen.half.w - totalWidth / 2;
+
+    prompt.image = Image.Text("Enter Password", 1, 1, 1);
     prompt.sprite = Sprite(prompt.image);
-    prompt.x = screen_x + screen_width / 2 - prompt.image.GetWidth() / 2;
-    prompt.y = entry.y - prompt.image.GetHeight() - 10;
-    prompt.sprite.SetPosition(prompt.x, prompt.y, 10);
+    prompt.sprite.SetX(screen.half.w - prompt.image.GetWidth() / 2);
+    prompt.sprite.SetY(screen.h - 4 * prompt.image.GetHeight());
 
-    global.password_prompt = prompt;
-}
-
-fun password_dialogue_opacity(opacity) {
-    global.password_entry.sprite.SetOpacity(opacity);
-    global.password_prompt.sprite.SetOpacity(opacity);
-    for (i = 0; global.password_bullets[i]; i++) {
-        global.password_bullets[i].sprite.SetOpacity(opacity);
+    // Clear all bullets (user might hit backspace)
+    bullets = null;
+    for (i = 0; i < bulletCount; i++) {
+        bullets[i].sprite = Sprite(bullet.image);
+        bullets[i].sprite.SetX(startPos + i * bullet.image.GetWidth());
+        bullets[i].sprite.SetY(screen.h - 2 * bullet.image.GetHeight());
     }
 }
+Plymouth.SetDisplayPasswordFunction(DisplayPasswordCallback);
 
-Plymouth.SetDisplayPasswordFunction(password_dialogue_setup);
+// ============================================
+// NORMAL DISPLAY (unset all text)
+// ============================================
 
-fun display_normal_callback() {
-    password_dialogue_opacity(0);
+fun DisplayNormalCallback() {
+    state.status = "play";
+    bullets = null;
+    prompt = null;
+    message = null;
+    question = null;
+    answer = null;
 }
-Plymouth.SetDisplayNormalFunction(display_normal_callback);
+Plymouth.SetDisplayNormalFunction(DisplayNormalCallback);
 
 // ============================================
-// MESSAGES & QUIT
+// MESSAGE CALLBACK
 // ============================================
 
-fun message_callback(text) {
-    message.image = Image.Text(text, 0.6, 0.6, 0.7, 1, "Sans 11");
+fun MessageCallback(text) {
+    message.image = Image.Text(text, 1, 1, 1);
     message.sprite = Sprite(message.image);
-    message.x = screen_x + screen_width / 2 - message.image.GetWidth() / 2;
-    message.y = screen_y + screen_height - 50;
-    message.sprite.SetPosition(message.x, message.y, 10);
+    message.sprite.SetPosition(screen.half.w - message.image.GetWidth() / 2, message.image.GetHeight());
 }
-Plymouth.SetMessageFunction(message_callback);
-
-fun quit_callback() {
-    logo.sprite.SetOpacity(0);
-    for (i = 0; i < dot_count; i++) {
-        dots[i].sprite.SetOpacity(0);
-    }
-}
-Plymouth.SetQuitFunction(quit_callback);
+Plymouth.SetMessageFunction(MessageCallback);

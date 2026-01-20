@@ -607,11 +607,21 @@ build_local_packages() {
     # Build packages needed for ISO (cortex-branding is required)
     # Add more packages here as needed
     local iso_packages="cortex-branding"
+    local build_failed=0
 
     for pkg in $iso_packages; do
         log "Building ${pkg}..."
-        build_single_package "$pkg" || warn "Failed to build ${pkg}"
+        if ! build_single_package "$pkg"; then
+            error "Failed to build ${pkg} - this package is required for ISO"
+            build_failed=1
+        fi
     done
+
+    # Fail early if required packages didn't build
+    if [ "$build_failed" -eq 1 ]; then
+        error "Required package(s) failed to build. Aborting ISO build."
+        exit 1
+    fi
 
     # Copy built packages to packages.chroot for ISO inclusion
     local pkg_dest="${BUILD_DIR}/config/packages.chroot"
@@ -622,7 +632,8 @@ build_local_packages() {
         log "Copied packages to packages.chroot:"
         ls -la "$pkg_dest"/*.deb 2>/dev/null || true
     else
-        warn "No .deb packages found in ${OUTPUT_DIR}"
+        error "No .deb packages found in ${OUTPUT_DIR} - cannot continue"
+        exit 1
     fi
 }
 
