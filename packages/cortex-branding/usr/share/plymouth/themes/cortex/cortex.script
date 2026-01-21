@@ -38,9 +38,9 @@ state.time = 0.0;
 // Total number of frames (1-indexed: progress-1.png to progress-240.png)
 NUM = 240;
 
-// Load all animation frames
+// Load all animation frames (from animation/ subdirectory)
 for (i = 1; i <= NUM; i++)
-  progress_image[i] = Image("progress-" + i + ".png");
+  progress_image[i] = Image("animation/progress-" + i + ".png");
 
 // Create sprite and center it
 progress_sprite = Sprite();
@@ -134,3 +134,14 @@ fun MessageCallback(text) {
     message.sprite.SetPosition(screen.half.w - message.image.GetWidth() / 2, message.image.GetHeight());
 }
 Plymouth.SetMessageFunction(MessageCallback);
+
+// ============================================
+// QUIT CALLBACK (Smooth handoff to GDM)
+// ============================================
+
+fun quit_callback() {
+    // Show the last frame and hold it visible until GDM takes over
+    progress_sprite.SetImage(progress_image[NUM]);
+    progress_sprite.SetOpacity(1);
+}
+Plymouth.SetQuitFunction(quit_callback);
