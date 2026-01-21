@@ -51,8 +51,8 @@ progress_sprite.SetY(Window.GetY() + (screen.half.h - progress_image[1].GetHeigh
 progress = 0;
 
 // Speed divisor: lower = faster animation
-// At 60fps Plymouth refresh with SPEED=2, we get ~30fps playback (matches source)
-SPEED = 2;
+// At 60fps Plymouth refresh with SPEED=1.5, we get ~40fps playback
+SPEED = 1.5;
 
 // ============================================
 // REFRESH CALLBACK (Animation Loop)
