@@ -25,14 +25,31 @@ echo "Configuring Cortex Linux live session..."
 
 mkdir -p /etc/live/config.conf.d
 
-cat > /etc/live/config.conf.d/cortex-live.conf << 'EOF'
+# Generate hashed password for "cortex"
+# live-config expects a crypted password, not plaintext!
+HASHED_PASSWORD=$(echo 'cortex' | openssl passwd -6 -stdin)
+
+cat > /etc/live/config.conf.d/cortex-live.conf << EOF
 # Cortex Linux Live Session Configuration
 LIVE_USER_DEFAULT=cortex
 LIVE_HOSTNAME=cortex-live
 LIVE_USERNAME=cortex
 LIVE_USER_FULLNAME="Cortex Live User"
-LIVE_USER_PASSWORD="cortex"
+LIVE_USER_PASSWORD="${HASHED_PASSWORD}"
 EOF
+
+# ============================================================================
+# Create Live User Fallback
+# ============================================================================
+# Ensure the cortex user exists with the correct password as a fallback
+# in case live-config doesn't run or fails
+if ! id cortex &>/dev/null; then
+    useradd -m -s /bin/bash -c "Cortex Live User" cortex
+fi
+# Set the password to "cortex"
+echo "cortex:cortex" | chpasswd
+# Add to necessary groups
+usermod -aG sudo,audio,video,plugdev,netdev,bluetooth cortex 2>/dev/null || true
 
 # ============================================================================
 # GDM Autologin for Live Session
