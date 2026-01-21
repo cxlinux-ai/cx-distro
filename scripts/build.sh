@@ -515,7 +515,7 @@ configure_live_build() {
         --archive-areas "main contrib non-free non-free-firmware" \
         --architectures "$ARCH" \
         --binary-images iso-hybrid \
-        --bootappend-live "boot=live components username=cortex quiet splash plymouth.ignore-serial-consoles preseed/file=/cdrom/preseed/cortex.preseed" \
+        --bootappend-live "boot=live components username=cortex quiet splash vt.handoff=7 loglevel=3 plymouth.ignore-serial-consoles preseed/file=/cdrom/preseed/cortex.preseed" \
         --debian-installer live \
         --debian-installer-gui false \
         --iso-application "Cortex Linux" \
@@ -526,7 +526,7 @@ configure_live_build() {
         --mirror-binary "$mirror_binary" \
         --cache true \
         --cache-packages true \
-        --cache-indices true \
+        --cache-indices false \
         --cache-stages bootstrap \
         --chroot-squashfs-compression-type "$compression"
 
@@ -557,6 +557,13 @@ build_iso() {
     header "Building ISO"
 
     cd "$BUILD_DIR"
+
+    # Clean binary stage markers to ensure ISO creation runs fresh
+    # This prevents stale markers from causing lb build to skip the binary_iso stage
+    if [ -d ".build" ]; then
+        log "Cleaning binary stage markers..."
+        sudo rm -f .build/binary_* 2>/dev/null || true
+    fi
 
     log "Starting live-build (this may take a while)..."
     sudo lb build
@@ -665,6 +672,12 @@ cmd_clean() {
     if [ -d "$BUILD_DIR" ]; then
         cd "$BUILD_DIR"
         sudo lb clean
+        
+        # Clean local package caches (prevents hash mismatch when packages are rebuilt)
+        # lb clean doesn't touch cache/ for speed, but we need fresh package indices
+        log "Cleaning local package caches..."
+        sudo rm -rf cache/packages.chroot 2>/dev/null || true
+        
         log "Clean complete"
     else
         warn "Build directory not found: ${BUILD_DIR}"

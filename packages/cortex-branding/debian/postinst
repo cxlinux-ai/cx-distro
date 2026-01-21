@@ -47,6 +47,34 @@ case "$1" in
                 plymouth-set-default-theme cortex || true
             fi
 
+            # Configure plymouthd.conf (owned by plymouth package, so we modify in-place)
+            if [ -f /etc/plymouth/plymouthd.conf ]; then
+                # Set Theme=cortex
+                if grep -q "^Theme=" /etc/plymouth/plymouthd.conf; then
+                    sed -i 's|^Theme=.*|Theme=cortex|' /etc/plymouth/plymouthd.conf
+                else
+                    echo "Theme=cortex" >> /etc/plymouth/plymouthd.conf
+                fi
+                # Set ShowDelay=0 for instant splash
+                if grep -q "^ShowDelay=" /etc/plymouth/plymouthd.conf; then
+                    sed -i 's|^ShowDelay=.*|ShowDelay=0|' /etc/plymouth/plymouthd.conf
+                else
+                    echo "ShowDelay=0" >> /etc/plymouth/plymouthd.conf
+                fi
+                # Set DeviceTimeout=8
+                if grep -q "^DeviceTimeout=" /etc/plymouth/plymouthd.conf; then
+                    sed -i 's|^DeviceTimeout=.*|DeviceTimeout=8|' /etc/plymouth/plymouthd.conf
+                else
+                    echo "DeviceTimeout=8" >> /etc/plymouth/plymouthd.conf
+                fi
+                # Set UseSimpleDrm=2 for smooth EFI framebuffer transition (Ubuntu technique)
+                if grep -q "^UseSimpleDrm=" /etc/plymouth/plymouthd.conf; then
+                    sed -i 's|^UseSimpleDrm=.*|UseSimpleDrm=2|' /etc/plymouth/plymouthd.conf
+                else
+                    echo "UseSimpleDrm=2" >> /etc/plymouth/plymouthd.conf
+                fi
+            fi
+
             # Set in plymouthd.defaults as fallback
             if [ -f /usr/share/plymouth/plymouthd.defaults ]; then
                 sed -i 's|^Theme=.*|Theme=cortex|' /usr/share/plymouth/plymouthd.defaults
@@ -56,6 +84,22 @@ case "$1" in
 [Daemon]
 Theme=cortex
 EOF
+            fi
+
+            # Configure GDM to use Xorg instead of Wayland (prevents black screen after Plymouth)
+            if [ -f /etc/gdm3/custom.conf ]; then
+                # Ensure [daemon] section exists and set WaylandEnable=false
+                if grep -q "^\[daemon\]" /etc/gdm3/custom.conf; then
+                    if grep -q "^WaylandEnable=" /etc/gdm3/custom.conf; then
+                        sed -i 's|^WaylandEnable=.*|WaylandEnable=false|' /etc/gdm3/custom.conf
+                    else
+                        # Add WaylandEnable=false after [daemon] section
+                        sed -i '/^\[daemon\]/a WaylandEnable=false' /etc/gdm3/custom.conf
+                    fi
+                else
+                    # Add [daemon] section with WaylandEnable=false
+                    echo -e "\n[daemon]\nWaylandEnable=false" >> /etc/gdm3/custom.conf
+                fi
             fi
 
             # Update initramfs to include Plymouth theme

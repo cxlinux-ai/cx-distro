@@ -249,3 +249,42 @@ jobs:
             See https://github.com/cortexlinux/cortex-distro for documentation.
           draft: false
           prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
+
+      # ========================================================================
+      # Trigger APT Repository Update
+      # ========================================================================
+      # This sends a repository_dispatch event to the apt-repo with package URLs
+      # The apt-repo will download, commit (LFS), and deploy to GitHub Pages
+      
+      - name: Get package info for APT repo
+        id: packages
+        run: |
+          cd release
+          # Build JSON array of packages with metadata
+          PACKAGES="[]"
+          for deb in *.deb; do
+            if [ -f "$deb" ]; then
+              # Extract package name and version from filename
+              PKG_NAME=$(echo "$deb" | sed 's/_.*//') 
+              URL="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${deb}"
+              PACKAGES=$(echo "$PACKAGES" | jq --arg name "$PKG_NAME" --arg url "$URL" --arg file "$deb" \
+                '. += [{"name": $name, "url": $url, "file": $file}]')
+            fi
+          done
+          echo "packages=$PACKAGES" >> $GITHUB_OUTPUT
+          echo "📦 Packages to publish: $PACKAGES"
+
+      - name: Trigger APT Repository Update
+        if: steps.packages.outputs.packages != '[]'
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.APT_REPO_PAT }}
+          repository: cortexlinux/apt-repo
+          event-type: add-packages
+          client-payload: |
+            {
+              "packages": ${{ steps.packages.outputs.packages }},
+              "version": "${{ github.ref_name }}",
+              "suite": "cortex",
+              "source_repo": "${{ github.repository }}"
+            }
