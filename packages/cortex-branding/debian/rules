@@ -11,6 +11,10 @@ export DH_VERBOSE = 1
 %:
 	dh $@
 
+# Don't run 'make clean' - our PNG assets are pre-committed static files
+override_dh_auto_clean:
+	@echo "Skipping make clean (assets are pre-committed)"
+
 override_dh_auto_install:
 	# Install OS identity templates (installed to /etc by postinst to avoid base-files conflict)
 	install -d $(CURDIR)/debian/cortex-branding/usr/share/cortex/templates
@@ -53,6 +57,7 @@ override_dh_auto_install:
 	install -d $(CURDIR)/debian/cortex-branding/etc/dconf/db/local.d
 	install -m 644 etc/dconf/db/local.d/00-cortex-desktop $(CURDIR)/debian/cortex-branding/etc/dconf/db/local.d/
 	install -m 644 etc/dconf/db/local.d/01-cortex-terminal $(CURDIR)/debian/cortex-branding/etc/dconf/db/local.d/
+	install -m 644 etc/dconf/db/local.d/02-disable-initial-setup $(CURDIR)/debian/cortex-branding/etc/dconf/db/local.d/
 	
 	# Install GSettings schema override
 	install -d $(CURDIR)/debian/cortex-branding/usr/share/glib-2.0/schemas
@@ -67,6 +72,10 @@ override_dh_auto_install:
 	# Install GDM theme (GNOME Shell login screen)
 	install -d $(CURDIR)/debian/cortex-branding/usr/share/gnome-shell/theme/Cortex
 	install -m 644 usr/share/gnome-shell/theme/Cortex/gnome-shell.css $(CURDIR)/debian/cortex-branding/usr/share/gnome-shell/theme/Cortex/
+	
+	# Install skel config to disable gnome-initial-setup for new users
+	install -d $(CURDIR)/debian/cortex-branding/etc/skel/.config
+	install -m 644 etc/skel/.config/gnome-initial-setup-done $(CURDIR)/debian/cortex-branding/etc/skel/.config/
 
 override_dh_fixperms:
 	dh_fixperms

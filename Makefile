@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # CX Linux Distribution Build System
 # Copyright 2025 AI Venture Holdings LLC
 # SPDX-License-Identifier: Apache-2.0
@@ -10,20 +11,29 @@
 #   make iso            - Build ISO
 #   make validate       - Validate preseed files
 #   make clean          - Clean build artifacts
+=======
+# Makefile —— Cortex Linux build orchestrator
+SHELL         := /usr/bin/env bash
+.DEFAULT_GOAL := current
+>>>>>>> 4c950da (v2)
 
-.PHONY: all help iso iso-arm64 \
-        validate clean clean-all clean-hooks sync-config test check-deps install-deps \
-        preseed-check provision-check lint branding-package \
-        build-package packages chroot-shell config
+SRC_DIR       := src
+CONFIG_DIR    := config
 
-# Configuration
-SHELL := /bin/bash
-.SHELLFLAGS := -eu -o pipefail -c
+# Architecture detection (defaults to amd64)
+ARCH ?= $(shell dpkg --print-architecture 2>/dev/null || echo amd64)
 
-# Directories
-BUILD_DIR := build
-OUTPUT_DIR := output
+# Common dependencies
+COMMON_DEPS := \
+  binutils \
+  debootstrap \
+  squashfs-tools \
+  xorriso \
+  grub2-common \
+  mtools \
+  dosfstools
 
+<<<<<<< HEAD
 # ISO configuration
 ISO_NAME := cortex-linux
 ISO_VERSION := $(shell date +%Y%m%d)
@@ -146,47 +156,52 @@ packages:
 build-package:
 ifdef PKG
 	@$(BUILD_SCRIPT) build-package $(PKG)
+=======
+# Architecture-specific GRUB packages
+ifeq ($(ARCH),amd64)
+  DEPS := $(COMMON_DEPS) grub-pc-bin grub-efi-amd64-bin
+else ifeq ($(ARCH),arm64)
+  DEPS := $(COMMON_DEPS) grub-efi-arm64-bin
+>>>>>>> 4c950da (v2)
 else
-	@$(BUILD_SCRIPT) build-package all
+  DEPS := $(COMMON_DEPS)
 endif
 
-# =============================================================================
-# Branding
-# =============================================================================
+.PHONY: all fast current clean bootstrap help
 
-# Build cortex-branding package (use 'make packages PKG=cortex-branding' instead)
-branding-package:
-	@$(BUILD_SCRIPT) build-package cortex-branding
+help:
+	@echo "Usage:"
+	@echo "  make          (or make current)   Build current language"
+	@echo "  make all                          Build all languages"
+	@echo "  make fast                         Build fast config languages"
+	@echo "  make clean                        Remove build artifacts"
+	@echo "  make bootstrap                    Validate environment and deps"
 
-# To install branding on a system, use the package:
-#   sudo apt install ./output/cortex-branding_*.deb
-# Or:
-#   sudo dpkg -i output/cortex-branding_*.deb
-
-# =============================================================================
-# Development Helpers
-# =============================================================================
-
-# Enter interactive shell inside the chroot filesystem
-chroot-shell:
-	@if [ -d "$(BUILD_DIR)/chroot" ]; then \
-		echo "Entering chroot..."; \
-		sudo chroot "$(BUILD_DIR)/chroot" /bin/bash; \
-	else \
-		echo "ERROR: Chroot not found at $(BUILD_DIR)/chroot"; \
-		echo "Run 'make iso' first to create it"; \
-		exit 1; \
+bootstrap:
+	@if [ "$$(id -u)" -eq 0 ]; then \
+	  echo "Error: Do not run as root"; \
+	  exit 1; \
 	fi
+	@if ! lsb_release -i | grep -qE "(Ubuntu|Debian|Tuxedo|Cortex)"; then \
+	  echo "Error: Unsupported OS — only Ubuntu, Debian, Tuxedo or Cortex Linux allowed"; \
+	  exit 1; \
+	fi
+	@echo "[MAKE] Installing build dependencies..."
+	@ARCH=$(ARCH) sudo bash scripts/install-deps.sh
 
-# =============================================================================
-# Configuration
-# =============================================================================
+current: bootstrap
+	@echo "[MAKE] Building current language for $(ARCH)..."
+	@cd $(SRC_DIR) && ARCH=$(ARCH) ./build.sh
 
-config:
-	@echo "Current Configuration:"
-	@echo "  ISO_NAME       = $(ISO_NAME)"
-	@echo "  ISO_VERSION    = $(ISO_VERSION)"
-	@echo "  DEBIAN_VERSION = $(DEBIAN_VERSION)"
-	@echo "  ARCH           = $(ARCH) (supported: amd64, arm64)"
-	@echo "  BUILD_DIR      = $(BUILD_DIR)"
-	@echo "  OUTPUT_DIR     = $(OUTPUT_DIR)"
+all: bootstrap
+	@echo "[MAKE] Building ALL languages (all.json)..."
+	@./build_all.sh -c $(CONFIG_DIR)/all.json
+
+fast: bootstrap
+	@echo "[MAKE] Building FAST languages (fast.json)..."
+	@./build_all.sh -c $(CONFIG_DIR)/fast.json
+
+clean:
+	@echo "[MAKE] Cleaning build artifacts..."
+	@./clean_all.sh
+	@echo "[MAKE] Clean complete."

@@ -67,19 +67,33 @@ echo "Language environment has been set to $LANG_MODE"
 # If you are building against Ubuntu 26.04, this should be "resolute".
 # Can be: jammy noble oracular plucky questing resolute
 # Note: Use "noble" (24.04 LTS) for stable builds with ARM64 support
+<<<<<<< HEAD
 export TARGET_UBUNTU_VERSION="plucky"
 
 # This is the apt source for the build.
 export BUILD_UBUNTU_MIRROR="${BUILD_UBUNTU_MIRROR}"
+=======
+export TARGET_UBUNTU_VERSION="noble"
+
+# This is the apt source for the build.
+# It can be any Ubuntu mirror that you prefer.
+# The default is the Aiursoft mirror.
+# You can change it to any other mirror that you prefer.
+# See https://docs.cortex.com/Install/Select-Best-Apt-Source.html
+export BUILD_UBUNTU_MIRROR="http://mirror.aiursoft.com/ubuntu/"
+>>>>>>> 4c950da (v2)
 
 # Target architecture for the build.
 # Can be: amd64, arm64
 # Defaults to amd64 if not set
 export TARGET_ARCH="${ARCH:-amd64}"
 
+<<<<<<< HEAD
 # APT Cacher NG support (optional)
 export APT_CACHER_NG_URL="${APT_CACHER_NG_URL:-}"
 
+=======
+>>>>>>> 4c950da (v2)
 # This is the name of the target OS.
 # Must be lowercase without special characters and spaces
 export TARGET_NAME="cortex"
@@ -193,6 +207,16 @@ fi
 # * ibus-libthai
 export INPUT_METHOD_INSTALL=""
 
+<<<<<<< HEAD
+=======
+# Boolean indicator for whether to install cortex-ibus-rime
+export CONFIG_IBUS_RIME="false"
+if [[ "$CONFIG_IBUS_RIME" == "true" && "$INPUT_METHOD_INSTALL" != *"ibus-rime"* ]]; then
+    echo "Error: CONFIG_IBUS_RIME is set to true, but INPUT_METHOD_INSTALL is not set to ibus-rime"
+    exit 1
+fi
+
+>>>>>>> 4c950da (v2)
 # The default keyboard layout. Can be:
 # * [('xkb', 'us')]
 # * [('xkb', 'us'), ('ibus', 'rime')]
@@ -227,7 +251,12 @@ export CONFIG_WEATHER_LOCATION="['{\"name\":\"San Francisco, California, United 
 #============================
 
 # This is the default apt server in the live system.
+<<<<<<< HEAD
 export LIVE_UBUNTU_MIRROR="${LIVE_UBUNTU_MIRROR}"
+=======
+# It can be any Ubuntu mirror that you prefer.
+export LIVE_UBUNTU_MIRROR="http://archive.ubuntu.com/ubuntu/"
+>>>>>>> 4c950da (v2)
 
 #============================
 # System apps configuration

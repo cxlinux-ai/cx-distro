@@ -10,7 +10,11 @@ set -o pipefail
 echo "Upgrading Cortex Linux..."
 
 VERSION=$(grep -oP "VERSION_ID=\"\K\d+\.\d+" /etc/os-release)
+<<<<<<< HEAD
 URL="https://www.cortexlinux.com/upgrade/$VERSION"
+=======
+URL="https://www.cortex.com/upgrade/$VERSION"
+>>>>>>> 4c950da (v2)
 
 echo "Current fork version is: $VERSION, running upgrade script..."
 

@@ -22,11 +22,16 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 # Architecture detection: use ARCH env var if set, otherwise detect from system
 ARCH="${ARCH:-$(dpkg --print-architecture 2>/dev/null || echo amd64)}"
 =======
 ARCH=$(dpkg --print-architecture)
 >>>>>>> 3b68a92 (Refactor Makefile and GitHub Actions workflow for streamlined ISO build process)
+=======
+# Architecture detection: use ARCH env var if set, otherwise detect from system
+ARCH="${ARCH:-$(dpkg --print-architecture 2>/dev/null || echo amd64)}"
+>>>>>>> 4c950da (v2)
 
 log "Installing Cortex Linux build dependencies for ${ARCH}..."
 
@@ -36,6 +41,7 @@ apt-get update
 # Common packages for all architectures
 COMMON_PACKAGES=(
 <<<<<<< HEAD
+<<<<<<< HEAD
     binutils
 =======
     git
@@ -43,6 +49,9 @@ COMMON_PACKAGES=(
     sudo
     live-build
 >>>>>>> 3b68a92 (Refactor Makefile and GitHub Actions workflow for streamlined ISO build process)
+=======
+    binutils
+>>>>>>> 4c950da (v2)
     debootstrap
     squashfs-tools
     xorriso
@@ -51,9 +60,13 @@ COMMON_PACKAGES=(
     mtools
     dosfstools
 <<<<<<< HEAD
+<<<<<<< HEAD
     grub2-common
 =======
 >>>>>>> 3b68a92 (Refactor Makefile and GitHub Actions workflow for streamlined ISO build process)
+=======
+    grub2-common
+>>>>>>> 4c950da (v2)
     imagemagick
     gnupg
     python3
@@ -61,15 +74,21 @@ COMMON_PACKAGES=(
     dpkg-dev
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 4c950da (v2)
     lz4
     git
     make
     sudo
+<<<<<<< HEAD
 =======
 >>>>>>> 3b68a92 (Refactor Makefile and GitHub Actions workflow for streamlined ISO build process)
 =======
     liblz4-tool
 >>>>>>> 070ed6b (Enhance build scripts and workflows with compression options)
+=======
+>>>>>>> 4c950da (v2)
 )
 
 log "Installing common packages..."
@@ -86,6 +105,7 @@ else
     warn "Unknown architecture: ${ARCH}"
     warn "You may need to install bootloader packages manually"
 <<<<<<< HEAD
+<<<<<<< HEAD
     warn "Supported architectures: amd64, arm64"
 fi
 
@@ -95,3 +115,9 @@ fi
 
 log "All dependencies installed successfully!"
 >>>>>>> 3b68a92 (Refactor Makefile and GitHub Actions workflow for streamlined ISO build process)
+=======
+    warn "Supported architectures: amd64, arm64"
+fi
+
+log "All dependencies installed successfully for ${ARCH}!"
+>>>>>>> 4c950da (v2)

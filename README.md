@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # CX Distro
 
 **Debian-based Distribution Engineering for CX Linux**
@@ -5,18 +6,36 @@
 [![License](https://img.shields.io/badge/license-BSL%201.1-orange.svg)](LICENSE)
 [![Debian](https://img.shields.io/badge/base-Debian%2013%20trixie-A81D33.svg)](https://debian.org)
 [![Build](https://img.shields.io/github/actions/workflow/status/cxlinux-ai/cx-distro/build-iso.yml?branch=main)](https://github.com/cxlinux-ai/cx-distro/actions)
+=======
+# Cortex Linux
 
-## Overview
+[![BSL 1.1 licensed](https://img.shields.io/badge/license-BSL%201.1-blue.svg)](LICENSE)
+[![Discussions](https://img.shields.io/badge/discussions-join-blue)](https://github.com/cortexlinux/cortex-distro/discussions)
+[![Website](https://img.shields.io/website?url=https%3A%2F%2Fwww.cortexlinux.com%2F)](https://www.cortexlinux.com/)
 
+<img align="right" width="100" height="100" src="./src/mods/30-gnome-extension-arcmenu-patch/logo.svg">
+>>>>>>> 4c950da (v2)
+
+Cortex Linux is a custom Ubuntu-based Linux distribution that offers a familiar and easy-to-use experience for anyone moving to Linux.
+
+<<<<<<< HEAD
 `cx-distro` handles everything related to building and distributing CX Linux as a Debian-based operating system. This includes ISO generation, package repository management, automated installation, and supply-chain security.
 
 **CX Linux** is an AI-native operating system that translates natural language commands into Linux operations, eliminating traditional documentation complexity for server management.
+=======
+[Download Cortex Linux](https://www.cortexlinux.com/)
 
-## Quick Start
+![Screenshot](./screenshot.png)
+>>>>>>> 4c950da (v2)
 
-### Build ISO (Debian/Ubuntu host required)
+## How to build
+
+It is suggested to use Cortex Linux to build Cortex Linux.
+
+To build the OS, run the following command:
 
 ```bash
+<<<<<<< HEAD
 # Clone repository
 git clone https://github.com/cxlinux-ai/cortex-distro.git
 cd cx-distro
@@ -29,10 +48,14 @@ make iso
 
 # Build for ARM64
 make iso ARCH=arm64
+=======
+make
+>>>>>>> 4c950da (v2)
 ```
 
-### Output
+To edit the build parameters, modify the `./src/args.sh` file.
 
+<<<<<<< HEAD
 After a successful build:
 ```
 output/
@@ -54,9 +77,13 @@ output/
     └── cortex-linux-0.1.0.spdx.json       # SPDX SBOM
 >>>>>>> aa34a92 (Refactor Cortex Linux documentation and build scripts)
 ```
+=======
+That's it. The built file will be an ISO file in the `./src/dist` directory.
+>>>>>>> 4c950da (v2)
 
-## Architecture
+Simply mount the built ISO file to an virtual machine, and you can start testing it.
 
+<<<<<<< HEAD
 ```
 cx-distro/
 ├── iso/                        # ISO build configuration
@@ -278,7 +305,33 @@ BSL 1.1 - See [LICENSE](LICENSE)
 - Documentation: https://cxlinux-ai.com/docs
 - Issues: https://github.com/cxlinux-ai/cx-distro/issues
 - Discord: https://discord.gg/cxlinux-ai
+=======
+## Document
 
----
+[Read the document](https://docs.cortexlinux.com/)
 
-**Copyright 2025 AI Venture Holdings LLC**
+## License
+
+This project is licensed under the Business Source License 1.1 - see the [LICENSE](LICENSE) file for details
+
+The open-source software included in Cortex Linux is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY.
+
+[List of open-source software included in Cortex Linux](OSS.md)
+
+## Support
+
+For community support and discussion, please join our [Cortex Linux Discussions](https://github.com/cortexlinux/cortex-distro/discussions).
+>>>>>>> 4c950da (v2)
+
+For bug reports and feature requests, please use the [Issues](https://github.com/cortexlinux/cortex-distro/issues) page.
+
+<!-- Planned future work:
+
+* ARM support.
+* WSL support.
+* Docker container support.
+* Layer based OS. Including: WSL\Server\Pro\Lite\Home\Workstation
+* LiberOS.
+* Customized installer instead of ubiquity.
+* Customized apt source with our own override.
+* Customized kernel with our own override. -->

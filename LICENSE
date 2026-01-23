@@ -4,7 +4,11 @@
 
 **Licensor:** AI Venture Holdings LLC
 
+<<<<<<< HEAD
 **Licensed Work:** CX AI Terminal and associated components
+=======
+**Licensed Work:** Cortex Linux v0.1.0 and later versions  
+>>>>>>> 4c950da (v2)
 The Licensed Work is (c) 2025-2026 AI Venture Holdings LLC
 
 **Additional Use Grant:** You may use the Licensed Work for:
@@ -13,7 +17,11 @@ The Licensed Work is (c) 2025-2026 AI Venture Holdings LLC
 - Educational and research purposes
 - Contributing to the Licensed Work
 
+<<<<<<< HEAD
 **Change Date:** Six (6) years from each version release
+=======
+**Change Date:** January 15, 2032 (6 years from release)
+>>>>>>> 4c950da (v2)
 
 **Change License:** Apache License, Version 2.0
 
@@ -42,7 +50,11 @@ If your use of the Licensed Work does not comply with the requirements currently
 3. Provide managed services based on the Licensed Work
 4. Sell, resell, or sublicense the Licensed Work
 
+<<<<<<< HEAD
 For Commercial Use licensing, contact: licensing@cxlinux.ai
+=======
+For Commercial Use licensing, contact: licensing@cortexlinux.com
+>>>>>>> 4c950da (v2)
 
 ---
 
@@ -53,7 +65,11 @@ For Commercial Use licensing, contact: licensing@cxlinux.ai
 - **Pro (up to 25 systems):** $99/month
 - **Enterprise (up to 100 systems):** $299/month
 
+<<<<<<< HEAD
 See https://cxlinux.ai/pricing for current rates.
+=======
+See https://cortexlinux.com/pricing for current rates.
+>>>>>>> 4c950da (v2)
 
 ---
 
@@ -65,6 +81,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ## Notice
 
+<<<<<<< HEAD
 This license is based on the Business Source License 1.1, created by MariaDB Corporation.
 For more information, see https://mariadb.com/bsl11/
 
+=======
+This license is based on the Business Source License 1.1, created by MariaDB Corporation.  
+For more information, see https://mariadb.com/bsl11/
+>>>>>>> 4c950da (v2)

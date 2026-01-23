@@ -95,12 +95,17 @@ apt install $INTERACTIVE \
     gettext \
     cracklib-runtime \
     libfuse2t64 \
+<<<<<<< HEAD
     libfuse3-3 \
+=======
+    libfuse3-4 \
+>>>>>>> 4c950da (v2)
     libopengl0 \
     initramfs-tools \
     --no-install-recommends
 judge "Install basic system tool packages"
 
+<<<<<<< HEAD
 # Install GRUB EFI packages for Ubiquity installer (needed to install GRUB to target system)
 # Note: We install WITH recommends to ensure secure boot support (grub-efi-*-signed) is available
 print_ok "Installing GRUB EFI packages for installer..."
@@ -114,6 +119,8 @@ elif [ "$ARCH" = "arm64" ]; then
 fi
 judge "Install GRUB EFI packages"
 
+=======
+>>>>>>> 4c950da (v2)
 print_ok "Fixing the package base-files to avoid system upgrading it..."
 # Fix the package base-files to avoid system upgrading it. This is because Ubuntu may upgrade the package base-files and caused Cortex Linux to be changed to Ubuntu.
 # This will edit the file /var/lib/dpkg/status and change the status of the package base-files to hold.

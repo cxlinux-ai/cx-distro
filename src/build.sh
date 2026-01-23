@@ -8,6 +8,7 @@ set -o pipefail         # exit on pipeline error
 set -u                  # treat unset variable as error
 export SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 source $SCRIPT_DIR/shared.sh
+<<<<<<< HEAD
 
 # Store original arguments
 ORIGINAL_ARGS=("$@")
@@ -31,6 +32,9 @@ done
 if [ -z "$CONFIG_JSON" ]; then
 source $SCRIPT_DIR/args.sh
 fi
+=======
+source $SCRIPT_DIR/args.sh
+>>>>>>> 4c950da (v2)
 
 function bind_signal() {
     print_ok "Bind signal..."
@@ -71,6 +75,7 @@ function setup_host() {
 }
 
 function download_base_system() {
+<<<<<<< HEAD
     # Configure apt-cacher-ng proxy if set
     DEBOOTSTRAP_ENV="DEBIAN_FRONTEND=noninteractive"
     if [ -n "$APT_CACHER_NG_URL" ]; then
@@ -96,6 +101,10 @@ function download_base_system() {
         $TARGET_UBUNTU_VERSION \
         new_building_os \
         $BUILD_UBUNTU_MIRROR
+=======
+    print_ok "Calling debootstrap to download base debian system for $TARGET_ARCH..."
+    sudo debootstrap --arch=$TARGET_ARCH --variant=minbase --include=git $TARGET_UBUNTU_VERSION new_building_os $BUILD_UBUNTU_MIRROR
+>>>>>>> 4c950da (v2)
     judge "Download base system"
 }
 
@@ -115,6 +124,7 @@ function mount_folers() {
     sudo chroot new_building_os mount none -t devpts /dev/pts
     judge "Mount /proc /sys /dev/pts"
 
+<<<<<<< HEAD
     # Copy DNS configuration from host so chroot can resolve hostnames
     print_ok "Copying DNS configuration from host..."
     if [ -f /etc/resolv.conf ]; then
@@ -140,6 +150,8 @@ function mount_folers() {
         judge "Configure apt proxy in chroot"
     fi
 
+=======
+>>>>>>> 4c950da (v2)
     print_ok "Copying mods to new_building_os/root..."
     sudo cp -r $SCRIPT_DIR/mods new_building_os/root/mods
     sudo cp ./args.sh   new_building_os/root/mods/args.sh
@@ -167,6 +179,7 @@ function umount_folers() {
     judge "Clean up new_building_os /root/mods"
 
     print_ok "Unmounting /proc /sys /dev/pts within chroot..."
+<<<<<<< HEAD
     # Use lazy unmount to handle busy mounts
     sudo chroot new_building_os umount -lf /dev/pts 2>/dev/null || true
     sudo chroot new_building_os umount -lf /sys 2>/dev/null || true
@@ -176,6 +189,16 @@ function umount_folers() {
     print_ok "Unmounting /dev /run outside of chroot..."
     sudo umount -lf new_building_os/dev 2>/dev/null || true
     sudo umount -lf new_building_os/run 2>/dev/null || true
+=======
+    sudo chroot new_building_os umount /dev/pts || sudo chroot new_building_os umount -lf /dev/pts
+    sudo chroot new_building_os umount /sys || sudo chroot new_building_os umount -lf /sys
+    sudo chroot new_building_os umount /proc || sudo chroot new_building_os umount -lf /proc
+    judge "Unmount /proc /sys /dev/pts"
+
+    print_ok "Unmounting /dev /run outside of chroot..."
+    sudo umount new_building_os/dev || sudo umount -lf new_building_os/dev
+    sudo umount new_building_os/run || sudo umount -lf new_building_os/run
+>>>>>>> 4c950da (v2)
     judge "Unmount /dev /run /proc /sys"
 }
 
@@ -183,6 +206,7 @@ function build_iso() {
     print_ok "Building ISO image..."
 
     print_ok "Creating image directory..."
+<<<<<<< HEAD
     # Unmount any existing EFI boot image mounts before removing directory
     if mountpoint -q "$SCRIPT_DIR/image/boot-prep/efi" 2>/dev/null; then
         print_ok "Unmounting existing EFI boot image mount..."
@@ -216,6 +240,12 @@ function build_iso() {
         exit 1
     fi
 
+=======
+    sudo rm -rf image
+    mkdir -p image/{casper,isolinux,.disk}
+    judge "Create image directory"
+
+>>>>>>> 4c950da (v2)
     # copy kernel files (architecture-specific)
     print_ok "Copying kernel files as /casper/vmlinuz and /casper/initrd..."
     
@@ -229,7 +259,10 @@ function build_iso() {
     
     if [ -z "$KERNEL_VERSION" ]; then
         print_error "No kernel found in new_building_os/boot/"
+<<<<<<< HEAD
         print_error "Available files:"
+=======
+>>>>>>> 4c950da (v2)
         ls -la new_building_os/boot/ | head -20
         exit 1
     fi
@@ -238,6 +271,13 @@ function build_iso() {
     sudo cp "new_building_os/boot/vmlinuz-${KERNEL_VERSION}" image/casper/vmlinuz
     sudo cp "new_building_os/boot/initrd.img-${KERNEL_VERSION}" image/casper/initrd
     judge "Copy kernel files"
+<<<<<<< HEAD
+=======
+
+    print_ok "Copying repair.sh to /REPAIR.sh in the image..."
+    sudo cp $SCRIPT_DIR/repair.sh image/REPAIR.sh
+    judge "Copy repair.sh to image"
+>>>>>>> 4c950da (v2)
     
     print_ok "Generating grub.cfg..."
     touch image/$TARGET_NAME
@@ -247,7 +287,11 @@ function build_iso() {
     # Configurations are setup in new_building_os/usr/share/initramfs-tools/scripts/casper-bottom/25configure_init
     TRY_TEXT="Try and Install $TARGET_BUSINESS_NAME"
     TOGO_TEXT="$TARGET_BUSINESS_NAME To Go (Persistent on USB)"
+<<<<<<< HEAD
     cat << EOF > image/boot-prep/grub.cfg
+=======
+    cat << EOF > image/isolinux/grub.cfg
+>>>>>>> 4c950da (v2)
 
 search --set=root --file /$TARGET_NAME
 
@@ -309,7 +353,11 @@ EOF
     sudo mksquashfs new_building_os image/casper/filesystem.squashfs \
         -noappend -no-duplicates -no-recovery \
         -wildcards -b 1M \
+<<<<<<< HEAD
         -comp zstd -Xcompression-level 6 \
+=======
+        -comp zstd -Xcompression-level 19 \
+>>>>>>> 4c950da (v2)
         -e "var/cache/apt/archives/*" \
         -e "root/*" \
         -e "root/.*" \
@@ -377,6 +425,7 @@ Press F12 to enter the boot menu when you start your computer. Select the USB dr
 
 ## More information
 
+<<<<<<< HEAD
 For detailed instructions, please visit [$TARGET_BUSINESS_NAME Document](https://docs.cortexlinux.com/Install/System-Requirements.html).
 EOF
 
@@ -614,19 +663,49 @@ EOF
             
             print_ok "EFI boot image created successfully"
         fi
+=======
+For detailed instructions, please visit [$TARGET_BUSINESS_NAME Document](https://docs.cortex.com/Install/System-Requirements.html).
+EOF
+
+    pushd $SCRIPT_DIR/image
+    print_ok "Creating EFI boot image on /isolinux/efiboot.img..."
+    (
+        cd isolinux && \
+        dd if=/dev/zero of=efiboot.img bs=1M count=10 && \
+        sudo mkfs.vfat efiboot.img && \
+        mkdir efi && \
+        sudo mount efiboot.img efi && \
+        sudo mkdir -p efi/EFI/BOOT && \
+        if [ "$TARGET_ARCH" = "amd64" ]; then
+            sudo grub-install --target=x86_64-efi --efi-directory=efi --boot-directory=efi/EFI/BOOT --uefi-secure-boot --removable --no-nvram
+        elif [ "$TARGET_ARCH" = "arm64" ]; then
+            sudo grub-install --target=arm64-efi --efi-directory=efi --boot-directory=efi/EFI/BOOT --uefi-secure-boot --removable --no-nvram
+        fi && \
+        sudo cp grub.cfg efi/EFI/BOOT/grub.cfg && \
+        sudo umount efi && \
+        rm -rf efi
+>>>>>>> 4c950da (v2)
     )
     judge "Create EFI boot image"
 
     # BIOS boot only for amd64
     if [ "$TARGET_ARCH" = "amd64" ]; then
+<<<<<<< HEAD
         print_ok "Creating BIOS boot image on /boot-prep/bios.img..."
         grub-mkstandalone \
             --format=i386-pc \
             --output=boot-prep/core.img \
+=======
+        print_ok "Creating BIOS boot image on /isolinux/bios.img..."
+        grub-mkstandalone \
+            --format=i386-pc \
+            --output=isolinux/core.img \
+>>>>>>> 4c950da (v2)
             --install-modules="linux16 linux normal iso9660 biosdisk memdisk search tar ls" \
             --modules="linux16 linux normal iso9660 biosdisk search" \
             --locales="" \
             --fonts="" \
+<<<<<<< HEAD
             "boot/grub/grub.cfg=boot-prep/grub.cfg"
         judge "Create BIOS boot image"
 
@@ -639,10 +718,22 @@ EOF
         judge "Create hybrid boot image"
     else
         print_ok "Skipping BIOS boot image (not supported for $TARGET_ARCH)"
+=======
+            "boot/grub/grub.cfg=isolinux/grub.cfg"
+        judge "Create BIOS boot image"
+
+        print_ok "Creating hybrid boot image on /isolinux/bios.img..."
+        cat /usr/lib/grub/i386-pc/cdboot.img isolinux/core.img > isolinux/bios.img
+        judge "Create hybrid boot image"
+    else
+        print_ok "Skipping BIOS boot image (not supported for $TARGET_ARCH)"
+        touch isolinux/bios.img
+>>>>>>> 4c950da (v2)
     fi
 
     print_ok "Creating .disk/info..."
     echo "$TARGET_BUSINESS_NAME $TARGET_BUILD_VERSION $TARGET_UBUNTU_VERSION - Release $TARGET_ARCH ($(date +%Y%m%d))" | sudo tee .disk/info
+<<<<<<< HEAD
     # Set timestamp (like live-build)
     sudo touch .disk/info -d@${SOURCE_DATE_EPOCH}
     judge "Create .disk/info"
@@ -650,11 +741,18 @@ EOF
     print_ok "Creating md5sum.txt..."
     sudo /bin/bash -c "(find . -type f -print0 | xargs -0 md5sum | grep -v -e 'md5sum.txt' -e 'bios.img' -e 'efiboot.img' -e 'boot-prep/core.img' > md5sum.txt)"
     sudo touch md5sum.txt -d@${SOURCE_DATE_EPOCH}
+=======
+    judge "Create .disk/info"
+
+    print_ok "Creating md5sum.txt..."
+    sudo /bin/bash -c "(find . -type f -print0 | xargs -0 md5sum | grep -v -e 'md5sum.txt' -e 'bios.img' -e 'efiboot.img' > md5sum.txt)"
+>>>>>>> 4c950da (v2)
     judge "Create md5sum.txt"
 
     print_ok "Creating iso image on $SCRIPT_DIR/$TARGET_NAME.iso..."
     if [ "$TARGET_ARCH" = "amd64" ]; then
         # AMD64: Hybrid ISO with both BIOS and EFI boot
+<<<<<<< HEAD
         # According to Debian wiki https://wiki.debian.org/RepackBootableISO, AMD64 needs:
         # - boot/grub/efi.img for El Torito EFI boot (already created in EFI step)
         # - isohybrid-gpt-basdat for EFI USB boot support
@@ -668,10 +766,18 @@ EOF
             -full-iso9660-filenames \
             -volid "$TARGET_NAME" \
             -J -J -joliet-long -cache-inodes \
+=======
+        sudo xorriso \
+            -as mkisofs \
+            -iso-level 3 \
+            -full-iso9660-filenames \
+            -volid "$TARGET_NAME" \
+>>>>>>> 4c950da (v2)
             -eltorito-boot boot/grub/bios.img \
                 -no-emul-boot \
                 -boot-load-size 4 \
                 -boot-info-table \
+<<<<<<< HEAD
                 --grub2-boot-info \
                 --grub2-mbr /usr/lib/grub/i386-pc/boot_hybrid.img \
             -eltorito-alt-boot \
@@ -738,6 +844,51 @@ EOF
     print_ok "Generating sha256 checksum..."
     HASH=`sha256sum "$SCRIPT_DIR/dist/$TARGET_BUSINESS_NAME-$TARGET_BUILD_VERSION-$TARGET_ARCH-$LANG_MODE-$DATE.iso" | cut -d ' ' -f 1`
     echo "SHA256: $HASH" > "$SCRIPT_DIR/dist/$TARGET_BUSINESS_NAME-$TARGET_BUILD_VERSION-$TARGET_ARCH-$LANG_MODE-$DATE.sha256"
+=======
+                --eltorito-catalog boot/grub/boot.cat \
+                --grub2-boot-info \
+                --grub2-mbr /usr/lib/grub/i386-pc/boot_hybrid.img \
+            -eltorito-alt-boot \
+                -e EFI/efiboot.img \
+                -no-emul-boot \
+                -append_partition 2 0xef isolinux/efiboot.img \
+            -output "$SCRIPT_DIR/$TARGET_NAME.iso" \
+            -m "isolinux/efiboot.img" \
+            -m "isolinux/bios.img" \
+            -graft-points \
+                "/EFI/efiboot.img=isolinux/efiboot.img" \
+                "/boot/grub/grub.cfg=isolinux/grub.cfg" \
+                "/boot/grub/bios.img=isolinux/bios.img" \
+                "."
+    elif [ "$TARGET_ARCH" = "arm64" ]; then
+        # ARM64: EFI-only ISO (no BIOS boot)
+        sudo xorriso \
+            -as mkisofs \
+            -iso-level 3 \
+            -full-iso9660-filenames \
+            -volid "$TARGET_NAME" \
+            -eltorito-alt-boot \
+                -e EFI/efiboot.img \
+                -no-emul-boot \
+                -append_partition 2 0xef isolinux/efiboot.img \
+            -output "$SCRIPT_DIR/$TARGET_NAME.iso" \
+            -m "isolinux/efiboot.img" \
+            -graft-points \
+                "/EFI/efiboot.img=isolinux/efiboot.img" \
+                "/boot/grub/grub.cfg=isolinux/grub.cfg" \
+                "."
+    fi
+    judge "Create iso image"
+
+    print_ok "Moving iso image to $SCRIPT_DIR/dist/$TARGET_BUSINESS_NAME-$TARGET_BUILD_VERSION-$TARGET_ARCH-$LANG_MODE-$DATE.iso..."
+    mkdir -p $SCRIPT_DIR/dist
+    mv $SCRIPT_DIR/$TARGET_NAME.iso $SCRIPT_DIR/dist/$TARGET_BUSINESS_NAME-$TARGET_BUILD_VERSION-$TARGET_ARCH-$LANG_MODE-$DATE.iso
+    judge "Move iso image"
+
+    print_ok "Generating sha256 checksum..."
+    HASH=`sha256sum $SCRIPT_DIR/dist/$TARGET_BUSINESS_NAME-$TARGET_BUILD_VERSION-$TARGET_ARCH-$LANG_MODE-$DATE.iso | cut -d ' ' -f 1`
+    echo "SHA256: $HASH" > $SCRIPT_DIR/dist/$TARGET_BUSINESS_NAME-$TARGET_BUILD_VERSION-$TARGET_ARCH-$LANG_MODE-$DATE.sha256
+>>>>>>> 4c950da (v2)
     judge "Generate sha256 checksum"
 
     popd
@@ -746,6 +897,7 @@ EOF
 function umount_on_exit() {
     sleep 2
     print_ok "Umount before exit..."
+<<<<<<< HEAD
     # Use absolute paths and check if mounts exist before unmounting
     if mountpoint -q "$SCRIPT_DIR/new_building_os/sys" 2>/dev/null; then
         sudo umount "$SCRIPT_DIR/new_building_os/sys" || sudo umount -lf "$SCRIPT_DIR/new_building_os/sys" || true
@@ -768,6 +920,16 @@ function umount_on_exit() {
 
 function build_single() {
     # Build a single language configuration
+=======
+    sudo umount new_building_os/sys || sudo umount -lf new_building_os/sys || true
+    sudo umount new_building_os/proc || sudo umount -lf new_building_os/proc || true
+    sudo umount new_building_os/dev || sudo umount -lf new_building_os/dev || true
+    sudo umount new_building_os/run || sudo umount -lf new_building_os/run || true
+    judge "Umount before exit"
+}
+
+# =============   main  ================
+>>>>>>> 4c950da (v2)
 cd $SCRIPT_DIR
 bind_signal
 clean
@@ -778,6 +940,7 @@ run_chroot
 umount_folers
 build_iso
 echo "$0 - Initial build is done!"
+<<<<<<< HEAD
 }
 
 function build_from_config() {
@@ -842,3 +1005,5 @@ if [ -n "$CONFIG_JSON" ]; then
 else
     build_single
 fi
+=======
+>>>>>>> 4c950da (v2)

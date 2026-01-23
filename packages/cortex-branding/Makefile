@@ -46,19 +46,27 @@ default: $(ALL_ASSETS)
 	@echo "✓ Branding assets generated"
 	@echo ""
 
-# Force rebuild all
+# Build all assets (only rebuilds if source changed)
 .PHONY: all
-all: clean default
+all: default
 
-# Clean generated assets
+# Clean - DISABLED (assets are pre-committed to git)
+# Use 'make regenerate' if you need to regenerate from source
 .PHONY: clean
 clean:
-	@echo "Cleaning generated assets..."
+	@echo "Clean is disabled - assets are pre-committed static files."
+	@echo "Use 'make regenerate' to rebuild assets from source."
+
+# Force regenerate all assets (use with caution!)
+.PHONY: regenerate
+regenerate:
+	@echo "Regenerating all assets from source..."
 	rm -f $(PLYMOUTH_DIR)/*.png
 	rm -f $(GRUB_DIR)/*.png $(GRUB_DIR)/icons/*.png
 	rm -f $(WALLPAPER_DIR)/*.png
 	rm -f $(LOGO_DIR)/*.png
-	@echo "✓ Clean complete"
+	$(MAKE) default
+	@echo "✓ Regeneration complete"
 
 # Create directories
 $(PLYMOUTH_DIR) $(GRUB_DIR)/icons $(WALLPAPER_DIR) $(LOGO_DIR):

@@ -7,9 +7,15 @@
 # ============================================================================
 [org.gnome.desktop.interface]
 color-scheme='prefer-dark'
+<<<<<<< HEAD
 gtk-theme='Yaru-dark'
 icon-theme='Yaru-dark'
 cursor-theme='Yaru-dark'
+=======
+gtk-theme='Fluent-round-Dark'
+icon-theme='Fluent-dark'
+cursor-theme='Fluent-dark-cursors'
+>>>>>>> 4c950da (v2)
 cursor-size=32
 enable-hot-corners=false
 font-antialiasing='grayscale'
@@ -179,7 +185,11 @@ sleep-inactive-battery-type='suspend'
 # ============================================================================
 [org.gnome.shell]
 disable-user-extensions=false
+<<<<<<< HEAD
 enabled-extensions=['user-theme@gnome-shell-extensions.gcampax.github.com', 'arcmenu@arcmenu.com', 'blur-my-shell@aunetx', 'simple-weather@romanlefler.com', 'customize-ibus@hollowman.ml', 'drive-menu@gnome-shell-extensions.gcampax.github.com', 'ding@rastersoft.com', 'dash-to-panel@jderose9.github.com', 'ProxySwitcher@flannaghan.com', 'switcher@cortexlinux', 'noti-bottom-right@cortexlinux', 'loc@cortexlinux.com', 'lockkeys@vaina.lt', 'tiling-assistant@leleat-on-github', 'mediacontrols@cliffniff.github.com', 'clipboard-indicator@tudmotu.com', 'accent-gtk-theme@brgvos', 'accent-user-theme@brgvos', 'accent-icons-theme@brgvos']
+=======
+enabled-extensions=['user-theme@gnome-shell-extensions.gcampax.github.com', 'arcmenu@arcmenu.com', 'blur-my-shell@aunetx', 'simple-weather@romanlefler.com', 'customize-ibus@hollowman.ml', 'drive-menu@gnome-shell-extensions.gcampax.github.com', 'ding@rastersoft.com', 'dash-to-panel@jderose9.github.com', 'ProxySwitcher@flannaghan.com', 'switcher@cortex', 'noti-bottom-right@cortex', 'loc@cortex.com', 'lockkeys@vaina.lt', 'tiling-assistant@leleat-on-github', 'mediacontrols@cliffniff.github.com', 'clipboard-indicator@tudmotu.com', 'accent-gtk-theme@brgvos', 'accent-user-theme@brgvos', 'accent-icons-theme@brgvos']
+>>>>>>> 4c950da (v2)
 favorite-apps=['firefox.desktop', 'org.gnome.Nautilus.desktop', 'org.gnome.Software.desktop']
 welcome-dialog-last-shown-version='47.0'
 

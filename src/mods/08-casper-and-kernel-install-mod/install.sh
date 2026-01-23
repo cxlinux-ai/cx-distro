@@ -13,6 +13,7 @@ apt install $INTERACTIVE \
     --no-install-recommends
 judge "Install live-boot"
 
+<<<<<<< HEAD
 # Update package list before searching
 print_ok "Updating package list..."
 apt update
@@ -84,3 +85,24 @@ fi
 print_ok "Kernel installation verified successfully"
 KERNEL_COUNT=$(ls -1 /boot/vmlinuz-* 2>/dev/null | wc -l)
 print_ok "Found $KERNEL_COUNT kernel file(s) in /boot/"
+=======
+# Detect architecture for kernel package
+ARCH=$(dpkg --print-architecture)
+if [ "$ARCH" = "amd64" ]; then
+    TARGET_KERNEL_PACKAGE=$(apt search linux-generic-hwe-* 2>/dev/null | awk -F'/' '/linux-generic-hwe-/ {print $1}' | sort | head -n 1)
+elif [ "$ARCH" = "arm64" ]; then
+    TARGET_KERNEL_PACKAGE=$(apt search linux-generic-hwe-* 2>/dev/null | awk -F'/' '/linux-generic-hwe-/ {print $1}' | sort | head -n 1)
+fi
+
+if [ -z "$TARGET_KERNEL_PACKAGE" ]; then
+    # Fallback to generic kernel if HWE not available
+    TARGET_KERNEL_PACKAGE=$(apt search linux-generic 2>/dev/null | awk -F'/' '/^linux-generic / {print $1}' | head -n 1)
+fi
+
+print_ok "Installing kernel package $TARGET_KERNEL_PACKAGE for $ARCH..."
+apt install $INTERACTIVE \
+    thermald \
+    $TARGET_KERNEL_PACKAGE \
+    --no-install-recommends
+judge "Install kernel package"
+>>>>>>> 4c950da (v2)

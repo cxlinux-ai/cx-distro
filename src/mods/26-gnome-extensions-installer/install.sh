@@ -4,6 +4,7 @@ set -u                  # treat unset variable as error
 
 print_ok "Installing gnome extensions"
 #/usr/bin/pip3 install --upgrade gnome-extensions-cli
+<<<<<<< HEAD
 
 pipx install gnome-extensions-cli
 judge "Install gnome-extensions-cli via pipx"
@@ -18,6 +19,9 @@ if ! command -v gext &> /dev/null; then
     print_error "gext command not found after pipx install"
     exit 1
 fi
+=======
+pipx install gnome-extensions-cli
+>>>>>>> 4c950da (v2)
 
 install_extension() {
     local extension_id=$1
@@ -28,22 +32,33 @@ install_extension() {
         print_info "Attempting to install $extension_id (attempt $i/$retries)..."
 
         set +e
+<<<<<<< HEAD
         # Use gext from PATH instead of hardcoded path
         output=$(gext -F install "$extension_id" 2>&1)
         exit_code=$?
+=======
+        output=$(/root/.local/bin/gext -F install "$extension_id" 2>&1)
+>>>>>>> 4c950da (v2)
         set -e
 
         echo "$output"
 
+<<<<<<< HEAD
         if [[ $exit_code -ne 0 ]] || echo "$output" | grep -q -e 'Error' -e 'Cannot'; then
+=======
+        if echo "$output" | grep -q -e 'Error' -e 'Cannot'; then
+>>>>>>> 4c950da (v2)
             print_warn "$extension_id Failed to install, retrying..."
             sleep $((i * 10))
         else
             print_ok "$extension_id Installed successfully"
 
+<<<<<<< HEAD
             # Wait a moment for filesystem to sync
             sleep 1
 
+=======
+>>>>>>> 4c950da (v2)
             if ls "$extension_path/schemas/"*.gschema.xml 1> /dev/null 2>&1; then
                 print_info "Found schemas, compiling for $extension_id..."
                 mkdir -p "$extension_path/schemas"
