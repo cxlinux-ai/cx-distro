@@ -13,55 +13,53 @@ Package: cortex-full
 Architecture: all
 Depends: ${misc:Depends},
  cortex-core,
- docker.io,
- containerd,
- nftables,
+ buildah,
+ skopeo,
+ qemu-utils,
+ libvirt-clients,
+ virtinst,
  fail2ban,
  auditd,
+ audispd-plugins,
  prometheus-node-exporter,
  nginx-light,
  certbot,
  python3-certbot-nginx,
  postgresql-client,
+ mariadb-client,
  redis-tools,
- sqlite3,
- rsync,
- rclone,
- smartmontools,
- nvme-cli,
- htop,
- btop,
- iotop,
- iftop,
- ncdu,
- tmux,
- screen,
- fzf,
- ripgrep,
- bat
+ build-essential,
+ python3-dev
 Recommends:
  firmware-misc-nonfree,
  firmware-linux-nonfree,
- nvidia-detect
+ nvidia-detect,
+ rclone,
+ borgbackup
 Suggests:
  cortex-console,
- podman,
- buildah
+ cortex-secops,
+ cortex-llm,
+ cortex-gpu-nvidia,
+ cortex-gpu-amd
 Description: Cortex Linux full installation - AI-powered server management
  This meta-package installs the complete Cortex Linux system with
  all recommended packages for server management, containers, monitoring,
  and GPU support.
  .
  Includes:
-  - Everything in cortex-core
-  - Docker and container tools
-  - Network security (nftables, fail2ban)
+  - Everything in cortex-core (which includes Docker)
+  - Container tools (buildah, skopeo)
+  - Virtualization (QEMU, libvirt)
+  - Network security (fail2ban, auditd)
   - Monitoring (Prometheus node exporter)
   - Web server (nginx) and TLS (certbot)
-  - Database clients (PostgreSQL, Redis, SQLite)
-  - Storage tools (rsync, rclone, smartmontools)
-  - Modern CLI tools (htop, btop, fzf, ripgrep, bat)
+  - Database clients (PostgreSQL, MariaDB, Redis)
+  - Build tools (gcc, g++, make, python3-dev)
  .
- For GPU support, install the appropriate driver package:
-  - NVIDIA: nvidia-driver
-  - AMD: firmware-amd-graphics
+ For GPU support, also install:
+  - cortex-gpu-nvidia (NVIDIA drivers and CUDA)
+  - cortex-gpu-amd (AMD ROCm runtime)
+ .
+ For security operations, install cortex-secops.
+ For AI/ML workloads, install cortex-llm.

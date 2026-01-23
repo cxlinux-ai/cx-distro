@@ -10,7 +10,8 @@ on:
     branches: [main]
     tags: ['v*']
     paths:
-      - 'iso/**'
+      - 'src/**'
+      - 'config/**'
       - 'packages/**'
       - 'scripts/**'
       - 'docs/branding/**'
@@ -19,7 +20,8 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'iso/**'
+      - 'src/**'
+      - 'config/**'
       - 'packages/**'
       - 'scripts/**'
       - 'docs/branding/**'
@@ -104,38 +106,33 @@ jobs:
             -e DEBIAN_FRONTEND=noninteractive \
             debian:bookworm /bin/bash -c '
               set -e
-              ./scripts/install-deps.sh
-              make check-deps
-              make iso
+              apt-get update
+              apt-get install -y git sudo make shellcheck
+              bash scripts/install-deps.sh
+              make bootstrap
+              make
             '
 
       - name: List output
         if: always()
         run: |
-          ls -la output/ || echo "No output directory"
-          ls -la build/ || echo "No build directory"
+          ls -la src/dist/ || echo "No dist directory"
+          ls -la image/ || echo "No image directory"
 
       - name: Upload ISO
         uses: actions/upload-artifact@v4
         with:
           name: cortex-linux-${{ matrix.arch }}
           path: |
-            output/*.iso
-            output/*.sha256
-          retention-days: 14
-
-      - name: Upload packages
-        uses: actions/upload-artifact@v4
-        with:
-          name: packages-${{ matrix.arch }}
-          path: output/*.deb
+            src/dist/*.iso
+            src/dist/*.sha256
           retention-days: 14
 
       - name: Upload SBOM
         uses: actions/upload-artifact@v4
         with:
           name: sbom-${{ matrix.arch }}
-          path: output/sbom/
+          path: src/dist/*.sbom
           retention-days: 14
         continue-on-error: true
 

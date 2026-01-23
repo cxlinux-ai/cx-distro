@@ -51,19 +51,21 @@ progress_sprite.SetY(Window.GetY() + (screen.half.h - progress_image[1].GetHeigh
 progress = 0;
 
 // Speed divisor: lower = faster animation
-// At 60fps Plymouth refresh with SPEED=1.5, we get ~40fps playback
-SPEED = 1.5;
+// At 60fps Plymouth refresh with SPEED=1.2, we get ~50fps playback
+SPEED = 1.2;
 
 // ============================================
 // REFRESH CALLBACK (Animation Loop)
 // ============================================
 
 fun refresh_callback() {
+    // Only animate if actively playing (not paused, not done)
     if (state.status == "play") {
         frame_index = Math.Int(progress / SPEED) % NUM + 1;
         progress_sprite.SetImage(progress_image[frame_index]);
         progress++;
     }
+    // "done" state: keep showing last frame (already set by progress/quit callback)
 }
 Plymouth.SetRefreshFunction(refresh_callback);
 
@@ -136,11 +138,25 @@ fun MessageCallback(text) {
 Plymouth.SetMessageFunction(MessageCallback);
 
 // ============================================
+// BOOT PROGRESS CALLBACK (Transition to last frame at 100%)
+// ============================================
+
+fun boot_progress_callback(duration, progress_val) {
+    // When boot is complete (progress >= 1.0), lock to final frame
+    if (progress_val >= 1.0) {
+        state.status = "done";
+        progress_sprite.SetImage(progress_image[NUM]);
+    }
+}
+Plymouth.SetBootProgressFunction(boot_progress_callback);
+
+// ============================================
 // QUIT CALLBACK (Smooth handoff to GDM)
 // ============================================
 
 fun quit_callback() {
-    // Show the last frame and hold it visible until GDM takes over
+    // Stop animation
+    state.status = "done";
     progress_sprite.SetImage(progress_image[NUM]);
     progress_sprite.SetOpacity(1);
 }

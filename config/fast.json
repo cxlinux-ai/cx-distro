@@ -1,0 +1,28 @@
+[
+    {
+        "lang_mode": "en_US",
+        "lang_pack_code": "en",
+        "input_method_install": "",
+        "config_ibus_rime": "false",
+        "timezone": "America/Los_Angeles",
+        "config_weather_location": "['{\\\"name\\\":\\\"San Francisco, California, United States\\\",\\\"lat\\\":37.7749295,\\\"lon\\\":-122.4194155}']",
+        "config_input_method": "[('xkb', 'us')]",
+        "live_ubuntu_mirror": "http://archive.ubuntu.com/ubuntu/",
+        "live_firefox_mirror": "",
+        "flathub_mirror": "",
+        "flathub_gpg": ""
+    },
+    {
+        "lang_mode": "zh_CN",
+        "lang_pack_code": "zh",
+        "input_method_install": "ibus-rime",
+        "config_ibus_rime": "true",
+        "timezone": "Asia/Shanghai",
+        "config_weather_location": "['{\\\"name\\\":\\\"苏州, 江苏\\\",\\\"lat\\\":31.311123,\\\"lon\\\":120.6212881}']",
+        "config_input_method": "[('xkb', 'us'), ('ibus', 'rime')]",
+        "live_ubuntu_mirror": "https://mirrors.huaweicloud.com/ubuntu/",
+        "live_firefox_mirror": "",
+        "flathub_mirror": "https://mirrors.ustc.edu.cn/flathub",
+        "flathub_gpg": ""
+    }
+]

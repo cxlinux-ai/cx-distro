@@ -15,12 +15,18 @@ Depends: ${misc:Depends},
  cortex-core,
  python3 (>= 3.11),
  python3-pip,
- python3-venv
+ python3-venv,
+ python3-numpy,
+ python3-scipy,
+ python3-pandas,
+ libopenblas0,
+ libblas3,
+ liblapack3
 Recommends:
  python3-torch,
  python3-transformers,
- python3-numpy,
- python3-scipy
+ build-essential,
+ python3-dev
 Suggests:
  cortex-gpu-nvidia | cortex-gpu-amd,
  cortex-model-tiny,

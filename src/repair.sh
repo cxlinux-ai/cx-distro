@@ -1,0 +1,468 @@
+#!/bin/bash
+
+#=================================================
+#           PLEASE READ THIS BEFORE CONTINUING
+#=================================================
+# This file is used to repair Cortex Linux by mounting
+# the ISO and replacing system files. It is intended
+# for use when the system is broken or corrupted.
+#
+# This file is ONLY compatible with Cortex Linux installed
+# on a system, not live session.
+#
+# Do NOT run this script as root. Run it as a normal
+# user with sudo privileges.
+#
+# Example:
+#    bash ./REPAIR.sh
+#=================================================
+
+
+#=================================================
+#            Part 1:  Helper Functions
+#=================================================
+set -e
+set -o pipefail
+set -u
+
+PKG_TEMP_FILE=$(mktemp)
+export SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+export SQUASH_FILE="$SCRIPT_DIR/casper/filesystem.squashfs"
+trap 'rm -f "$PKG_TEMP_FILE"' EXIT
+
+Green="\033[32m"
+Red="\033[31m"
+Yellow="\033[33m"
+Blue="\033[36m"
+Font="\033[0m"
+GreenBG="\033[42;37m"
+RedBG="\033[41;37m"
+OK="${Green}[  OK  ]${Font}"
+ERROR="${Red}[FAILED]${Font}"
+WARNING="${Yellow}[ WARN ]${Font}"
+
+function print_ok() {
+  echo -e "${OK} ${Blue} $1 ${Font}"
+}
+
+function print_error() {
+  echo -e "${ERROR} ${Red} $1 ${Font}"
+}
+
+function print_warn() {
+  echo -e "${WARNING} ${Yellow} $1 ${Font}"
+}
+
+function judge() {
+  if [[ 0 -eq $? ]]; then
+    print_ok "$1 succeeded"
+    sleep 0.2
+  else
+    print_error "$1 failed"
+    exit 1
+  fi
+}
+
+function clean_up() {
+  print_ok "Cleaning up old files..."
+  sudo umount /mnt/cortex_squashfs >/dev/null 2>&1 || true
+  sudo rm -rf /mnt/cortex_squashfs >/dev/null 2>&1 || true
+  #sudo umount /mnt/cortex_iso >/dev/null 2>&1 || true
+  #sudo rm -rf /mnt/cortex_iso >/dev/null 2>&1 || true
+  print_ok "Cleanup succeeded"
+}
+
+#=================================================
+#            Part 2: Clean up and check
+#=================================================
+
+clean_up
+
+print_ok "Checking ISO and system compatibility..."
+
+# 1. Get ISO info from .disk/info
+DISK_INFO_FILE="$SCRIPT_DIR/.disk/info"
+if [ ! -f "$DISK_INFO_FILE" ]; then
+    print_error ".disk/info file not found in ISO root! Cannot verify target."
+    exit 1
+fi
+
+# Parse "Cortex Linux 1.4.1 questing - Release amd64 (20251111)"
+ISO_PRODUCT=$(awk '{print $1}' "$DISK_INFO_FILE")
+ISO_VERSION=$(awk '{print $2}' "$DISK_INFO_FILE")
+ISO_CODENAME=$(awk '{print $3}' "$DISK_INFO_FILE")
+ISO_ARCH=$(awk '{print $6}' "$DISK_INFO_FILE")
+
+# 2. Get System info from /etc/lsb-release
+if [ ! -f "/etc/lsb-release" ]; then
+    print_error "System /etc/lsb-release file not found. Is this an installed Cortex Linux?"
+    exit 1
+fi
+
+source /etc/lsb-release # Loads $DISTRIB_ID, $DISTRIB_RELEASE, $DISTRIB_CODENAME
+SYS_PRODUCT=$DISTRIB_ID
+SYS_VERSION=$DISTRIB_RELEASE
+SYS_CODENAME=$DISTRIB_CODENAME
+SYS_ARCH=$(dpkg --print-architecture)
+
+# 4. Compare system vs ISO versions with new rules
+  ISO_MAJOR_MINOR=$(echo "$ISO_VERSION" | cut -d'.' -f1-2)
+  SYS_MAJOR_MINOR=$(echo "$SYS_VERSION" | cut -d'.' -f1-2)
+
+  if [[ "$ISO_MAJOR_MINOR" != "$SYS_MAJOR_MINOR" ]]; then
+      # Critical unmatch (e.g., ISO 1.4.x vs System 1.3.x)
+      print_error "Version Mismatch (Major.Minor)."
+      print_error "System is $SYS_VERSION (base $SYS_MAJOR_MINOR), but ISO is $ISO_VERSION (base $ISO_MAJOR_MINOR)."
+      print_error "This ISO cannot repair this system. Aborting."
+      exit 1
+  
+  elif [[ "$ISO_VERSION" != "$SYS_VERSION" ]]; then
+      # Minor unmatch (e.g., ISO 1.4.0 vs System 1.4.1)
+      print_warn "Version Mismatch (Patch)."
+      print_warn "System version ($SYS_VERSION) does not exactly match ISO version ($ISO_VERSION)."
+      print_warn "Since the base version ($ISO_MAJOR_MINOR) matches, you may proceed, but this is not guaranteed."
+      
+      read -p "Do you want to force continue the repair? (y/N): " force_confirm
+      if [[ "$force_confirm" != "y" && "$force_confirm" != "Y" ]]; then
+          print_error "Repair process aborted by user due to version mismatch."
+          exit 1
+      fi
+      
+      print_ok "User confirmed. Forcing repair with different patch version."
+  fi
+
+print_ok "ISO target:   ${Blue}$ISO_PRODUCT $ISO_VERSION ($ISO_CODENAME) $ISO_ARCH${Font}"
+print_ok "System found: ${Blue}$SYS_PRODUCT $SYS_VERSION ($SYS_CODENAME) $SYS_ARCH${Font}"
+
+# 3. Compare compatibility
+if [[ "$SYS_PRODUCT" != "$ISO_PRODUCT" ]]; then
+    print_error "Product mismatch. System is '$SYS_PRODUCT', ISO is for '$ISO_PRODUCT'."
+    exit 1
+fi
+
+if [[ "$SYS_CODENAME" != "$ISO_CODENAME" ]]; then
+    print_error "Codename mismatch. System is '$SYS_CODENAME', ISO is for '$ISO_CODENAME'."
+    print_error "This ISO can only repair '$ISO_CODENAME' systems."
+    exit 1
+fi
+
+if [[ "$SYS_ARCH" != "$ISO_ARCH" ]]; then
+    print_error "Architecture mismatch. System is '$SYS_ARCH', ISO is for '$ISO_ARCH'."
+    exit 1
+fi
+
+print_ok "System is compatible with this repair ISO."
+judge "System compatibility check"
+
+echo -e "${Yellow}WARNING: This script is for repairing ${ISO_PRODUCT} ($ISO_CODENAME) systems.${Font}"
+echo -e "${Yellow}This ISO (${ISO_VERSION}) will be used to repair your installed system (${SYS_VERSION}).${Font}"
+echo -e "${Yellow}Some configuration files may be overwritten during this process. Including:${Font}"
+echo -e "${Yellow}- APT sources and preferences files${Font}"
+echo -e "${Yellow}- GNOME session and Wayland session files${Font}"
+echo -e "${Yellow}- GNOME extensions, icons, themes, and backgrounds${Font}"
+echo -e "${Yellow}- System version information files${Font}"
+echo -e "${Yellow}Please ensure you have backups of any important data before proceeding.${Font}"
+read -p "Do you want to continue? (y/N): " confirm
+if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+    print_error "Repair process aborted by user."
+    exit 1
+fi
+
+print_ok "Ensure current user is not root..."
+if [[ "$(id -u)" -eq 0 ]]; then
+    print_error "This script must not be run as root. Please run as a normal user with sudo privileges."
+    exit 1
+fi
+
+print_ok "Checking for incompatible initramfs system..."
+if command -v dracut &> /dev/null || dpkg -l dracut 2>/dev/null | grep -q "^ii"; then
+    print_error "This system is using dracut as the initramfs system."
+    print_error "Cortex Linux cannot repair systems using dracut because:"
+    print_error "  - The repair process will attempt to install initramfs-tools"
+    print_error "  - This will conflict with dracut and may cause boot failure"
+    print_error ""
+    print_error "Please use a clean Cortex Linux installation or manually resolve the conflict."
+    exit 1
+fi
+print_ok "No conflicting initramfs system detected."
+
+#=================================================
+#            Part 3: Verify content and mount
+#=================================================
+
+print_ok "Installing required packages (curl)..."
+sudo apt install -y curl || sudo apt update && sudo apt install -y curl
+judge "Install required packages (curl)"
+
+print_ok "Verifying content in the ISO..."
+(cd ${SCRIPT_DIR} && sudo md5sum -c md5sum.txt)
+judge "ISO content integrity verification"
+
+print_ok "Mounting the filesystem.squashfs..."
+sudo mkdir -p /mnt/cortex_squashfs
+sudo mount -o loop,ro "$SQUASH_FILE" /mnt/cortex_squashfs
+judge "Mount filesystem.squashfs"
+
+#=================================================
+#            Part 4: Reset to a clean Ubuntu with Mozilla PPA
+#=================================================
+
+# backup
+print_ok "Backing up APT configuration files..."
+sudo mkdir /etc/apt/preferences.d.bak >/dev/null 2>&1 || true
+sudo rsync -Aax /etc/apt/preferences.d/ /etc/apt/preferences.d.bak/ >/dev/null 2>&1 || true
+judge "Backup APT configuration files"
+# reset
+
+print_ok "Resetting APT configuration files..."
+sudo rm /etc/apt/preferences.d/* >/dev/null 2>&1 || true
+judge "Reset APT configuration files"
+
+print_ok "Updating package mirrors..."
+# Mirror script - update this URL if needed
+# curl -s https://github.com/cortexlinux/cortex-distro/raw/main/scripts/mirror.sh | bash
+sudo apt update
+judge "Update package mirrors"
+
+print_ok "Updating Mozilla Team PPA..."
+sudo rm -f /etc/apt/sources.list.d/mozillateam*
+sudo rsync -Aax /mnt/cortex_squashfs/etc/apt/sources.list.d/mozillateam* /etc/apt/sources.list.d/
+sudo apt update
+judge "Update Mozilla Team PPA"
+
+#=================================================
+#            Part 5: Install all missing packages and remove obsolete packages
+#=================================================
+
+print_ok "Generating package list for upgrade..."
+MANIFEST_FILE="$SCRIPT_DIR/casper/filesystem.manifest-desktop"
+
+cut -d' ' -f1 "$MANIFEST_FILE" \
+  | grep -v '^linux-' \
+  | grep -v '^lib' \
+  | grep -v '^plymouth-' \
+  | grep -v '^software-properties-' \
+  | grep -v '^python3-software-properties-' \
+  | grep -v '=' > "$PKG_TEMP_FILE"
+
+if [ ! -s "$PKG_TEMP_FILE" ]; then
+    print_ok "No missing packages to install."
+else
+    if xargs sudo apt install --no-install-recommends --allow-change-held-packages -y < "$PKG_TEMP_FILE" > /tmp/cortex-fast-install.log 2>&1; then
+        print_ok "Fast mode installation successful."
+        rm -f /tmp/cortex-fast-install.log
+    
+    else
+        print_warn "Fast mode failed. Retrying one by one (robust mode)..."
+        print_ok "This may take 5-30 minutes. Only errors will be displayed."
+        
+        PKG_INSTALL_LOG="/tmp/cortex-pkg-install.log"
+
+        while read -r pkg; do
+            if [ -n "$pkg" ]; then
+                if sudo apt install --no-install-recommends -y "$pkg" > "$PKG_INSTALL_LOG" 2>&1; then
+                    : # Bash的 "no-op" (空操作)
+                else
+                    print_warn "Failed to install package: '$pkg'. Details:"
+                    cat "$PKG_INSTALL_LOG"
+                    echo -e "${Red}-----------------------------------------------------${Font}"
+                fi
+            fi
+        done < "$PKG_TEMP_FILE"
+        
+        rm -f "$PKG_INSTALL_LOG"
+        print_ok "Robust missing package install mode finished."
+    fi
+fi
+judge "Install missing packages"
+
+print_ok "Removing obsolete packages..."
+sudo apt purge -y \
+  distro-info \
+  software-properties-gtk \
+  ubuntu-advantage-tools \
+  ubuntu-pro-client \
+  ubuntu-pro-client-l10n \
+  ubuntu-release-upgrader-gtk \
+  ubuntu-report \
+  ubuntu-settings \
+  update-notifier-common \
+  update-manager \
+  update-manager-core \
+  update-notifier \
+  ubuntu-release-upgrader-core \
+  ubuntu-advantage-desktop-daemon \
+  kgx --allow-change-held-packages
+judge "Remove obsolete packages"
+
+#=================================================
+#            Part 6: Apply the modifications of Cortex Linux
+#=================================================
+install_spg_clean() {
+  print_ok "Installing software-properties-gtk clean edition..."
+
+  SP_BUILD_DIR=$(mktemp -d)
+  print_ok "Created temporary build directory: $SP_BUILD_DIR"
+
+  sudo apt install -y --no-install-recommends \
+      software-properties-common \
+      python3-dateutil \
+      gir1.2-handy-1 \
+      libgtk3-perl \
+      dpkg-dev
+  judge "Install build dependencies"
+
+  pushd "$SP_BUILD_DIR" > /dev/null
+      print_ok "Downloading software-properties-gtk..."
+      apt-get download "software-properties-gtk"
+      judge "Download software-properties-gtk"
+
+      DEB_FILE=$(ls *.deb | head -n 1)
+      if [ -z "$DEB_FILE" ]; then
+          print_error "No .deb file downloaded!"
+          exit 1
+      fi
+      print_ok "Found $DEB_FILE"
+
+      print_ok "Extracting $DEB_FILE..."
+      mkdir original
+      dpkg-deb -R "$DEB_FILE" original
+      judge "Extract $DEB_FILE"
+
+      print_ok "Patching control file..."
+      sed -i \
+        '/^Depends:/s/, *ubuntu-pro-client//; /^Depends:/s/, *ubuntu-advantage-desktop-daemon//' \
+        original/DEBIAN/control
+      judge "Edit control file"
+
+      MOD_DEB="modified-software-properties-gtk.deb"
+      print_ok "Repackaging into $MOD_DEB..."
+      dpkg-deb -b original "$MOD_DEB"
+      judge "Repackage $MOD_DEB"
+
+      print_ok "Installing modified package..."
+      sudo apt install -y "./$MOD_DEB"
+      judge "Install modified $MOD_DEB"
+
+  popd > /dev/null
+  rm -rf "$SP_BUILD_DIR"
+  judge "Cleanup temporary build directory"
+
+  TARGET_PY_FILE="/usr/lib/python3/dist-packages/softwareproperties/gtk/SoftwarePropertiesGtk.py"
+  if [ -f "$TARGET_PY_FILE" ]; then
+      print_ok "Patching UI logic in $TARGET_PY_FILE..."
+      sudo cp "$TARGET_PY_FILE" "${TARGET_PY_FILE}.bak"
+
+      sudo sed -i '/^from \.UbuntuProPage import UbuntuProPage$/d' "$TARGET_PY_FILE"
+      sudo sed -i '/^[[:space:]]*def init_ubuntu_pro/,/^[[:space:]]*$/d' "$TARGET_PY_FILE"
+      sudo sed -i '/^[[:space:]]*if is_current_distro_lts()/,/self.init_ubuntu_pro()/d' "$TARGET_PY_FILE"
+      judge "Edit $TARGET_PY_FILE"
+  else
+      print_error "Target python file not found: $TARGET_PY_FILE"
+      exit 1
+  fi
+}
+
+install_spg_clean
+
+print_ok "Upgrading GNOME Shell extensions..."
+sudo rsync -Aax --update --delete /mnt/cortex_squashfs/usr/share/gnome-shell/extensions/ /usr/share/gnome-shell/extensions/
+judge "Upgrade GNOME Shell extensions"
+
+print_ok "Upgrading icon and theme files..."
+sudo rsync -Aax --update --delete /mnt/cortex_squashfs/usr/share/icons/ /usr/share/icons/
+sudo rsync -Aax --update --delete /mnt/cortex_squashfs/usr/share/themes/ /usr/share/themes/
+judge "Upgrade icon and theme files"
+
+print_ok "Installing Intel SOF Mod..."
+sudo rsync -Aax --update /mnt/cortex_squashfs/lib/firmware/intel/sof* /lib/firmware/intel/
+sudo rsync -Aax --update /mnt/cortex_squashfs/usr/local/bin/sof-* /usr/local/bin/
+sudo rsync -Aax --update /mnt/cortex_squashfs/usr/share/alsa/ucm2/ /usr/share/alsa/ucm2/
+judge "Install Intel SOF Mod"
+
+print_ok "Upgrading desktop backgrounds..."
+sudo rsync -Aax --update /mnt/cortex_squashfs/usr/share/backgrounds/ /usr/share/backgrounds/
+sudo rsync -Aax --update /mnt/cortex_squashfs/usr/share/gnome-background-properties/ /usr/share/gnome-background-properties/
+judge "Upgrade desktop backgrounds"
+
+print_ok "Upgrading APT configuration files..."
+sudo rsync -Aax --update --delete /mnt/cortex_squashfs/etc/apt/apt.conf.d/ /etc/apt/apt.conf.d/
+judge "Upgrade APT configuration files"
+
+print_ok "Upgrading APT preferences files..."
+sudo rsync -Aax --update --delete /mnt/cortex_squashfs/etc/apt/preferences.d/ /etc/apt/preferences.d/
+judge "Upgrade APT preferences files"
+
+sudo apt-mark hold software-properties-gtk || true
+sudo apt-mark hold base-files || true
+sudo apt-mark hold plymouth-theme-spinner || true
+sudo apt-mark hold software-properties-common || true
+
+print_ok "Upgrading session files..."
+sudo rsync -Aax --update --delete /mnt/cortex_squashfs/usr/share/gnome-session/sessions/ /usr/share/gnome-session/sessions/
+sudo rsync -Aax --update --delete /mnt/cortex_squashfs/usr/share/wayland-sessions/ /usr/share/wayland-sessions/
+judge "Upgrade session files"
+
+print_ok "Upgrading pixmaps..."
+sudo rsync -Aax --update --delete /mnt/cortex_squashfs/usr/share/pixmaps/ /usr/share/pixmaps/
+judge "Upgrade pixmaps"
+
+print_ok "Upgrading /etc/skel/ files..."
+sudo rsync -Aax --update --delete /mnt/cortex_squashfs/etc/skel/ /etc/skel/
+judge "Upgrade /etc/skel/ files"
+
+print_ok "Upgrading python-apt templates and distro info..."
+sudo rsync -Aax --update --delete /mnt/cortex_squashfs/usr/share/python-apt/templates/ /usr/share/python-apt/templates/
+sudo rsync -Aax --update --delete /mnt/cortex_squashfs/usr/share/distro-info/ /usr/share/distro-info/
+judge "Upgrade python-apt templates and distro info"
+
+print_ok "Upgrading deskmon service..."
+sudo rsync -Aax /mnt/cortex_squashfs/usr/local/bin/deskmon /usr/local/bin/deskmon
+sudo rsync -Aax /mnt/cortex_squashfs/etc/systemd/user/deskmon.service /etc/systemd/user/deskmon.service
+sudo rsync -Aax /mnt/cortex_squashfs/etc/systemd/user/default.target.wants/deskmon.service /etc/systemd/user/default.target.wants/deskmon.service
+judge "Upgrade deskmon service"
+
+print_ok "Upgrading gnome-session and wayland session files..."
+sudo rsync -Aax --update --delete /mnt/cortex_squashfs/usr/share/gnome-session/sessions/ /usr/share/gnome-session/sessions/
+sudo rsync -Aax --update --delete /mnt/cortex_squashfs/usr/share/wayland-sessions/ /usr/share/wayland-sessions/
+judge "Upgrade gnome-session and wayland session files"
+
+print_ok "Updating system version information..."
+sudo rsync -Aax /mnt/cortex_squashfs/usr/local/bin/do_cortex_upgrade /usr/local/bin/do_cortex_upgrade
+sudo rsync -Aax /mnt/cortex_squashfs/usr/local/bin/do-cortex-autorepair /usr/local/bin/do-cortex-autorepair
+sudo rsync -Aax /mnt/cortex_squashfs/usr/local/bin/toggle_network_stats /usr/local/bin/toggle_network_stats
+sudo rsync -Aax /mnt/cortex_squashfs/usr/bin/add-apt-repository /usr/bin/add-apt-repository
+sudo rsync -Aax /mnt/cortex_squashfs/etc/lsb-release /etc/lsb-release
+sudo rsync -Aax /mnt/cortex_squashfs/etc/issue /etc/issue
+sudo rsync -Aax /mnt/cortex_squashfs/etc/issue.net /etc/issue.net
+sudo rsync -Aax /mnt/cortex_squashfs/etc/os-release /etc/os-release
+sudo rsync -Aax /mnt/cortex_squashfs/usr/lib/os-release /usr/lib/os-release
+sudo rsync -Aax /mnt/cortex_squashfs/etc/legal /etc/legal
+sudo rsync -Aax /mnt/cortex_squashfs/etc/sysctl.d/20-apparmor-donotrestrict.conf /etc/sysctl.d/20-apparmor-donotrestrict.conf
+sudo rsync -Aax /mnt/cortex_squashfs/var/lib/flatpak/repo/config /var/lib/flatpak/repo/config
+sudo rsync -Aax /mnt/cortex_squashfs/usr/share/plymouth/themes/spinner/bgrt-fallback.png /usr/share/plymouth/themes/spinner/bgrt-fallback.png
+sudo rsync -Aax /mnt/cortex_squashfs/usr/share/plymouth/themes/spinner/watermark.png /usr/share/plymouth/themes/spinner/watermark.png
+sudo rsync -Aax /mnt/cortex_squashfs/usr/share/plymouth/ubuntu-logo.png /usr/share/plymouth/ubuntu-logo.png
+judge "Update system version information"
+
+#=================================================
+#            Part 7: Finalization
+#=================================================
+
+print_ok "Updating initramfs..."
+sudo update-initramfs -u -k all
+judge "Update initramfs"
+
+print_ok "Updating GRUB configuration..."
+sudo update-grub
+judge "Update GRUB configuration"
+
+print_ok "Upgrading installed packages..."
+sudo apt upgrade -y --allow-downgrades --allow-remove-essential --allow-change-held-packages
+sudo apt autoremove --purge -y
+judge "System package upgrade"
+
+print_ok "Upgrade completed! Please reboot your system to apply all changes."
+
+print_ok "Starting cleanup..."
+clean_up

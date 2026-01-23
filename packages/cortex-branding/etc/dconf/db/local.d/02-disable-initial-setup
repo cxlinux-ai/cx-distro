@@ -1,0 +1,8 @@
+# Cortex Linux - Disable GNOME Initial Setup
+# We use Calamares for installation instead
+# Users go straight to desktop without the GNOME wizard
+
+[org/gnome/initial-setup]
+# Mark initial setup as already completed
+first-run=false
+
