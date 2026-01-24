@@ -16,19 +16,27 @@ judge "Install live-boot"
 # Detect architecture for kernel package
 ARCH=$(dpkg --print-architecture)
 if [ "$ARCH" = "amd64" ]; then
+    # For amd64, use the HWE kernel: linux-generic-hwe-*
     TARGET_KERNEL_PACKAGE=$(apt search linux-generic-hwe-* 2>/dev/null | awk -F'/' '/linux-generic-hwe-/ {print $1}' | sort | head -n 1)
 elif [ "$ARCH" = "arm64" ]; then
-    TARGET_KERNEL_PACKAGE=$(apt search linux-generic-hwe-* 2>/dev/null | awk -F'/' '/linux-generic-hwe-/ {print $1}' | sort | head -n 1)
+    # For arm64, HWE kernel is generally not provided; use linux-generic instead
+    TARGET_KERNEL_PACKAGE=$(apt search linux-generic 2>/dev/null | awk -F'/' '/^linux-generic / {print $1}' | head -n 1)
 fi
 
 if [ -z "$TARGET_KERNEL_PACKAGE" ]; then
-    # Fallback to generic kernel if HWE not available
+    # Fallback to generic kernel if nothing found above
     TARGET_KERNEL_PACKAGE=$(apt search linux-generic 2>/dev/null | awk -F'/' '/^linux-generic / {print $1}' | head -n 1)
 fi
 
 print_ok "Installing kernel package $TARGET_KERNEL_PACKAGE for $ARCH..."
-apt install $INTERACTIVE \
-    thermald \
-    $TARGET_KERNEL_PACKAGE \
-    --no-install-recommends
+if [ "$ARCH" = "amd64" ]; then
+    apt install $INTERACTIVE \
+        thermald \
+        $TARGET_KERNEL_PACKAGE \
+        --no-install-recommends
+else
+    apt install $INTERACTIVE \
+        $TARGET_KERNEL_PACKAGE \
+        --no-install-recommends
+fi
 judge "Install kernel package"

@@ -49,8 +49,46 @@ function setup_host() {
 }
 
 function download_base_system() {
-    print_ok "Calling debootstrap to download base debian system for $TARGET_ARCH..."
-    sudo debootstrap --arch=$TARGET_ARCH --variant=minbase --include=git $TARGET_UBUNTU_VERSION new_building_os $BUILD_UBUNTU_MIRROR
+    # Set architecture-specific mirror if not already set
+    if [ -z "$BUILD_UBUNTU_MIRROR" ]; then
+        if [ "$TARGET_ARCH" = "amd64" ]; then
+            BUILD_UBUNTU_MIRROR="http://archive.ubuntu.com/ubuntu/"
+        elif [ "$TARGET_ARCH" = "arm64" ]; then
+            BUILD_UBUNTU_MIRROR="http://ports.ubuntu.com/ubuntu-ports/"
+        else
+            print_error "Unsupported architecture: $TARGET_ARCH"
+            exit 1
+        fi
+    fi
+    
+    # Export BUILD_UBUNTU_MIRROR so it's available to mods in chroot
+    export BUILD_UBUNTU_MIRROR
+    
+    # Configure apt-cacher-ng proxy if set
+    DEBOOTSTRAP_ENV="DEBIAN_FRONTEND=noninteractive"
+    if [ -n "$APT_CACHER_NG_URL" ]; then
+        print_ok "Using apt-cacher-ng proxy: $APT_CACHER_NG_URL"
+        export http_proxy="$APT_CACHER_NG_URL"
+        export https_proxy="$APT_CACHER_NG_URL"
+        export HTTP_PROXY="$APT_CACHER_NG_URL"
+        export HTTPS_PROXY="$APT_CACHER_NG_URL"
+        DEBOOTSTRAP_ENV="$DEBOOTSTRAP_ENV http_proxy=$APT_CACHER_NG_URL https_proxy=$APT_CACHER_NG_URL"
+    fi
+    
+    print_ok "Calling debootstrap to download base Ubuntu system for $TARGET_ARCH..."
+    print_warn "This may take 5-15 minutes depending on your network speed..."
+    print_warn "Downloading from: $BUILD_UBUNTU_MIRROR"
+    print_warn "Target version: $TARGET_UBUNTU_VERSION"
+    
+    # Use verbose mode to show progress
+    sudo $DEBOOTSTRAP_ENV debootstrap \
+        --arch=$TARGET_ARCH \
+        --variant=minbase \
+        --include=git \
+        --verbose \
+        $TARGET_UBUNTU_VERSION \
+        new_building_os \
+        $BUILD_UBUNTU_MIRROR
     judge "Download base system"
 }
 
@@ -81,7 +119,11 @@ function run_chroot() {
     print_warn "============================================"
     print_warn "   The following will run in chroot ENV!"
     print_warn "============================================"
-    sudo chroot new_building_os /usr/bin/env DEBIAN_FRONTEND=${DEBIAN_FRONTEND:-readline} /root/mods/install_all_mods.sh -
+    # Pass BUILD_UBUNTU_MIRROR as environment variable to chroot
+    sudo chroot new_building_os /usr/bin/env \
+        DEBIAN_FRONTEND=${DEBIAN_FRONTEND:-readline} \
+        BUILD_UBUNTU_MIRROR="$BUILD_UBUNTU_MIRROR" \
+        /root/mods/install_all_mods.sh -
     print_warn "============================================"
     print_warn "   chroot ENV execution completed!"
     print_warn "============================================"

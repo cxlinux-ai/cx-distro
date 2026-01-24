@@ -67,19 +67,27 @@ echo "Language environment has been set to $LANG_MODE"
 # If you are building against Ubuntu 26.04, this should be "resolute".
 # Can be: jammy noble oracular plucky questing resolute
 # Note: Use "noble" (24.04 LTS) for stable builds with ARM64 support
-export TARGET_UBUNTU_VERSION="noble"
+export TARGET_UBUNTU_VERSION="plucky"
 
 # This is the apt source for the build.
 # It can be any Ubuntu mirror that you prefer.
-# The default is the Aiursoft mirror.
-# You can change it to any other mirror that you prefer.
-# See https://docs.cortex.com/Install/Select-Best-Apt-Source.html
-export BUILD_UBUNTU_MIRROR="http://mirror.aiursoft.com/ubuntu/"
+# Default uses architecture-specific mirrors:
+#   - amd64: archive.ubuntu.com (main archive)
+#   - arm64: ports.ubuntu.com (ports archive, required for ARM64)
+# You can override this by setting BUILD_UBUNTU_MIRROR before running make.
+# Note: This will be set automatically based on TARGET_ARCH if not specified
+export BUILD_UBUNTU_MIRROR="${BUILD_UBUNTU_MIRROR:-}"
 
 # Target architecture for the build.
 # Can be: amd64, arm64
 # Defaults to amd64 if not set
 export TARGET_ARCH="${ARCH:-amd64}"
+
+# APT Cacher NG support (optional)
+# If set, all apt/debootstrap operations will use this proxy for caching
+# Default: http://localhost:3142
+# Set to empty string to disable caching: export APT_CACHER_NG_URL=""
+export APT_CACHER_NG_URL="${APT_CACHER_NG_URL:-http://localhost:3142}"
 
 # This is the name of the target OS.
 # Must be lowercase without special characters and spaces
@@ -236,7 +244,22 @@ export CONFIG_WEATHER_LOCATION="['{\"name\":\"San Francisco, California, United 
 
 # This is the default apt server in the live system.
 # It can be any Ubuntu mirror that you prefer.
+# Default uses architecture-specific mirrors:
+#   - amd64: archive.ubuntu.com (main archive)
+#   - arm64: ports.ubuntu.com (ports archive, required for ARM64)
+# You can override this by setting LIVE_UBUNTU_MIRROR before running make.
+# Note: This will be set automatically based on TARGET_ARCH if not specified
+if [ -z "${LIVE_UBUNTU_MIRROR:-}" ]; then
+    if [ "$TARGET_ARCH" = "amd64" ]; then
+        export LIVE_UBUNTU_MIRROR="http://archive.ubuntu.com/ubuntu/"
+    elif [ "$TARGET_ARCH" = "arm64" ]; then
+        export LIVE_UBUNTU_MIRROR="http://ports.ubuntu.com/ubuntu-ports/"
+    else
 export LIVE_UBUNTU_MIRROR="http://archive.ubuntu.com/ubuntu/"
+    fi
+else
+    export LIVE_UBUNTU_MIRROR="${LIVE_UBUNTU_MIRROR}"
+fi
 
 #============================
 # System apps configuration

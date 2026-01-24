@@ -95,7 +95,7 @@ apt install $INTERACTIVE \
     gettext \
     cracklib-runtime \
     libfuse2t64 \
-    libfuse3-4 \
+    libfuse3-3 \
     libopengl0 \
     initramfs-tools \
     --no-install-recommends
