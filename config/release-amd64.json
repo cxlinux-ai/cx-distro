@@ -8,7 +8,11 @@
         "config_input_method": "[('xkb', 'us')]",
         "build_ubuntu_mirror": "http://archive.ubuntu.com/ubuntu/",
         "live_ubuntu_mirror": "http://archive.ubuntu.com/ubuntu/",
+<<<<<<< HEAD
         "live_firefox_mirror": "",
+=======
+        "live_firefox_mirror": "ppa.launchpadcontent.net",
+>>>>>>> 9657e72 (Refactor build process and configuration management for Cortex Linux)
         "flathub_mirror": "",
         "flathub_gpg": ""
     }

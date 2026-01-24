@@ -14,14 +14,23 @@
 =======
 # Makefile —— Cortex Linux build orchestrator
 SHELL         := /usr/bin/env bash
+<<<<<<< HEAD
 .DEFAULT_GOAL := current
 >>>>>>> 4c950da (v2)
+=======
+.DEFAULT_GOAL := build
+>>>>>>> 9657e72 (Refactor build process and configuration management for Cortex Linux)
 
 SRC_DIR       := src
 CONFIG_DIR    := config
 
 # Architecture detection (defaults to amd64)
 ARCH ?= $(shell dpkg --print-architecture 2>/dev/null || echo amd64)
+
+# Check if apt-cacher-ng is running (only use if available)
+# First check if service is active, then test port connectivity
+# Falls back to empty string if not available (no caching)
+APT_CACHER_NG_URL := $(shell (systemctl is-active --quiet apt-cacher-ng 2>/dev/null || pgrep -x apt-cacher-ng >/dev/null 2>&1) && (timeout 1 bash -c 'exec 3<>/dev/tcp/localhost/3142' 2>/dev/null && echo "http://localhost:3142") || echo "")
 
 # Common dependencies
 COMMON_DEPS := \
@@ -167,13 +176,11 @@ else
   DEPS := $(COMMON_DEPS)
 endif
 
-.PHONY: all fast current clean bootstrap help
+.PHONY: build clean bootstrap help
 
 help:
 	@echo "Usage:"
-	@echo "  make          (or make current)   Build current language"
-	@echo "  make all                          Build all languages"
-	@echo "  make fast                         Build fast config languages"
+	@echo "  make          (or make build)     Build release for detected architecture"
 	@echo "  make clean                        Remove build artifacts"
 	@echo "  make bootstrap                    Validate environment and deps"
 
@@ -186,20 +193,25 @@ bootstrap:
 	  echo "Error: Unsupported OS — only Ubuntu, Debian, Tuxedo or Cortex Linux allowed"; \
 	  exit 1; \
 	fi
+	@echo "[MAKE] Architecture: $(ARCH)"
 	@echo "[MAKE] Installing build dependencies..."
 	@ARCH=$(ARCH) sudo bash scripts/install-deps.sh
 
-current: bootstrap
-	@echo "[MAKE] Building current language for $(ARCH)..."
-	@cd $(SRC_DIR) && ARCH=$(ARCH) ./build.sh
-
-all: bootstrap
-	@echo "[MAKE] Building ALL languages (all.json)..."
-	@./build_all.sh -c $(CONFIG_DIR)/all.json
-
-fast: bootstrap
-	@echo "[MAKE] Building FAST languages (fast.json)..."
-	@./build_all.sh -c $(CONFIG_DIR)/fast.json
+build: bootstrap
+	@echo "[MAKE] Building release for $(ARCH)..."
+	@if [ -n "$(APT_CACHER_NG_URL)" ]; then \
+		echo "[MAKE] Using apt-cacher-ng: $(APT_CACHER_NG_URL)"; \
+	else \
+		echo "[MAKE] apt-cacher-ng not available, using direct connection"; \
+	fi
+ifeq ($(ARCH),amd64)
+	@cd $(SRC_DIR) && ARCH=$(ARCH) APT_CACHER_NG_URL="$(APT_CACHER_NG_URL)" ./build.sh -c ../$(CONFIG_DIR)/release-amd64.json
+else ifeq ($(ARCH),arm64)
+	@cd $(SRC_DIR) && ARCH=$(ARCH) APT_CACHER_NG_URL="$(APT_CACHER_NG_URL)" ./build.sh -c ../$(CONFIG_DIR)/release-arm64.json
+else
+	@echo "[ERROR] Unsupported architecture: $(ARCH). Only amd64 and arm64 are supported."
+	@exit 1
+endif
 
 clean:
 	@echo "[MAKE] Cleaning build artifacts..."

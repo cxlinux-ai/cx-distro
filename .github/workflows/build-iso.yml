@@ -91,7 +91,7 @@ jobs:
               apt-get install -y git sudo make shellcheck
               bash scripts/install-deps.sh
               make bootstrap
-              make
+              make build
             '
 
       - name: List output

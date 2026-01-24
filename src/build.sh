@@ -9,6 +9,9 @@ set -u                  # treat unset variable as error
 export SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 source $SCRIPT_DIR/shared.sh
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 9657e72 (Refactor build process and configuration management for Cortex Linux)
 
 # Store original arguments
 ORIGINAL_ARGS=("$@")
@@ -32,9 +35,12 @@ done
 if [ -z "$CONFIG_JSON" ]; then
 source $SCRIPT_DIR/args.sh
 fi
+<<<<<<< HEAD
 =======
 source $SCRIPT_DIR/args.sh
 >>>>>>> 4c950da (v2)
+=======
+>>>>>>> 9657e72 (Refactor build process and configuration management for Cortex Linux)
 
 function bind_signal() {
     print_ok "Bind signal..."
@@ -77,6 +83,7 @@ function setup_host() {
 function download_base_system() {
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
     # Set architecture-specific mirror if not already set
     if [ -z "$BUILD_UBUNTU_MIRROR" ]; then
@@ -94,6 +101,8 @@ function download_base_system() {
     export BUILD_UBUNTU_MIRROR
     
 >>>>>>> 563512e (Update build and configuration scripts for Cortex Linux)
+=======
+>>>>>>> 9657e72 (Refactor build process and configuration management for Cortex Linux)
     # Configure apt-cacher-ng proxy if set
     DEBOOTSTRAP_ENV="DEBIAN_FRONTEND=noninteractive"
     if [ -n "$APT_CACHER_NG_URL" ]; then
@@ -184,10 +193,8 @@ function run_chroot() {
     print_warn "============================================"
     print_warn "   The following will run in chroot ENV!"
     print_warn "============================================"
-    # Pass BUILD_UBUNTU_MIRROR as environment variable to chroot
     sudo chroot new_building_os /usr/bin/env \
         DEBIAN_FRONTEND=${DEBIAN_FRONTEND:-readline} \
-        BUILD_UBUNTU_MIRROR="$BUILD_UBUNTU_MIRROR" \
         /root/mods/install_all_mods.sh -
     print_warn "============================================"
     print_warn "   chroot ENV execution completed!"
@@ -957,8 +964,13 @@ function build_single() {
     judge "Umount before exit"
 }
 
+<<<<<<< HEAD
 # =============   main  ================
 >>>>>>> 4c950da (v2)
+=======
+function build_single() {
+    # Build a single language configuration
+>>>>>>> 9657e72 (Refactor build process and configuration management for Cortex Linux)
 cd $SCRIPT_DIR
 bind_signal
 clean
@@ -970,6 +982,9 @@ umount_folers
 build_iso
 echo "$0 - Initial build is done!"
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 9657e72 (Refactor build process and configuration management for Cortex Linux)
 }
 
 function build_from_config() {
@@ -1007,6 +1022,7 @@ function build_from_config() {
     for key in $keys; do
         # Convert key to uppercase for environment variable naming
         local env_var=$(echo "$key" | tr '[:lower:]' '[:upper:]')
+<<<<<<< HEAD
         # Get the value
         local value=$(echo "$lang_info" | jq -r --arg k "$key" '.[$k]')
         # Escape special characters for sed: &, \, and the delimiter #
@@ -1017,6 +1033,12 @@ function build_from_config() {
         else
             print_warn "Variable ${env_var} not found in args.sh, skipping..."
         fi
+=======
+        # Get the value and escape any special characters
+        local value=$(echo "$lang_info" | jq -r --arg k "$key" '.[$k]')
+        local escaped_value=$(echo "$value" | sed 's/[\/&]/\\&/g')
+        sed -i "s|^export ${env_var}=\".*\"|export ${env_var}=\"${escaped_value}\"|" $SCRIPT_DIR/args.sh
+>>>>>>> 9657e72 (Refactor build process and configuration management for Cortex Linux)
     done
     
     # Reload args.sh with updated values
@@ -1034,5 +1056,8 @@ if [ -n "$CONFIG_JSON" ]; then
 else
     build_single
 fi
+<<<<<<< HEAD
 =======
 >>>>>>> 4c950da (v2)
+=======
+>>>>>>> 9657e72 (Refactor build process and configuration management for Cortex Linux)

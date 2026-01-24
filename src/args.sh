@@ -87,6 +87,7 @@ export BUILD_UBUNTU_MIRROR="http://mirror.aiursoft.com/ubuntu/"
 export TARGET_UBUNTU_VERSION="plucky"
 
 # This is the apt source for the build.
+<<<<<<< HEAD
 # It can be any Ubuntu mirror that you prefer.
 # Default uses architecture-specific mirrors:
 #   - amd64: archive.ubuntu.com (main archive)
@@ -95,6 +96,9 @@ export TARGET_UBUNTU_VERSION="plucky"
 # Note: This will be set automatically based on TARGET_ARCH if not specified
 export BUILD_UBUNTU_MIRROR="${BUILD_UBUNTU_MIRROR:-}"
 >>>>>>> 563512e (Update build and configuration scripts for Cortex Linux)
+=======
+export BUILD_UBUNTU_MIRROR="${BUILD_UBUNTU_MIRROR}"
+>>>>>>> 9657e72 (Refactor build process and configuration management for Cortex Linux)
 
 # Target architecture for the build.
 # Can be: amd64, arm64
@@ -110,10 +114,7 @@ export APT_CACHER_NG_URL="${APT_CACHER_NG_URL:-}"
 >>>>>>> 4c950da (v2)
 =======
 # APT Cacher NG support (optional)
-# If set, all apt/debootstrap operations will use this proxy for caching
-# Default: http://localhost:3142
-# Set to empty string to disable caching: export APT_CACHER_NG_URL=""
-export APT_CACHER_NG_URL="${APT_CACHER_NG_URL:-http://localhost:3142}"
+export APT_CACHER_NG_URL="${APT_CACHER_NG_URL:-}"
 
 >>>>>>> 563512e (Update build and configuration scripts for Cortex Linux)
 # This is the name of the target OS.
@@ -230,6 +231,7 @@ fi
 export INPUT_METHOD_INSTALL=""
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 # Boolean indicator for whether to install cortex-ibus-rime
 export CONFIG_IBUS_RIME="false"
@@ -239,6 +241,8 @@ if [[ "$CONFIG_IBUS_RIME" == "true" && "$INPUT_METHOD_INSTALL" != *"ibus-rime"* 
 fi
 
 >>>>>>> 4c950da (v2)
+=======
+>>>>>>> 9657e72 (Refactor build process and configuration management for Cortex Linux)
 # The default keyboard layout. Can be:
 # * [('xkb', 'us')]
 # * [('xkb', 'us'), ('ibus', 'rime')]
@@ -274,6 +278,7 @@ export CONFIG_WEATHER_LOCATION="['{\"name\":\"San Francisco, California, United 
 
 # This is the default apt server in the live system.
 <<<<<<< HEAD
+<<<<<<< HEAD
 export LIVE_UBUNTU_MIRROR="${LIVE_UBUNTU_MIRROR}"
 =======
 # It can be any Ubuntu mirror that you prefer.
@@ -297,6 +302,9 @@ else
     export LIVE_UBUNTU_MIRROR="${LIVE_UBUNTU_MIRROR}"
 fi
 >>>>>>> 563512e (Update build and configuration scripts for Cortex Linux)
+=======
+export LIVE_UBUNTU_MIRROR="${LIVE_UBUNTU_MIRROR}"
+>>>>>>> 9657e72 (Refactor build process and configuration management for Cortex Linux)
 
 #============================
 # System apps configuration
