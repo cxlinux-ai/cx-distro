@@ -8,7 +8,29 @@ set -o pipefail         # exit on pipeline error
 set -u                  # treat unset variable as error
 export SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 source $SCRIPT_DIR/shared.sh
+
+# Store original arguments
+ORIGINAL_ARGS=("$@")
+
+# Parse command line arguments to check if config file is provided
+CONFIG_JSON=""
+for arg in "${ORIGINAL_ARGS[@]}"; do
+    if [[ "$arg" == "-c" || "$arg" == "--config" ]]; then
+        # Get next argument as config file
+        for i in "${!ORIGINAL_ARGS[@]}"; do
+            if [[ "${ORIGINAL_ARGS[$i]}" == "$arg" ]]; then
+                CONFIG_JSON="${ORIGINAL_ARGS[$((i+1))]}"
+                break
+            fi
+        done
+        break
+    fi
+done
+
+# Only source args.sh if not building from config (config will reload it)
+if [ -z "$CONFIG_JSON" ]; then
 source $SCRIPT_DIR/args.sh
+fi
 
 function bind_signal() {
     print_ok "Bind signal..."
@@ -49,21 +71,6 @@ function setup_host() {
 }
 
 function download_base_system() {
-    # Set architecture-specific mirror if not already set
-    if [ -z "$BUILD_UBUNTU_MIRROR" ]; then
-        if [ "$TARGET_ARCH" = "amd64" ]; then
-            BUILD_UBUNTU_MIRROR="http://archive.ubuntu.com/ubuntu/"
-        elif [ "$TARGET_ARCH" = "arm64" ]; then
-            BUILD_UBUNTU_MIRROR="http://ports.ubuntu.com/ubuntu-ports/"
-        else
-            print_error "Unsupported architecture: $TARGET_ARCH"
-            exit 1
-        fi
-    fi
-    
-    # Export BUILD_UBUNTU_MIRROR so it's available to mods in chroot
-    export BUILD_UBUNTU_MIRROR
-    
     # Configure apt-cacher-ng proxy if set
     DEBOOTSTRAP_ENV="DEBIAN_FRONTEND=noninteractive"
     if [ -n "$APT_CACHER_NG_URL" ]; then
@@ -119,10 +126,8 @@ function run_chroot() {
     print_warn "============================================"
     print_warn "   The following will run in chroot ENV!"
     print_warn "============================================"
-    # Pass BUILD_UBUNTU_MIRROR as environment variable to chroot
     sudo chroot new_building_os /usr/bin/env \
         DEBIAN_FRONTEND=${DEBIAN_FRONTEND:-readline} \
-        BUILD_UBUNTU_MIRROR="$BUILD_UBUNTU_MIRROR" \
         /root/mods/install_all_mods.sh -
     print_warn "============================================"
     print_warn "   chroot ENV execution completed!"
@@ -444,7 +449,8 @@ function umount_on_exit() {
     judge "Umount before exit"
 }
 
-# =============   main  ================
+function build_single() {
+    # Build a single language configuration
 cd $SCRIPT_DIR
 bind_signal
 clean
@@ -455,3 +461,61 @@ run_chroot
 umount_folers
 build_iso
 echo "$0 - Initial build is done!"
+}
+
+function build_from_config() {
+    # Build from JSON config file (single language)
+    local CONFIG_JSON="$1"
+    
+    if [[ ! -f "$CONFIG_JSON" ]]; then
+        print_error "Configuration file $CONFIG_JSON does not exist."
+        exit 1
+    fi
+    
+    # Check if jq is installed
+    if ! command -v jq &> /dev/null; then
+        print_ok "Installing jq for JSON parsing..."
+        sudo apt-get update && sudo apt-get install -y jq
+        judge "Install jq"
+    fi
+    
+    # Extract language information from JSON (first entry)
+    local lang_info=$(jq -c '.[0]' "$CONFIG_JSON")
+    
+    # Display summary of the language configuration for logging
+    local LANG_MODE=$(echo "$lang_info" | jq -r '.lang_mode')
+    echo "================================================="
+    echo "[INFO] Building language: ${LANG_MODE}"
+    echo "Configuration:"
+    echo "$lang_info" | jq '.'
+    echo "================================================="
+    
+    # Dynamically update all fields in args.sh
+    # Get all keys from the language configuration
+    local keys=$(echo "$lang_info" | jq -r 'keys[]')
+    
+    # For each key, update the corresponding environment variable in args.sh
+    for key in $keys; do
+        # Convert key to uppercase for environment variable naming
+        local env_var=$(echo "$key" | tr '[:lower:]' '[:upper:]')
+        # Get the value and escape any special characters
+        local value=$(echo "$lang_info" | jq -r --arg k "$key" '.[$k]')
+        local escaped_value=$(echo "$value" | sed 's/[\/&]/\\&/g')
+        sed -i "s|^export ${env_var}=\".*\"|export ${env_var}=\"${escaped_value}\"|" $SCRIPT_DIR/args.sh
+    done
+    
+    # Reload args.sh with updated values
+    source $SCRIPT_DIR/args.sh
+    
+    # Build single language
+    build_single
+}
+
+# =============   main  ================
+# If config file is provided, build from config, otherwise build single
+if [ -n "$CONFIG_JSON" ]; then
+    echo "[INFO] Using configuration file '$CONFIG_JSON'."
+    build_from_config "$CONFIG_JSON"
+else
+    build_single
+fi

@@ -5,8 +5,8 @@ set -u                  # treat unset variable as error
 # This link needs to be updated regularly.
 # This binary need to mirror from: 
 # https://github.com/thesofproject/sof-bin/releases/download/v2025.12/sof-bin-2025.12.tar.gz
-SOF_BIN_LINK="https://pub.aiursoft.com/sof-bin-2025.12.tar.gz"
-ALSA_UCM_CONF_LINK="https://git.aiursoft.com/PublicVault/alsa-ucm-conf/archive/master.zip"
+SOF_BIN_LINK="https://github.com/thesofproject/sof-bin/releases/download/v2025.12/sof-bin-2025.12.tar.gz"
+ALSA_UCM_CONF_LINK="https://github.com/thesofproject/alsa-ucm-conf/archive/master.zip"
 
 (
     print_ok "Installing Intel SOF Mod"
@@ -44,7 +44,7 @@ ALSA_UCM_CONF_LINK="https://git.aiursoft.com/PublicVault/alsa-ucm-conf/archive/m
     judge "Unzip alsa-ucm-conf"
 
     print_ok "Copying alsa-ucm-conf to /usr/share/alsa/ucm2/"
-    rsync -Aax --update --delete ./alsa-ucm/alsa-ucm-conf/ucm2/ /usr/share/alsa/ucm2/
+    rsync -Aax --update --delete ./alsa-ucm/alsa-ucm-conf-master/ucm2/ /usr/share/alsa/ucm2/
     judge "Copy alsa-ucm-conf to /usr/share/alsa/ucm2/"
 
     print_ok "Cleaning up alsa-ucm-conf"

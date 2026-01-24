@@ -1,0 +1,16 @@
+[
+    {
+        "lang_mode": "en_US",
+        "lang_pack_code": "en",
+        "input_method_install": "",
+        "timezone": "America/Los_Angeles",
+        "config_weather_location": "['{\\\"name\\\":\\\"San Francisco, California, United States\\\",\\\"lat\\\":37.7749295,\\\"lon\\\":-122.4194155}']",
+        "config_input_method": "[('xkb', 'us')]",
+        "build_ubuntu_mirror": "http://ports.ubuntu.com/ubuntu-ports/",
+        "live_ubuntu_mirror": "http://ports.ubuntu.com/ubuntu-ports/",
+        "live_firefox_mirror": "ppa.launchpadcontent.net",
+        "flathub_mirror": "",
+        "flathub_gpg": ""
+    }
+]
+
