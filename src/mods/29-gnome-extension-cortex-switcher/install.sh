@@ -3,5 +3,5 @@ set -o pipefail         # exit on pipeline error
 set -u                  # treat unset variable as error
 
 print_ok "Install Gnome Extension Cortex Switcher"
-cp ./switcher@cortex /usr/share/gnome-shell/extensions/switcher@cortex -rf
+cp ./switcher@cortexlinux /usr/share/gnome-shell/extensions/switcher@cortexlinux -rf
 judge "Install Gnome Extension Cortex Switcher"
