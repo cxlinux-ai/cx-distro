@@ -426,6 +426,7 @@ Press F12 to enter the boot menu when you start your computer. Select the USB dr
 ## More information
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 For detailed instructions, please visit [$TARGET_BUSINESS_NAME Document](https://docs.cortexlinux.com/Install/System-Requirements.html).
 EOF
 
@@ -665,6 +666,9 @@ EOF
         fi
 =======
 For detailed instructions, please visit [$TARGET_BUSINESS_NAME Document](https://docs.cortex.com/Install/System-Requirements.html).
+=======
+For detailed instructions, please visit [$TARGET_BUSINESS_NAME Document](https://docs.cortexlinux.com/Install/System-Requirements.html).
+>>>>>>> ccdc3d4 (Remove obsolete documentation and update installation scripts for Cortex Linux)
 EOF
 
     pushd $SCRIPT_DIR/image

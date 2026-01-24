@@ -115,7 +115,7 @@ judge "System detection"
 
 # --- 2. Download Logic ---
 CURRENT_LANG=${LANG%%.*}
-BASE_URL="https://download.cortex.com/$SYS_BASE_VERSION/$SYS_VERSION"
+BASE_URL="https://download.cortexlinux.com/$SYS_BASE_VERSION/$SYS_VERSION"
 FILE_NAME_BASE="${FILE_PREFIX}-${CURRENT_LANG}" # e.g., Cortex Linux-1.4.1-zh_CN
 mkdir -p "$DOWNLOAD_DIR"
 TORRENT_FILE="${DOWNLOAD_DIR}/${FILE_PREFIX}.torrent"

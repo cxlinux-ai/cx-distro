@@ -114,10 +114,14 @@ Comment[tr_TR]=Cortex Linux'un yazılım koleksiyonunu göz atın ve doğrulanm�
 Comment[ro_RO]=Explorează colecția de programe a lui Cortex Linux și instalează aplicațiile noastre verificate
 Categories=System;
 <<<<<<< HEAD
+<<<<<<< HEAD
 Exec=xdg-open https://docs.cortexlinux.com/Applications/Introduction.html
 =======
 Exec=xdg-open https://docs.cortex.com/Applications/Introduction.html
 >>>>>>> 4c950da (v2)
+=======
+Exec=xdg-open https://docs.cortexlinux.com/Applications/Introduction.html
+>>>>>>> ccdc3d4 (Remove obsolete documentation and update installation scripts for Cortex Linux)
 Terminal=false
 Type=Application
 Icon=system-software-install

@@ -38,9 +38,9 @@ gext -F enable clipboard-indicator@tudmotu.com
 /root/.local/bin/gext -F enable dash-to-panel@jderose9.github.com
 /root/.local/bin/gext -F enable network-stats@gnome.noroadsleft.xyz
 /root/.local/bin/gext -F enable simple-weather@romanlefler.com
-/root/.local/bin/gext -F enable switcher@cortex
-/root/.local/bin/gext -F enable noti-bottom-right@cortex
-/root/.local/bin/gext -F enable loc@cortex.com
+/root/.local/bin/gext -F enable switcher@cortexlinux
+/root/.local/bin/gext -F enable noti-bottom-right@cortexlinux
+/root/.local/bin/gext -F enable loc@cortexlinux.com
 /root/.local/bin/gext -F enable lockkeys@vaina.lt
 /root/.local/bin/gext -F enable tiling-assistant@leleat-on-github
 /root/.local/bin/gext -F enable mediacontrols@cliffniff.github.com
