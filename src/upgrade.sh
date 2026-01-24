@@ -8,10 +8,14 @@ set -u                  # treat unset variable as error
 export DEBIAN_FRONTEND=noninteractive
 export LATEST_VERSION="1.5.0"
 <<<<<<< HEAD
+<<<<<<< HEAD
 export CODE_NAME="plucky"
 =======
 export CODE_NAME="noble"
 >>>>>>> 4c950da (v2)
+=======
+export CODE_NAME="plucky"
+>>>>>>> 563512e (Update build and configuration scripts for Cortex Linux)
 export OS_ID="Cortex Linux"
 export CURRENT_VERSION=$(cat /etc/lsb-release | grep DISTRIB_RELEASE | cut -d "=" -f 2)
 

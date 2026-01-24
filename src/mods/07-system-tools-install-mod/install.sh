@@ -96,10 +96,14 @@ apt install $INTERACTIVE \
     cracklib-runtime \
     libfuse2t64 \
 <<<<<<< HEAD
+<<<<<<< HEAD
     libfuse3-3 \
 =======
     libfuse3-4 \
 >>>>>>> 4c950da (v2)
+=======
+    libfuse3-3 \
+>>>>>>> 563512e (Update build and configuration scripts for Cortex Linux)
     libopengl0 \
     initramfs-tools \
     --no-install-recommends
