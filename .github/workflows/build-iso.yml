@@ -14,7 +14,6 @@ on:
       - 'config/**'
       - 'packages/**'
       - 'scripts/**'
-      - 'docs/branding/**'
       - 'Makefile'
       - '.github/workflows/build-iso.yml'
   pull_request:
@@ -24,7 +23,6 @@ on:
       - 'config/**'
       - 'packages/**'
       - 'scripts/**'
-      - 'docs/branding/**'
       - 'Makefile'
   workflow_dispatch:
 
@@ -32,27 +30,10 @@ env:
   DEBIAN_FRONTEND: noninteractive
 
 jobs:
-  validate:
-    name: Validate
-    runs-on: ubuntu-24.04
-    container:
-      image: debian:bookworm
-    steps:
-      - name: Install git
-        run: |
-          apt-get update
-          apt-get install -y git sudo make shellcheck
-
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Run validation
-        run: make validate
 
   build-iso:
     name: Build ISO (${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
-    needs: validate
     strategy:
       fail-fast: false
       matrix:
@@ -128,14 +109,6 @@ jobs:
             src/dist/*.sha256
           retention-days: 14
 
-      - name: Upload SBOM
-        uses: actions/upload-artifact@v4
-        with:
-          name: sbom-${{ matrix.arch }}
-          path: src/dist/*.sbom
-          retention-days: 14
-        continue-on-error: true
-
       - name: Upload build log
         if: always()
         uses: actions/upload-artifact@v4
@@ -144,46 +117,10 @@ jobs:
           path: build.log
           retention-days: 7
 
-  test-iso:
-    name: Test ISO (${{ matrix.arch }})
-    runs-on: ${{ matrix.runner }}
-    needs: build-iso
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - arch: amd64
-            runner: ubuntu-24.04
-          - arch: arm64
-            runner: ubuntu-24.04-arm
-    steps:
-      - name: Download ISO
-        uses: actions/download-artifact@v4
-        with:
-          name: cortex-linux-${{ matrix.arch }}
-
-      - name: Verify checksums
-        run: |
-          ls -la
-          for iso in *.iso; do
-            if [ -f "${iso}.sha256" ]; then
-              sha256sum -c "${iso}.sha256"
-            fi
-          done
-
-      - name: Check ISO structure
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y xorriso
-          for iso in *.iso; do
-            echo "=== Checking $iso ==="
-            xorriso -indev "$iso" -find / -maxdepth 1 2>/dev/null | head -20
-          done
-
   release:
     name: Create Release
     runs-on: ubuntu-24.04
-    needs: [build-iso, test-iso]
+    needs: build-iso
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: write
@@ -195,42 +132,24 @@ jobs:
           merge-multiple: true
           path: release/
 
-      - name: Download packages
-        uses: actions/download-artifact@v4
-        with:
-          pattern: packages-*
-          merge-multiple: true
-          path: release/
-
-      - name: Download SBOMs
-        uses: actions/download-artifact@v4
-        with:
-          pattern: sbom-*
-          merge-multiple: true
-          path: release/sbom/
-        continue-on-error: true
-
       - name: Generate combined checksums
         run: |
           cd release
-          sha256sum *.iso *.deb > SHA256SUMS 2>/dev/null || sha256sum *.iso > SHA256SUMS
-          sha512sum *.iso *.deb > SHA512SUMS 2>/dev/null || sha512sum *.iso > SHA512SUMS
+          sha256sum *.iso > SHA256SUMS
+          sha512sum *.iso > SHA512SUMS
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
             release/*.iso
-            release/*.deb
             release/SHA256SUMS
             release/SHA512SUMS
-            release/sbom/*
           body: |
             ## Cortex Linux ${{ github.ref_name }}
 
             ### Downloads
             - **cortex-linux-*.iso** - Cortex Linux ISO
-            - **cortex-branding_*.deb** - Branding package (standalone install)
 
             ### Verification
             ```bash
@@ -247,41 +166,3 @@ jobs:
           draft: false
           prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
 
-      # ========================================================================
-      # Trigger APT Repository Update
-      # ========================================================================
-      # This sends a repository_dispatch event to the apt-repo with package URLs
-      # The apt-repo will download, commit (LFS), and deploy to GitHub Pages
-      
-      - name: Get package info for APT repo
-        id: packages
-        run: |
-          cd release
-          # Build JSON array of packages with metadata
-          PACKAGES="[]"
-          for deb in *.deb; do
-            if [ -f "$deb" ]; then
-              # Extract package name and version from filename
-              PKG_NAME=$(echo "$deb" | sed 's/_.*//') 
-              URL="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${deb}"
-              PACKAGES=$(echo "$PACKAGES" | jq --arg name "$PKG_NAME" --arg url "$URL" --arg file "$deb" \
-                '. += [{"name": $name, "url": $url, "file": $file}]')
-            fi
-          done
-          echo "packages=$PACKAGES" >> $GITHUB_OUTPUT
-          echo "📦 Packages to publish: $PACKAGES"
-
-      - name: Trigger APT Repository Update
-        if: steps.packages.outputs.packages != '[]'
-        uses: peter-evans/repository-dispatch@v3
-        with:
-          token: ${{ secrets.APT_REPO_PAT }}
-          repository: cortexlinux/apt-repo
-          event-type: add-packages
-          client-payload: |
-            {
-              "packages": ${{ steps.packages.outputs.packages }},
-              "version": "${{ github.ref_name }}",
-              "suite": "cortex",
-              "source_repo": "${{ github.repository }}"
-            }
