@@ -71,7 +71,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build in Debian container
+      - name: Build ISO
         run: |
           # Use xz compression for releases (smaller), lz4 for PR/branch builds (faster)
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
@@ -79,20 +79,13 @@ jobs:
           else
             COMPRESSION="lz4"
           fi
-          docker run --rm --privileged \
-            -v "${{ github.workspace }}:/workspace" \
-            -w /workspace \
-            -e ARCH=${{ matrix.arch }} \
-            -e SQUASHFS_COMP=$COMPRESSION \
-            -e DEBIAN_FRONTEND=noninteractive \
-            debian:bookworm /bin/bash -c '
-              set -e
-              apt-get update
-              apt-get install -y git sudo make shellcheck
-              bash scripts/install-deps.sh
-              make bootstrap
-              make build
-            '
+          export ARCH=${{ matrix.arch }}
+          export SQUASHFS_COMP=$COMPRESSION
+          export DEBIAN_FRONTEND=noninteractive
+          set -e
+          sudo bash scripts/install-deps.sh
+          make bootstrap
+          make build
 
       - name: List output
         if: always()
