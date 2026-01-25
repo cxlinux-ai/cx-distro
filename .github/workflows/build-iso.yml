@@ -80,14 +80,21 @@ jobs:
 
       - name: Setup debootstrap cache directory
         run: |
-          sudo mkdir -p /var/cache/debootstrap
-          sudo chmod 755 /var/cache/debootstrap
-          echo "Debootstrap cache directory ready"
+          # Create user-writable cache directory
+          mkdir -p ~/.cache/debootstrap
+          # Remove existing /var/cache/debootstrap if it exists and create symlink
+          # This allows debootstrap to write to our cached location
+          sudo rm -rf /var/cache/debootstrap
+          sudo mkdir -p /var/cache
+          sudo ln -s $HOME/.cache/debootstrap /var/cache/debootstrap
+          echo "Debootstrap cache directory ready at $HOME/.cache/debootstrap"
+          echo "Symlink created: /var/cache/debootstrap -> $HOME/.cache/debootstrap"
 
       - name: Cache debootstrap
+        id: cache-debootstrap
         uses: actions/cache@v4
         with:
-          path: /var/cache/debootstrap
+          path: ~/.cache/debootstrap
           key: debootstrap-${{ matrix.arch }}-${{ steps.ubuntu-version.outputs.version }}
           restore-keys: |
             debootstrap-${{ matrix.arch }}-${{ steps.ubuntu-version.outputs.version }}
@@ -108,6 +115,11 @@ jobs:
           sudo bash scripts/install-deps.sh
           make bootstrap
           make build
+          
+          # Verify debootstrap cache was populated
+          echo "=== Checking debootstrap cache ==="
+          ls -la ~/.cache/debootstrap/ || echo "Cache directory empty or doesn't exist yet"
+          du -sh ~/.cache/debootstrap || echo "Cache size check failed"
 
       - name: List output
         if: always()
@@ -131,6 +143,7 @@ jobs:
           name: build-log-${{ matrix.arch }}
           path: build.log
           retention-days: 7
+
 
   release:
     name: Create Release
