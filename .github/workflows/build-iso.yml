@@ -71,6 +71,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Get Ubuntu version
+        id: ubuntu-version
+        run: |
+          UBUNTU_VERSION=$(grep -E '^export TARGET_UBUNTU_VERSION=' src/args.sh | cut -d'"' -f2)
+          echo "version=$UBUNTU_VERSION" >> $GITHUB_OUTPUT
+          echo "Ubuntu version: $UBUNTU_VERSION"
+
+      - name: Setup debootstrap cache directory
+        run: |
+          sudo mkdir -p /var/cache/debootstrap
+          sudo chmod 755 /var/cache/debootstrap
+          echo "Debootstrap cache directory ready"
+
+      - name: Cache debootstrap
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/debootstrap
+          key: debootstrap-${{ matrix.arch }}-${{ steps.ubuntu-version.outputs.version }}
+          restore-keys: |
+            debootstrap-${{ matrix.arch }}-${{ steps.ubuntu-version.outputs.version }}
+            debootstrap-${{ matrix.arch }}-
+
       - name: Build ISO
         run: |
           # Use xz compression for releases (smaller), lz4 for PR/branch builds (faster)

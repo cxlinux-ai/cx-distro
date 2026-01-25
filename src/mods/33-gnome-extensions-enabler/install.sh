@@ -4,8 +4,10 @@ set -u                  # treat unset variable as error
 
 print_ok "Enabling gnome extensions for root..."
 
-# Ensure /root/.local/bin is in PATH for pipx-installed binaries
-export PATH="/root/.local/bin:$PATH"
+pipx ensurepath
+PIPX_BIN_DIR=$(pipx environment --value PIPX_BIN_DIR)
+export PATH="$PIPX_BIN_DIR:$PATH"
+judge "Ensure pipx binaries are in PATH"
 
 # Verify gext is available
 if ! command -v gext &> /dev/null; then

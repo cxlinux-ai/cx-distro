@@ -115,6 +115,31 @@ function mount_folers() {
     sudo chroot new_building_os mount none -t devpts /dev/pts
     judge "Mount /proc /sys /dev/pts"
 
+    # Copy DNS configuration from host so chroot can resolve hostnames
+    print_ok "Copying DNS configuration from host..."
+    if [ -f /etc/resolv.conf ]; then
+        sudo cp /etc/resolv.conf new_building_os/etc/resolv.conf
+        judge "Copy resolv.conf"
+    else
+        print_warn "Host /etc/resolv.conf not found, creating basic DNS config..."
+        echo "nameserver 8.8.8.8" | sudo tee new_building_os/etc/resolv.conf > /dev/null
+        echo "nameserver 8.8.4.4" | sudo tee -a new_building_os/etc/resolv.conf > /dev/null
+        judge "Create basic resolv.conf"
+    fi
+
+    # Configure apt-cacher-ng proxy in chroot if set
+    # Use 127.0.0.1 instead of localhost to avoid DNS dependency
+    # Note: HTTPS repositories (like Mozilla PPA) bypass proxy to avoid 403 errors
+    if [ -n "$APT_CACHER_NG_URL" ]; then
+        print_ok "Configuring apt-cacher-ng proxy in chroot for both http and https..."
+        sudo mkdir -p new_building_os/etc/apt/apt.conf.d
+        # Replace localhost with 127.0.0.1 to avoid DNS resolution issues
+        PROXY_URL=$(echo "$APT_CACHER_NG_URL" | sed 's/localhost/127.0.0.1/g')
+        echo "Acquire::http::Proxy \"$PROXY_URL\";" | sudo tee new_building_os/etc/apt/apt.conf.d/01proxy > /dev/null
+        echo "Acquire::https::Proxy \"$PROXY_URL\";" | sudo tee -a new_building_os/etc/apt/apt.conf.d/01proxy > /dev/null
+        judge "Configure apt proxy in chroot"
+    fi
+
     print_ok "Copying mods to new_building_os/root..."
     sudo cp -r $SCRIPT_DIR/mods new_building_os/root/mods
     sudo cp ./args.sh   new_building_os/root/mods/args.sh
@@ -126,9 +151,7 @@ function run_chroot() {
     print_warn "============================================"
     print_warn "   The following will run in chroot ENV!"
     print_warn "============================================"
-    sudo chroot new_building_os /usr/bin/env \
-        DEBIAN_FRONTEND=${DEBIAN_FRONTEND:-readline} \
-        /root/mods/install_all_mods.sh -
+    sudo chroot new_building_os /usr/bin/env DEBIAN_FRONTEND=${DEBIAN_FRONTEND:-readline} /root/mods/install_all_mods.sh -
     print_warn "============================================"
     print_warn "   chroot ENV execution completed!"
     print_warn "============================================"

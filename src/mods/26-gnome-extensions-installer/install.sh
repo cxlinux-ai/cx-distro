@@ -5,19 +5,17 @@ set -u                  # treat unset variable as error
 print_ok "Installing gnome extensions"
 #/usr/bin/pip3 install --upgrade gnome-extensions-cli
 
-# Ensure /root/.local/bin is in PATH for pipx-installed binaries
-export PATH="/root/.local/bin:$PATH"
-
 pipx install gnome-extensions-cli
 judge "Install gnome-extensions-cli via pipx"
+
+pipx ensurepath
+PIPX_BIN_DIR=$(pipx environment --value PIPX_BIN_DIR)
+export PATH="$PIPX_BIN_DIR:$PATH"
+judge "Ensure pipx binaries are in PATH"
 
 # Verify gext is available
 if ! command -v gext &> /dev/null; then
     print_error "gext command not found after pipx install"
-    print_info "Checking pipx installation..."
-    pipx list || true
-    print_info "Checking /root/.local/bin contents..."
-    ls -la /root/.local/bin/ 2>/dev/null || echo "Directory does not exist"
     exit 1
 fi
 
