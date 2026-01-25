@@ -4,7 +4,22 @@ set -u                  # treat unset variable as error
 
 print_ok "Installing gnome extensions"
 #/usr/bin/pip3 install --upgrade gnome-extensions-cli
+
+# Ensure /root/.local/bin is in PATH for pipx-installed binaries
+export PATH="/root/.local/bin:$PATH"
+
 pipx install gnome-extensions-cli
+judge "Install gnome-extensions-cli via pipx"
+
+# Verify gext is available
+if ! command -v gext &> /dev/null; then
+    print_error "gext command not found after pipx install"
+    print_info "Checking pipx installation..."
+    pipx list || true
+    print_info "Checking /root/.local/bin contents..."
+    ls -la /root/.local/bin/ 2>/dev/null || echo "Directory does not exist"
+    exit 1
+fi
 
 install_extension() {
     local extension_id=$1
@@ -15,16 +30,21 @@ install_extension() {
         print_info "Attempting to install $extension_id (attempt $i/$retries)..."
 
         set +e
-        output=$(/root/.local/bin/gext -F install "$extension_id" 2>&1)
+        # Use gext from PATH instead of hardcoded path
+        output=$(gext -F install "$extension_id" 2>&1)
+        exit_code=$?
         set -e
 
         echo "$output"
 
-        if echo "$output" | grep -q -e 'Error' -e 'Cannot'; then
+        if [[ $exit_code -ne 0 ]] || echo "$output" | grep -q -e 'Error' -e 'Cannot'; then
             print_warn "$extension_id Failed to install, retrying..."
             sleep $((i * 10))
         else
             print_ok "$extension_id Installed successfully"
+
+            # Wait a moment for filesystem to sync
+            sleep 1
 
             if ls "$extension_path/schemas/"*.gschema.xml 1> /dev/null 2>&1; then
                 print_info "Found schemas, compiling for $extension_id..."

@@ -144,14 +144,15 @@ function umount_folers() {
     judge "Clean up new_building_os /root/mods"
 
     print_ok "Unmounting /proc /sys /dev/pts within chroot..."
-    sudo chroot new_building_os umount /dev/pts || sudo chroot new_building_os umount -lf /dev/pts
-    sudo chroot new_building_os umount /sys || sudo chroot new_building_os umount -lf /sys
-    sudo chroot new_building_os umount /proc || sudo chroot new_building_os umount -lf /proc
+    # Use lazy unmount to handle busy mounts
+    sudo chroot new_building_os umount -lf /dev/pts 2>/dev/null || true
+    sudo chroot new_building_os umount -lf /sys 2>/dev/null || true
+    sudo chroot new_building_os umount -lf /proc 2>/dev/null || true
     judge "Unmount /proc /sys /dev/pts"
 
     print_ok "Unmounting /dev /run outside of chroot..."
-    sudo umount new_building_os/dev || sudo umount -lf new_building_os/dev
-    sudo umount new_building_os/run || sudo umount -lf new_building_os/run
+    sudo umount -lf new_building_os/dev 2>/dev/null || true
+    sudo umount -lf new_building_os/run 2>/dev/null || true
     judge "Unmount /dev /run /proc /sys"
 }
 
@@ -159,9 +160,38 @@ function build_iso() {
     print_ok "Building ISO image..."
 
     print_ok "Creating image directory..."
+    # Unmount any existing EFI boot image mounts before removing directory
+    if mountpoint -q "$SCRIPT_DIR/image/isolinux/efi" 2>/dev/null; then
+        print_ok "Unmounting existing EFI boot image mount..."
+        sudo umount -lf "$SCRIPT_DIR/image/isolinux/efi" 2>/dev/null || true
+    fi
     sudo rm -rf image
     mkdir -p image/{casper,isolinux,.disk}
     judge "Create image directory"
+
+    # Verify kernel files exist before proceeding
+    print_ok "Verifying kernel files exist..."
+    if [ ! -d "new_building_os/boot" ]; then
+        print_error "new_building_os/boot directory does not exist!"
+        exit 1
+    fi
+    
+    if ! ls new_building_os/boot/vmlinuz-* >/dev/null 2>&1; then
+        print_error "No kernel files (vmlinuz) found in new_building_os/boot/"
+        print_error "This usually means kernel installation failed during mod execution."
+        print_error "Contents of new_building_os/boot/:"
+        ls -la new_building_os/boot/ || true
+        print_error "Please check mod 08-casper-and-kernel-install-mod for errors."
+        exit 1
+    fi
+    
+    if ! ls new_building_os/boot/initrd.img-* >/dev/null 2>&1; then
+        print_error "No initrd files found in new_building_os/boot/"
+        print_error "Contents of new_building_os/boot/:"
+        ls -la new_building_os/boot/ || true
+        print_error "Please check mod 80-initramfs-update for errors."
+        exit 1
+    fi
 
     # copy kernel files (architecture-specific)
     print_ok "Copying kernel files as /casper/vmlinuz and /casper/initrd..."
@@ -176,6 +206,7 @@ function build_iso() {
     
     if [ -z "$KERNEL_VERSION" ]; then
         print_error "No kernel found in new_building_os/boot/"
+        print_error "Available files:"
         ls -la new_building_os/boot/ | head -20
         exit 1
     fi
@@ -328,12 +359,27 @@ EOF
 
     pushd $SCRIPT_DIR/image
     print_ok "Creating EFI boot image on /isolinux/efiboot.img..."
+    
+    # Check available disk space before creating EFI image
+    AVAILABLE_SPACE=$(df -BM "$SCRIPT_DIR/image" 2>/dev/null | tail -1 | awk '{print $4}' | sed 's/M//' || echo "0")
+    if [ "$AVAILABLE_SPACE" -lt 50 ] 2>/dev/null; then
+        print_error "Insufficient disk space. Need at least 50MB, have ${AVAILABLE_SPACE}MB"
+        print_error "Please free up disk space and try again."
+        exit 1
+    fi
+    
     (
         cd isolinux && \
-        dd if=/dev/zero of=efiboot.img bs=1M count=10 && \
-        sudo mkfs.vfat efiboot.img && \
-        mkdir efi && \
-        sudo mount efiboot.img efi && \
+        # Clean up any existing mount or directory first
+        if mountpoint -q efi 2>/dev/null; then
+            sudo umount -lf efi 2>/dev/null || true
+        fi
+        rm -rf efi efiboot.img 2>/dev/null || true
+        # Increase EFI image size to 20MB to ensure enough space for GRUB files
+        dd if=/dev/zero of=efiboot.img bs=1M count=20 2>/dev/null && \
+        sudo mkfs.vfat -F 32 efiboot.img >/dev/null 2>&1 && \
+        mkdir -p efi && \
+        sudo mount -o loop efiboot.img efi && \
         sudo mkdir -p efi/EFI/BOOT && \
         if [ "$TARGET_ARCH" = "amd64" ]; then
             sudo grub-install --target=x86_64-efi --efi-directory=efi --boot-directory=efi/EFI/BOOT --uefi-secure-boot --removable --no-nvram
@@ -341,6 +387,14 @@ EOF
             sudo grub-install --target=arm64-efi --efi-directory=efi --boot-directory=efi/EFI/BOOT --uefi-secure-boot --removable --no-nvram
         fi && \
         sudo cp grub.cfg efi/EFI/BOOT/grub.cfg && \
+        # Copy EFI/BOOT directory to ISO filesystem for ARM64 compatibility
+        # Some UEFI implementations require EFI/BOOT in the ISO filesystem
+        if [ "$TARGET_ARCH" = "arm64" ]; then
+            print_ok "Copying EFI/BOOT directory to ISO filesystem for ARM64 UEFI compatibility..."
+            sudo mkdir -p ../EFI/BOOT
+            sudo cp -r efi/EFI/BOOT/* ../EFI/BOOT/
+            judge "Copy EFI/BOOT to ISO filesystem"
+        fi && \
         sudo umount efi && \
         rm -rf efi
     )
@@ -417,19 +471,20 @@ EOF
             -m "isolinux/efiboot.img" \
             -graft-points \
                 "/EFI/efiboot.img=isolinux/efiboot.img" \
+                "/EFI/BOOT=EFI/BOOT" \
                 "/boot/grub/grub.cfg=isolinux/grub.cfg" \
                 "."
     fi
     judge "Create iso image"
 
     print_ok "Moving iso image to $SCRIPT_DIR/dist/$TARGET_BUSINESS_NAME-$TARGET_BUILD_VERSION-$TARGET_ARCH-$LANG_MODE-$DATE.iso..."
-    mkdir -p $SCRIPT_DIR/dist
-    mv $SCRIPT_DIR/$TARGET_NAME.iso $SCRIPT_DIR/dist/$TARGET_BUSINESS_NAME-$TARGET_BUILD_VERSION-$TARGET_ARCH-$LANG_MODE-$DATE.iso
+    mkdir -p "$SCRIPT_DIR/dist"
+    mv "$SCRIPT_DIR/$TARGET_NAME.iso" "$SCRIPT_DIR/dist/$TARGET_BUSINESS_NAME-$TARGET_BUILD_VERSION-$TARGET_ARCH-$LANG_MODE-$DATE.iso"
     judge "Move iso image"
 
     print_ok "Generating sha256 checksum..."
-    HASH=`sha256sum $SCRIPT_DIR/dist/$TARGET_BUSINESS_NAME-$TARGET_BUILD_VERSION-$TARGET_ARCH-$LANG_MODE-$DATE.iso | cut -d ' ' -f 1`
-    echo "SHA256: $HASH" > $SCRIPT_DIR/dist/$TARGET_BUSINESS_NAME-$TARGET_BUILD_VERSION-$TARGET_ARCH-$LANG_MODE-$DATE.sha256
+    HASH=`sha256sum "$SCRIPT_DIR/dist/$TARGET_BUSINESS_NAME-$TARGET_BUILD_VERSION-$TARGET_ARCH-$LANG_MODE-$DATE.iso" | cut -d ' ' -f 1`
+    echo "SHA256: $HASH" > "$SCRIPT_DIR/dist/$TARGET_BUSINESS_NAME-$TARGET_BUILD_VERSION-$TARGET_ARCH-$LANG_MODE-$DATE.sha256"
     judge "Generate sha256 checksum"
 
     popd
@@ -438,11 +493,24 @@ EOF
 function umount_on_exit() {
     sleep 2
     print_ok "Umount before exit..."
-    sudo umount new_building_os/sys || sudo umount -lf new_building_os/sys || true
-    sudo umount new_building_os/proc || sudo umount -lf new_building_os/proc || true
-    sudo umount new_building_os/dev || sudo umount -lf new_building_os/dev || true
-    sudo umount new_building_os/run || sudo umount -lf new_building_os/run || true
-    judge "Umount before exit"
+    # Use absolute paths and check if mounts exist before unmounting
+    if mountpoint -q "$SCRIPT_DIR/new_building_os/sys" 2>/dev/null; then
+        sudo umount "$SCRIPT_DIR/new_building_os/sys" || sudo umount -lf "$SCRIPT_DIR/new_building_os/sys" || true
+    fi
+    if mountpoint -q "$SCRIPT_DIR/new_building_os/proc" 2>/dev/null; then
+        sudo umount "$SCRIPT_DIR/new_building_os/proc" || sudo umount -lf "$SCRIPT_DIR/new_building_os/proc" || true
+    fi
+    if mountpoint -q "$SCRIPT_DIR/new_building_os/dev" 2>/dev/null; then
+        sudo umount "$SCRIPT_DIR/new_building_os/dev" || sudo umount -lf "$SCRIPT_DIR/new_building_os/dev" || true
+    fi
+    if mountpoint -q "$SCRIPT_DIR/new_building_os/run" 2>/dev/null; then
+        sudo umount "$SCRIPT_DIR/new_building_os/run" || sudo umount -lf "$SCRIPT_DIR/new_building_os/run" || true
+    fi
+    # Also check for loop mounts (EFI boot image)
+    if mountpoint -q "$SCRIPT_DIR/image/isolinux/efi" 2>/dev/null; then
+        sudo umount "$SCRIPT_DIR/image/isolinux/efi" || sudo umount -lf "$SCRIPT_DIR/image/isolinux/efi" || true
+    fi
+    print_ok "Umount cleanup completed"
 }
 
 function build_single() {
