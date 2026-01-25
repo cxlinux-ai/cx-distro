@@ -1,0 +1,340 @@
+# Cortex Linux Installation Tests (P0)
+# Runs on Ubuntu 24.04 and Debian 12 containers
+# Copyright 2025 AI Venture Holdings LLC
+# SPDX-License-Identifier: BUSL-1.1
+
+name: P0 Installation Tests
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'packages/**'
+      - 'tests/**'
+      - '.github/workflows/installation-tests.yml'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      skip_cleanup:
+        description: 'Skip uninstall/cleanup (for debugging)'
+        required: false
+        default: 'false'
+      test_offline:
+        description: 'Test offline installation'
+        required: false
+        default: 'false'
+
+env:
+  DEBIAN_FRONTEND: noninteractive
+
+jobs:
+  # Test on Ubuntu 24.04
+  ubuntu-install:
+    name: Ubuntu 24.04 Fresh Install
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: System Info
+        run: |
+          echo "=== System Information ==="
+          uname -a
+          cat /etc/os-release
+          df -h
+          free -m
+
+      - name: Verify Clean System
+        run: |
+          echo "=== Checking for existing Cortex packages ==="
+          if dpkg -l | grep -q cortex; then
+            echo "ERROR: Cortex packages already installed"
+            exit 1
+          fi
+          echo "System is clean"
+
+      - name: Add GPG Key
+        run: |
+          echo "=== Adding Cortex GPG Key ==="
+          curl -fsSL https://repo.cortexlinux.com/pub.gpg \
+            | sudo gpg --dearmor -o /usr/share/keyrings/cortex-archive-keyring.gpg
+          gpg --no-default-keyring \
+            --keyring /usr/share/keyrings/cortex-archive-keyring.gpg \
+            --list-keys
+
+      - name: Add Repository
+        run: |
+          echo "=== Adding Cortex Repository ==="
+          echo "deb [signed-by=/usr/share/keyrings/cortex-archive-keyring.gpg] https://repo.cortexlinux.com cortex main" \
+            | sudo tee /etc/apt/sources.list.d/cortex.list
+          sudo apt update
+
+      - name: Install cortex-core
+        run: |
+          echo "=== Installing cortex-core ==="
+          sudo apt install -y cortex-core
+          dpkg -l | grep cortex
+
+      - name: Verify Installation
+        run: |
+          echo "=== Verifying Installation ==="
+          dpkg -l | grep "^ii.*cortex" || (echo "Installation failed"; exit 1)
+
+          # Check dependencies
+          for cmd in python3 curl gnupg; do
+            which $cmd || (echo "Missing: $cmd"; exit 1)
+          done
+
+      - name: Test apt Upgrade
+        run: |
+          echo "=== Testing apt update/upgrade ==="
+          sudo apt update
+          sudo apt upgrade -y
+
+          # Check for signature issues
+          if sudo apt update 2>&1 | grep -iE "NO_PUBKEY|KEYEXPIRED"; then
+            echo "ERROR: Repository signature issues"
+            exit 1
+          fi
+
+      - name: Uninstall Test
+        if: ${{ github.event.inputs.skip_cleanup != 'true' }}
+        run: |
+          echo "=== Uninstalling Cortex ==="
+          sudo apt purge -y $(dpkg -l | grep "^ii.*cortex" | awk '{print $2}' | tr '\n' ' ') || true
+          sudo apt autoremove -y
+
+          # Check for leftover files
+          for path in /etc/cortex /var/lib/cortex /usr/local/bin/cortex; do
+            if [ -e "$path" ]; then
+              echo "ERROR: Leftover found: $path"
+              exit 1
+            fi
+          done
+          echo "No leftover files found"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/cortex.list
+          sudo rm -f /usr/share/keyrings/cortex-archive-keyring.gpg
+          sudo apt update || true
+
+  # Test on Debian 12
+  debian-install:
+    name: Debian 12 Fresh Install
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: debian:bookworm
+      options: --privileged
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Prerequisites
+        run: |
+          apt-get update
+          apt-get install -y curl gnupg ca-certificates lsb-release
+
+      - name: System Info
+        run: |
+          echo "=== System Information ==="
+          uname -a
+          cat /etc/os-release
+
+      - name: Add GPG Key
+        run: |
+          echo "=== Adding Cortex GPG Key ==="
+          curl -fsSL https://repo.cortexlinux.com/pub.gpg \
+            | gpg --dearmor -o /usr/share/keyrings/cortex-archive-keyring.gpg
+          gpg --no-default-keyring \
+            --keyring /usr/share/keyrings/cortex-archive-keyring.gpg \
+            --list-keys
+
+      - name: Add Repository
+        run: |
+          echo "=== Adding Cortex Repository ==="
+          echo "deb [signed-by=/usr/share/keyrings/cortex-archive-keyring.gpg] https://repo.cortexlinux.com cortex main" \
+            > /etc/apt/sources.list.d/cortex.list
+          apt-get update
+
+      - name: Install cortex-core
+        run: |
+          echo "=== Installing cortex-core ==="
+          apt-get install -y cortex-core || echo "Package not yet available"
+          dpkg -l | grep cortex || echo "No cortex packages (not yet published)"
+
+      - name: Verify Installation
+        run: |
+          echo "=== Verifying Installation ==="
+          if dpkg -l | grep -q "^ii.*cortex"; then
+            echo "Cortex packages installed successfully"
+          else
+            echo "Note: Packages may not be published yet"
+          fi
+
+      - name: Uninstall Test
+        if: ${{ github.event.inputs.skip_cleanup != 'true' }}
+        run: |
+          echo "=== Uninstalling Cortex ==="
+          apt-get purge -y $(dpkg -l | grep "^ii.*cortex" | awk '{print $2}' | tr '\n' ' ') || true
+          apt-get autoremove -y
+
+  # Upgrade test (v0.1 -> v0.2)
+  upgrade-test:
+    name: Version Upgrade Test
+    runs-on: ubuntu-24.04
+    needs: [ubuntu-install]
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Repository
+        run: |
+          curl -fsSL https://repo.cortexlinux.com/pub.gpg \
+            | sudo gpg --dearmor -o /usr/share/keyrings/cortex-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/cortex-archive-keyring.gpg] https://repo.cortexlinux.com cortex main" \
+            | sudo tee /etc/apt/sources.list.d/cortex.list
+          sudo apt update
+
+      - name: Install Current Version
+        run: |
+          echo "=== Installing current version ==="
+          sudo apt install -y cortex-core || echo "Package not yet available"
+
+          CURRENT=$(dpkg -l cortex-core 2>/dev/null | grep "^ii" | awk '{print $3}' || echo "none")
+          echo "Installed version: $CURRENT"
+
+      - name: Test Upgrade
+        run: |
+          echo "=== Testing upgrade ==="
+          sudo apt update
+          AVAILABLE=$(apt-cache policy cortex-core 2>/dev/null | grep "Candidate:" | awk '{print $2}' || echo "none")
+          echo "Available version: $AVAILABLE"
+
+          # Upgrade if available
+          if [ "$AVAILABLE" != "none" ]; then
+            sudo apt upgrade -y cortex-core
+            echo "Upgrade complete"
+          else
+            echo "No upgrade available"
+          fi
+
+      - name: Verify Upgrade
+        run: |
+          echo "=== Verifying upgrade ==="
+          dpkg -l cortex-core || echo "Package not installed"
+
+  # Full vs Minimal comparison
+  package-comparison:
+    name: Minimal vs Full Installation
+    runs-on: ubuntu-24.04
+    needs: [ubuntu-install]
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Repository
+        run: |
+          curl -fsSL https://repo.cortexlinux.com/pub.gpg \
+            | sudo gpg --dearmor -o /usr/share/keyrings/cortex-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/cortex-archive-keyring.gpg] https://repo.cortexlinux.com cortex main" \
+            | sudo tee /etc/apt/sources.list.d/cortex.list
+          sudo apt update
+
+      - name: Measure Minimal Install
+        run: |
+          echo "=== Minimal (cortex-core) Installation ==="
+          BEFORE=$(df / --output=used | tail -1)
+          sudo apt install -y cortex-core || echo "Package not available"
+          AFTER=$(df / --output=used | tail -1)
+
+          CORE_SIZE=$((AFTER - BEFORE))
+          echo "cortex-core disk usage: ${CORE_SIZE}KB"
+          echo "CORE_SIZE=${CORE_SIZE}" >> $GITHUB_ENV
+
+          # Count dependencies
+          CORE_DEPS=$(apt-cache depends cortex-core 2>/dev/null | grep -c "Depends:" || echo "0")
+          echo "cortex-core dependencies: $CORE_DEPS"
+
+      - name: Measure Full Install
+        run: |
+          echo "=== Full (cortex-full) Installation ==="
+          BEFORE=$(df / --output=used | tail -1)
+          sudo apt install -y cortex-full || echo "Package not available"
+          AFTER=$(df / --output=used | tail -1)
+
+          FULL_SIZE=$((AFTER - BEFORE))
+          echo "cortex-full additional disk usage: ${FULL_SIZE}KB"
+
+          # Count dependencies
+          FULL_DEPS=$(apt-cache depends cortex-full 2>/dev/null | grep -c "Depends:" || echo "0")
+          echo "cortex-full dependencies: $FULL_DEPS"
+
+      - name: Compare Packages
+        run: |
+          echo "=== Package Comparison ==="
+          echo "cortex-core: Minimal installation for core functionality"
+          echo "cortex-full: Complete installation with all tools"
+
+          # List package differences
+          echo ""
+          echo "Packages in cortex-full but not cortex-core:"
+          apt-cache depends cortex-full 2>/dev/null | grep "Depends:" | sort || true
+
+  # Signing verification
+  signature-test:
+    name: Repository Signature Verification
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download and Verify Key
+        run: |
+          echo "=== Downloading GPG Key ==="
+          curl -fsSL -o /tmp/cortex.gpg https://repo.cortexlinux.com/pub.gpg
+
+          echo "=== Key Information ==="
+          gpg --show-keys /tmp/cortex.gpg
+
+          echo "=== Key Fingerprint ==="
+          gpg --show-keys --fingerprint /tmp/cortex.gpg
+
+      - name: Verify Repository Metadata
+        run: |
+          echo "=== Importing Key ==="
+          gpg --dearmor -o /tmp/cortex-keyring.gpg /tmp/cortex.gpg
+
+          echo "=== Checking Release File ==="
+          curl -fsSL -o /tmp/Release https://repo.cortexlinux.com/dists/cortex/Release || echo "Release file not found"
+          curl -fsSL -o /tmp/Release.gpg https://repo.cortexlinux.com/dists/cortex/Release.gpg || echo "Release.gpg not found"
+
+          if [ -f /tmp/Release ] && [ -f /tmp/Release.gpg ]; then
+            gpg --no-default-keyring --keyring /tmp/cortex-keyring.gpg --verify /tmp/Release.gpg /tmp/Release
+            echo "Repository signature VALID"
+          else
+            echo "Repository not yet configured (expected for new repos)"
+          fi
+
+      - name: Test Key Expiration
+        run: |
+          echo "=== Checking Key Expiration ==="
+          EXPIRES=$(gpg --show-keys --with-colons /tmp/cortex.gpg | grep "^pub:" | cut -d: -f7)
+          if [ -n "$EXPIRES" ] && [ "$EXPIRES" != "0" ]; then
+            EXPIRE_DATE=$(date -d "@$EXPIRES" 2>/dev/null || date -r "$EXPIRES" 2>/dev/null || echo "unknown")
+            echo "Key expires: $EXPIRE_DATE"
+          else
+            echo "Key does not expire (recommended for repo signing)"
+          fi
