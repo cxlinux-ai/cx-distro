@@ -184,10 +184,6 @@ function build_iso() {
     sudo cp "new_building_os/boot/vmlinuz-${KERNEL_VERSION}" image/casper/vmlinuz
     sudo cp "new_building_os/boot/initrd.img-${KERNEL_VERSION}" image/casper/initrd
     judge "Copy kernel files"
-
-    print_ok "Copying repair.sh to /REPAIR.sh in the image..."
-    sudo cp $SCRIPT_DIR/repair.sh image/REPAIR.sh
-    judge "Copy repair.sh to image"
     
     print_ok "Generating grub.cfg..."
     touch image/$TARGET_NAME
