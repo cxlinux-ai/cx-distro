@@ -1,5 +1,5 @@
-# Cortex Linux ISO Build Workflow
-# Builds and publishes Cortex Linux ISO images
+# CX Linux ISO Build Workflow
+# Builds and publishes CX Linux ISO images
 # Copyright 2025 AI Venture Holdings LLC
 # SPDX-License-Identifier: Apache-2.0
 
@@ -46,7 +46,7 @@ jobs:
               apt-get update
               apt-get install -y build-essential dpkg-dev devscripts debhelper fakeroot gnupg
 
-              for pkg in cortex-archive-keyring cortex-core cortex-full; do
+              for pkg in cx-archive-keyring cx-core cx-full; do
                 echo "Building $pkg..."
                 cd /workspace/packages/$pkg
                 dpkg-buildpackage -us -uc -b
@@ -188,7 +188,7 @@ jobs:
             SHA256SUMS
             SHA512SUMS
           body: |
-            ## Cortex Linux ${{ github.ref_name }}
+            ## CX Linux ${{ github.ref_name }}
 
             ### Downloads
             - **cortex-linux-*-amd64-offline.iso** - Full offline installer
@@ -204,6 +204,6 @@ jobs:
             3. Follow installation prompts
 
             ### Documentation
-            See https://cortexlinux.com/docs for full documentation.
+            See https://cxlinux-ai.com/docs for full documentation.
           draft: false
           prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}

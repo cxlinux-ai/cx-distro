@@ -1,7 +1,7 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 #
-# Cortex Linux P0 Installation Test VMs
+# CX Linux P0 Installation Test VMs
 # Copyright 2025 AI Venture Holdings LLC
 # SPDX-License-Identifier: BUSL-1.1
 #
@@ -23,10 +23,10 @@ Vagrant.configure("2") do |config|
   # Ubuntu 24.04 LTS
   config.vm.define "ubuntu", primary: true do |ubuntu|
     ubuntu.vm.box = "bento/ubuntu-24.04"
-    ubuntu.vm.hostname = "cortex-test-ubuntu"
+    ubuntu.vm.hostname = "cx-test-ubuntu"
 
     ubuntu.vm.provider "virtualbox" do |vb|
-      vb.name = "cortex-test-ubuntu"
+      vb.name = "cx-test-ubuntu"
       vb.memory = 4096
       vb.cpus = 2
     end
@@ -52,10 +52,10 @@ Vagrant.configure("2") do |config|
   # Debian 12 (Bookworm)
   config.vm.define "debian" do |debian|
     debian.vm.box = "debian/bookworm64"
-    debian.vm.hostname = "cortex-test-debian"
+    debian.vm.hostname = "cx-test-debian"
 
     debian.vm.provider "virtualbox" do |vb|
-      vb.name = "cortex-test-debian"
+      vb.name = "cx-test-debian"
       vb.memory = 4096
       vb.cpus = 2
     end
@@ -81,7 +81,7 @@ Vagrant.configure("2") do |config|
   # GPU test (NVIDIA) - requires GPU passthrough setup
   config.vm.define "nvidia", autostart: false do |nvidia|
     nvidia.vm.box = "bento/ubuntu-24.04"
-    nvidia.vm.hostname = "cortex-test-nvidia"
+    nvidia.vm.hostname = "cx-test-nvidia"
 
     nvidia.vm.provider "libvirt" do |lv|
       lv.memory = 8192

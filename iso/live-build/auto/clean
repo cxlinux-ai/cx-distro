@@ -1,11 +1,11 @@
 #!/bin/bash
-# Cortex Linux live-build auto/clean
+# CX Linux live-build auto/clean
 # Copyright 2025 AI Venture Holdings LLC
 # SPDX-License-Identifier: Apache-2.0
 
 set -e
 
-echo "Cleaning Cortex Linux build environment..."
+echo "Cleaning CX Linux build environment..."
 
 lb clean noauto "${@}"
 

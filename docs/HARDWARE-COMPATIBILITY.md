@@ -1,8 +1,8 @@
-# Cortex Linux Hardware Compatibility Matrix
+# CX Linux Hardware Compatibility Matrix
 
 ## Overview
 
-This document defines the certified hardware profiles for Cortex Linux and the validation status for each component.
+This document defines the certified hardware profiles for CX Linux and the validation status for each component.
 
 ## Certified Server Profiles
 
@@ -153,7 +153,7 @@ Each certified profile undergoes:
 3. **Upgrade Tests**
    - [ ] apt upgrade (minor)
    - [ ] Kernel upgrade
-   - [ ] Cortex upgrade
+   - [ ] CX upgrade
    - [ ] Rollback capability
 
 4. **Stress Tests**
@@ -165,7 +165,7 @@ Each certified profile undergoes:
 ## Reporting Issues
 
 Hardware compatibility issues should be reported to:
-- GitHub: https://github.com/cortexlinux/cortex-distro/issues
+- GitHub: https://github.com/cxlinux-ai/cortex-distro/issues
 - Label: `hardware-compatibility`
 
 Include:

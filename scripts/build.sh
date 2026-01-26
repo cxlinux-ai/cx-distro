@@ -1,5 +1,5 @@
 #!/bin/bash
-# Cortex Linux Master Build Script
+# CX Linux Master Build Script
 # One-command ISO build with all dependencies
 # Copyright 2025 AI Venture Holdings LLC
 # SPDX-License-Identifier: BUSL-1.1
@@ -10,8 +10,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="${SCRIPT_DIR}/.."
 
 # Configuration
-VERSION="${CORTEX_VERSION:-0.1.0}"
-ARCH="${CORTEX_ARCH:-amd64}"
+VERSION="${CX_VERSION:-0.1.0}"
+ARCH="${CX_ARCH:-amd64}"
 BUILD_TYPE="${1:-offline}"  # netinst or offline
 
 # Colors
@@ -28,7 +28,7 @@ header() { echo -e "\n${BLUE}========================================${NC}\n${BL
 
 usage() {
     cat << EOF
-Cortex Linux Build Script
+CX Linux Build Script
 
 Usage: $(basename "$0") [build-type] [options]
 
@@ -136,12 +136,12 @@ build_packages() {
     cd "${PROJECT_ROOT}"
     
     # Build each package
-    for pkg in cortex-archive-keyring cortex-core cortex-full; do
+    for pkg in cx-archive-keyring cx-core cx-full; do
         log "Building ${pkg}..."
         cd "${PROJECT_ROOT}/packages/${pkg}"
         
         # Clean previous builds
-        rm -f ../cortex-*.deb ../cortex-*.buildinfo ../cortex-*.changes 2>/dev/null || true
+        rm -f ../cx-*.deb ../cx-*.buildinfo ../cx-*.changes 2>/dev/null || true
         
         # Build
         dpkg-buildpackage -us -uc -b
@@ -198,7 +198,7 @@ build_iso() {
     iso_file=$(find . -maxdepth 1 -name "*.iso" -type f | head -1)
     
     if [ -n "$iso_file" ] && [ -f "$iso_file" ]; then
-        local output_name="cortex-linux-${VERSION}-${ARCH}-${iso_type}.iso"
+        local output_name="cx-linux-${VERSION}-${ARCH}-${iso_type}.iso"
         mv "$iso_file" "${PROJECT_ROOT}/output/${output_name}"
         
         # Generate checksums
@@ -283,7 +283,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Main execution
-header "Cortex Linux Build System"
+header "CX Linux Build System"
 log "Version: ${VERSION}"
 log "Architecture: ${ARCH}"
 log "Build Type: ${BUILD_TYPE}"

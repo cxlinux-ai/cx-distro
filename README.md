@@ -1,16 +1,16 @@
-# Cortex Distro
+# CX Distro
 
-**Debian-based Distribution Engineering for Cortex Linux**
+**Debian-based Distribution Engineering for CX Linux**
 
 [![License](https://img.shields.io/badge/license-BSL%201.1-orange.svg)](LICENSE)
 [![Debian](https://img.shields.io/badge/base-Debian%2013%20trixie-A81D33.svg)](https://debian.org)
-[![Build](https://img.shields.io/github/actions/workflow/status/cortexlinux/cortex-distro/build-iso.yml?branch=main)](https://github.com/cortexlinux/cortex-distro/actions)
+[![Build](https://img.shields.io/github/actions/workflow/status/cxlinux-ai/cx-distro/build-iso.yml?branch=main)](https://github.com/cxlinux-ai/cx-distro/actions)
 
 ## Overview
 
-`cortex-distro` handles everything related to building and distributing Cortex Linux as a Debian-based operating system. This includes ISO generation, package repository management, automated installation, and supply-chain security.
+`cx-distro` handles everything related to building and distributing CX Linux as a Debian-based operating system. This includes ISO generation, package repository management, automated installation, and supply-chain security.
 
-**Cortex Linux** is an AI-native operating system that translates natural language commands into Linux operations, eliminating traditional documentation complexity for server management.
+**CX Linux** is an AI-native operating system that translates natural language commands into Linux operations, eliminating traditional documentation complexity for server management.
 
 ## Quick Start
 
@@ -18,8 +18,8 @@
 
 ```bash
 # Clone repository
-git clone https://github.com/cortexlinux/cortex-distro.git
-cd cortex-distro
+git clone https://github.com/cxlinux-ai/cortex-distro.git
+cd cx-distro
 
 # Install dependencies (requires sudo)
 sudo apt-get install -y live-build debootstrap squashfs-tools xorriso \
@@ -40,30 +40,30 @@ make iso   # Build ISO
 After a successful build:
 ```
 output/
-├── cortex-linux-0.1.0-amd64-offline.iso      # Bootable ISO
-├── cortex-linux-0.1.0-amd64-offline.iso.sha256
+├── cx-linux-0.1.0-amd64-offline.iso      # Bootable ISO
+├── cx-linux-0.1.0-amd64-offline.iso.sha256
 ├── packages/
-│   ├── cortex-archive-keyring_*.deb
-│   ├── cortex-core_*.deb
-│   └── cortex-full_*.deb
+│   ├── cx-archive-keyring_*.deb
+│   ├── cx-core_*.deb
+│   └── cx-full_*.deb
 └── sbom/
-    ├── cortex-linux-0.1.0.cdx.json           # CycloneDX SBOM
-    └── cortex-linux-0.1.0.spdx.json          # SPDX SBOM
+    ├── cx-linux-0.1.0.cdx.json           # CycloneDX SBOM
+    └── cx-linux-0.1.0.spdx.json          # SPDX SBOM
 ```
 
 ## Architecture
 
 ```
-cortex-distro/
+cx-distro/
 ├── iso/                        # ISO build configuration
 │   ├── live-build/             # Debian live-build configs
 │   │   ├── auto/               # Build automation scripts
 │   │   └── config/             # Package lists, hooks, includes
 │   └── preseed/                # Automated installation preseeds
 ├── packages/                   # Debian package definitions
-│   ├── cortex-archive-keyring/ # GPG keyring package
-│   ├── cortex-core/            # Minimal installation meta-package
-│   └── cortex-full/            # Full installation meta-package
+│   ├── cx-archive-keyring/ # GPG keyring package
+│   ├── cx-core/            # Minimal installation meta-package
+│   └── cx-full/            # Full installation meta-package
 ├── repository/                 # APT repository tooling
 │   └── scripts/                # repo-manage.sh
 ├── sbom/                       # SBOM generation (CycloneDX/SPDX)
@@ -85,20 +85,20 @@ cortex-distro/
 |-----------|-------------|
 | **ISO Builder** | Reproducible ISO image pipeline using Debian live-build |
 | **APT Repository** | Signed package repository with GPG key management |
-| **Meta-packages** | cortex-core (minimal), cortex-full (complete) |
+| **Meta-packages** | cx-core (minimal), cx-full (complete) |
 | **First-boot** | Preseed automation and idempotent provisioning |
 | **SBOM** | Software Bill of Materials (CycloneDX/SPDX) |
 
 ## Installation Profiles
 
-### cortex-core (Minimal)
+### cx-core (Minimal)
 - Base system with Python 3.11+
 - Security sandbox (Firejail, AppArmor)
 - SSH server
-- Cortex package manager dependencies
+- CX package manager dependencies
 
-### cortex-full (Recommended)
-Everything in cortex-core plus:
+### cx-full (Recommended)
+Everything in cx-core plus:
 - Docker and container tools
 - Network security (nftables, fail2ban)
 - Monitoring (Prometheus node exporter)
@@ -108,11 +108,11 @@ Everything in cortex-core plus:
 
 ## Automated Installation
 
-Cortex Linux supports fully unattended installation via preseed:
+CX Linux supports fully unattended installation via preseed:
 
 ```bash
 # Boot parameter for automated install
-preseed/file=/cdrom/preseed/cortex.preseed
+preseed/file=/cdrom/preseed/cx.preseed
 ```
 
 ### Preseed Features
@@ -121,19 +121,19 @@ preseed/file=/cdrom/preseed/cortex.preseed
 - Optional LUKS encryption
 - SSH key injection
 - Admin user creation
-- Cortex repository configuration
+- CX repository configuration
 
 ## APT Repository
 
-Cortex uses a signed APT repository with deb822 format:
+CX uses a signed APT repository with deb822 format:
 
 ```
-# /etc/apt/sources.list.d/cortex.sources
+# /etc/apt/sources.list.d/cx.sources
 Types: deb
-URIs: https://repo.cortexlinux.com/apt
-Suites: cortex cortex-updates cortex-security
+URIs: https://repo.cxlinux-ai.com/apt
+Suites: cx cx-updates cx-security
 Components: main
-Signed-By: /usr/share/keyrings/cortex-archive-keyring.gpg
+Signed-By: /usr/share/keyrings/cx-archive-keyring.gpg
 ```
 
 ### Repository Management
@@ -143,16 +143,16 @@ Signed-By: /usr/share/keyrings/cortex-archive-keyring.gpg
 ./repository/scripts/repo-manage.sh init
 
 # Add package
-./repository/scripts/repo-manage.sh add packages/cortex-core_0.1.0-1_all.deb
+./repository/scripts/repo-manage.sh add packages/cx-core_0.1.0-1_all.deb
 
 # Publish (sign and generate metadata)
-CORTEX_GPG_KEY_ID=ABCD1234 ./repository/scripts/repo-manage.sh publish
+CX_GPG_KEY_ID=ABCD1234 ./repository/scripts/repo-manage.sh publish
 
 # Create snapshot
 ./repository/scripts/repo-manage.sh snapshot
 
 # Export for offline use
-./repository/scripts/repo-manage.sh export cortex-offline-repo
+./repository/scripts/repo-manage.sh export cx-offline-repo
 ```
 
 ## Security
@@ -177,7 +177,7 @@ make help           # Show all targets
 make iso            # Build full offline ISO
 make iso-netinst    # Build minimal network installer
 make package        # Build all Debian packages
-make package PKG=cortex-core  # Build specific package
+make package PKG=cx-core  # Build specific package
 make sbom           # Generate SBOM
 make test           # Run verification tests
 make clean          # Remove build artifacts
@@ -186,12 +186,12 @@ make deps           # Install build dependencies
 
 ## Topics Covered
 
-This repository implements 9 major topics from the Cortex Linux planning:
+This repository implements 9 major topics from the CX Linux planning:
 
 - [x] Automated installation and first-boot provisioning
-- [x] Cortex package repository and apt trust model
+- [x] CX package repository and apt trust model
 - [x] Debian base selection and compatibility contract
-- [ ] Debian packaging strategy for Cortex components
+- [ ] Debian packaging strategy for CX components
 - [ ] GPU driver enablement and packaging (NVIDIA/AMD)
 - [x] ISO image build system (live-build)
 - [ ] Kernel, firmware, and hardware enablement plan
@@ -226,8 +226,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## Related Repositories
 
-- [cortex](https://github.com/cortexlinux/cortex) - AI-powered package manager CLI
-- [website](https://github.com/cortexlinux/website) - cortexlinux.com
+- [cortex](https://github.com/cxlinux-ai/cortex) - AI-powered package manager CLI
+- [website](https://github.com/cxlinux-ai/website) - cxlinux-ai.com
 
 ## License
 
@@ -235,9 +235,9 @@ BSL 1.1 - See [LICENSE](LICENSE)
 
 ## Support
 
-- Documentation: https://cortexlinux.com/docs
-- Issues: https://github.com/cortexlinux/cortex-distro/issues
-- Discord: https://discord.gg/cortexlinux
+- Documentation: https://cxlinux-ai.com/docs
+- Issues: https://github.com/cxlinux-ai/cx-distro/issues
+- Discord: https://discord.gg/cxlinux-ai
 
 ---
 

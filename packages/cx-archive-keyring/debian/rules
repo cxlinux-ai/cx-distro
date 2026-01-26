@@ -1,0 +1,24 @@
+#!/usr/bin/make -f
+# CX Archive Keyring Build Rules
+# Copyright 2025 AI Venture Holdings LLC
+# SPDX-License-Identifier: Apache-2.0
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	# Generate keyring if key exists, otherwise use placeholder
+	@if [ -f keys/cx-archive-signing.gpg ]; then \
+		cp keys/cx-archive-signing.gpg cx-archive-keyring.gpg; \
+	else \
+		echo "WARNING: Using placeholder keyring. Generate real keys before release."; \
+		touch cx-archive-keyring.gpg; \
+	fi
+
+override_dh_auto_install:
+	install -d $(CURDIR)/debian/cx-archive-keyring/usr/share/keyrings
+	install -m 644 cx-archive-keyring.gpg \
+		$(CURDIR)/debian/cx-archive-keyring/usr/share/keyrings/cx-archive-keyring.gpg
+
+override_dh_auto_clean:
+	rm -f cx-archive-keyring.gpg

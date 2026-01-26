@@ -11,11 +11,11 @@
 **File:** `tests/installation-tests.sh`
 
 Comprehensive bash script that tests:
-- Clean system verification (no pre-existing Cortex packages)
+- Clean system verification (no pre-existing CX packages)
 - GPG key download and verification
 - APT repository configuration
-- cortex-core installation (minimal)
-- cortex-full installation (complete)
+- cx-core installation (minimal)
+- cx-full installation (complete)
 - GPU package installation (NVIDIA/AMD detection)
 - apt update/upgrade cycle with signature verification
 - Version upgrade path testing
@@ -33,7 +33,7 @@ sudo ./tests/installation-tests.sh clean gpg repo core
 sudo ./tests/installation-tests.sh --skip-uninstall
 
 # Test offline ISO
-sudo ./tests/installation-tests.sh --offline /path/to/cortex.iso
+sudo ./tests/installation-tests.sh --offline /path/to/cx.iso
 ```
 
 ### 2. Vagrant VM Configuration
@@ -60,13 +60,13 @@ Automated CI/CD testing:
 
 | Package | debian/control | debian/changelog | debian/rules |
 |---------|----------------|------------------|--------------|
-| cortex-archive-keyring | ✅ | ✅ | ✅ |
-| cortex-core | ✅ | ✅ | ✅ |
-| cortex-full | ✅ | ✅ | ✅ |
-| cortex-gpu-nvidia | ✅ | ✅ | ✅ |
-| cortex-gpu-amd | ✅ | ✅ | ✅ |
-| cortex-llm | ✅ | ✅ | ✅ |
-| cortex-secops | ✅ | ✅ | ✅ |
+| cx-archive-keyring | ✅ | ✅ | ✅ |
+| cx-core | ✅ | ✅ | ✅ |
+| cx-full | ✅ | ✅ | ✅ |
+| cx-gpu-nvidia | ✅ | ✅ | ✅ |
+| cx-gpu-amd | ✅ | ✅ | ✅ |
+| cx-llm | ✅ | ✅ | ✅ |
+| cx-secops | ✅ | ✅ | ✅ |
 
 ---
 
@@ -79,8 +79,8 @@ Automated CI/CD testing:
 | Fresh Install | ✅ | ✅ | Script Ready |
 | GPG Key Import | ✅ | ✅ | Script Ready |
 | Repository Add | ✅ | ✅ | Script Ready |
-| cortex-core | ✅ | ✅ | Script Ready |
-| cortex-full | ✅ | ✅ | Script Ready |
+| cx-core | ✅ | ✅ | Script Ready |
+| cx-full | ✅ | ✅ | Script Ready |
 | Upgrade (v0.1→v0.2) | ✅ | ✅ | Script Ready |
 | Uninstall/Purge | ✅ | ✅ | Script Ready |
 
@@ -90,8 +90,8 @@ Automated CI/CD testing:
 |------|--------|-----|--------|
 | Detection | ✅ | ✅ | Script Ready |
 | Driver Install | 🔸 | 🔸 | Requires Hardware |
-| cortex-gpu-nvidia | 🔸 | N/A | Requires Hardware |
-| cortex-gpu-amd | N/A | 🔸 | Requires Hardware |
+| cx-gpu-nvidia | 🔸 | N/A | Requires Hardware |
+| cx-gpu-amd | N/A | 🔸 | Requires Hardware |
 
 ### Special Tests
 
@@ -110,7 +110,7 @@ Legend: ✅ Automated | 🔸 Requires specific environment | ❌ Not supported
 ### Local VM Testing (Vagrant)
 
 ```bash
-cd cortex-distro/tests
+cd cx-distro/tests
 
 # Start Ubuntu VM and run tests
 vagrant up ubuntu
@@ -137,7 +137,7 @@ Push to `main` or `develop` branch, or manually trigger:
 
 ```bash
 # Download test script
-curl -fsSL https://raw.githubusercontent.com/cortexlinux/cortex-distro/main/tests/installation-tests.sh -o /tmp/test.sh
+curl -fsSL https://raw.githubusercontent.com/cxlinux-ai/cx-distro/main/tests/installation-tests.sh -o /tmp/test.sh
 chmod +x /tmp/test.sh
 
 # Run as root
@@ -151,13 +151,13 @@ sudo /tmp/test.sh
 1. **GPU Tests** - Require actual GPU hardware, cannot run in standard VMs
 2. **Offline ISO** - Requires pre-built ISO file
 3. **Signature Tests** - Require published repository with signed Release files
-4. **Package Availability** - Tests may show "not available" until packages are published to repo.cortexlinux.com
+4. **Package Availability** - Tests may show "not available" until packages are published to repo.cxlinux-ai.com
 
 ## Current Status
 
 **Repository Status:** NOT YET DEPLOYED
-- `repo.cortexlinux.com` is not resolving (DNS not configured or GitHub Pages not enabled)
-- APT repository at `https://github.com/cortexlinux/apt-repo` exists but not deployed
+- `repo.cxlinux-ai.com` is not resolving (DNS not configured or GitHub Pages not enabled)
+- APT repository at `https://github.com/cxlinux-ai/apt-repo` exists but not deployed
 
 **Pre-deployment Testing:**
 - Package structure validation: ✅ PASS (all debian/ files present)
@@ -166,9 +166,9 @@ sudo /tmp/test.sh
 
 **To Deploy Repository:**
 1. Enable GitHub Pages on `apt-repo` repository (Settings → Pages → Deploy from branch: `deploy`)
-2. Configure DNS CNAME: `repo.cortexlinux.com` → `cortexlinux.github.io`
-3. Build packages: `cd cortex-distro && make packages`
-4. Add packages to repo: `cd apt-repo && reprepro -b . includedeb cortex ../cortex-distro/*.deb`
+2. Configure DNS CNAME: `repo.cxlinux-ai.com` → `cxlinux-ai.github.io`
+3. Build packages: `cd cx-distro && make packages`
+4. Add packages to repo: `cd apt-repo && reprepro -b . includedeb cx ../cx-distro/*.deb`
 5. Sign and push: `git add . && git commit -m "Add packages" && git push`
 
 ---
@@ -186,7 +186,7 @@ sudo /tmp/test.sh
 ## Files Created
 
 ```
-cortex-distro/
+cx-distro/
 ├── tests/
 │   ├── installation-tests.sh    # Main test script (NEW)
 │   ├── Vagrantfile              # VM configuration (NEW)

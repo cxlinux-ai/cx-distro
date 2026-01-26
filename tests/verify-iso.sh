@@ -1,5 +1,5 @@
 #!/bin/bash
-# Cortex Linux ISO Verification Tests
+# CX Linux ISO Verification Tests
 # Validates ISO integrity and bootability
 # Copyright 2025 AI Venture Holdings LLC
 # SPDX-License-Identifier: BUSL-1.1
@@ -36,7 +36,7 @@ if [ ! -f "$ISO_FILE" ]; then
 fi
 
 info "================================================"
-info "Cortex Linux ISO Verification"
+info "CX Linux ISO Verification"
 info "ISO: $ISO_FILE"
 info "================================================"
 

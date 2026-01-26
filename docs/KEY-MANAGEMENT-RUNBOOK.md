@@ -1,16 +1,16 @@
-# Cortex Linux Signing Key Management Runbook
+# CX Linux Signing Key Management Runbook
 
 ## Overview
 
 This document defines the key hierarchy, generation procedures, rotation schedule,
-and incident response for Cortex Linux release signing.
+and incident response for CX Linux release signing.
 
 ## Key Hierarchy
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    OFFLINE ROOT KEY                         │
-│              cortex-release-root@cortexlinux.com            │
+│              cx-release-root@cxlinux-ai.com            │
 │                    RSA 4096-bit                             │
 │                 Valid: 10 years                             │
 │         Storage: Air-gapped, HSM/hardware token             │
@@ -22,15 +22,15 @@ and incident response for Cortex Linux release signing.
 │               ONLINE SIGNING SUBKEYS                         │
 ├─────────────────────────────────────────────────────────────┤
 │  APT Repository Signing Key                                  │
-│  cortex-apt-signing@cortexlinux.com                         │
+│  cx-apt-signing@cxlinux-ai.com                         │
 │  RSA 4096-bit | Valid: 2 years | Rotation: Annual           │
 ├─────────────────────────────────────────────────────────────┤
 │  ISO Release Signing Key                                     │
-│  cortex-iso-signing@cortexlinux.com                         │
+│  cx-iso-signing@cxlinux-ai.com                         │
 │  RSA 4096-bit | Valid: 2 years | Rotation: Annual           │
 ├─────────────────────────────────────────────────────────────┤
 │  Build Attestation Key                                       │
-│  cortex-build-attestation@cortexlinux.com                   │
+│  cx-build-attestation@cxlinux-ai.com                   │
 │  RSA 4096-bit | Valid: 1 year | Rotation: 6 months          │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -56,11 +56,11 @@ gpg --full-generate-key
 # Select: RSA and RSA
 # Keysize: 4096
 # Validity: 10y
-# Name: Cortex Linux Release Signing (Root)
-# Email: cortex-release-root@cortexlinux.com
+# Name: CX Linux Release Signing (Root)
+# Email: cx-release-root@cxlinux-ai.com
 
 # 2. Generate subkeys
-gpg --edit-key cortex-release-root@cortexlinux.com
+gpg --edit-key cx-release-root@cxlinux-ai.com
 > addkey
 # Select: RSA (sign only)
 # Keysize: 4096
@@ -68,23 +68,23 @@ gpg --edit-key cortex-release-root@cortexlinux.com
 # Repeat for each subkey type
 
 # 3. Export public key
-gpg --armor --export cortex-release-root@cortexlinux.com > cortex-root.asc
+gpg --armor --export cx-release-root@cxlinux-ai.com > cx-root.asc
 
 # 4. Export subkeys only (for online signing host)
-gpg --armor --export-secret-subkeys cortex-release-root@cortexlinux.com > cortex-subkeys.asc
+gpg --armor --export-secret-subkeys cx-release-root@cxlinux-ai.com > cx-subkeys.asc
 
 # 5. Create revocation certificate
-gpg --gen-revoke cortex-release-root@cortexlinux.com > cortex-root-revoke.asc
+gpg --gen-revoke cx-release-root@cxlinux-ai.com > cx-root-revoke.asc
 
 # 6. Backup root key to multiple secure locations
-gpg --armor --export-secret-keys cortex-release-root@cortexlinux.com > cortex-root-secret.asc
+gpg --armor --export-secret-keys cx-release-root@cxlinux-ai.com > cx-root-secret.asc
 # Store in safe deposit box, encrypted USB in fireproof safe, etc.
 ```
 
 ### Witness Log
 
 ```
-CORTEX LINUX KEY CEREMONY LOG
+CX LINUX KEY CEREMONY LOG
 =============================
 
 Date: _______________
@@ -139,7 +139,7 @@ _______________________________________________
 
 3. **Overlap Period (T-7 days)**
    - Deploy new subkeys to signing host
-   - Update cortex-archive-keyring package
+   - Update cx-archive-keyring package
    - Release new keyring to stable-candidate
 
 4. **Transition (T-0)**
@@ -185,14 +185,14 @@ Procedure:
 ### Package Contents
 
 ```
-cortex-archive-keyring/
+cx-archive-keyring/
 ├── debian/
 │   ├── control
 │   ├── rules
 │   ├── changelog
 │   └── install
 └── keyrings/
-    └── cortex-archive-keyring.gpg
+    └── cx-archive-keyring.gpg
 ```
 
 ### Building New Keyring Package
@@ -202,13 +202,13 @@ cortex-archive-keyring/
 # build-keyring.sh
 
 VERSION="2025.01"
-KEYRING_DIR="cortex-archive-keyring"
+KEYRING_DIR="cx-archive-keyring"
 
 # Export public keys
 gpg --export \
-    cortex-release-root@cortexlinux.com \
-    cortex-apt-signing@cortexlinux.com \
-    > "${KEYRING_DIR}/keyrings/cortex-archive-keyring.gpg"
+    cx-release-root@cxlinux-ai.com \
+    cx-apt-signing@cxlinux-ai.com \
+    > "${KEYRING_DIR}/keyrings/cx-archive-keyring.gpg"
 
 # Update changelog
 dch -v "${VERSION}" "Key rotation: new signing subkey"
@@ -217,8 +217,8 @@ dch -v "${VERSION}" "Key rotation: new signing subkey"
 dpkg-buildpackage -us -uc -b
 
 # Sign package
-debsign -k cortex-apt-signing@cortexlinux.com \
-    cortex-archive-keyring_${VERSION}_all.changes
+debsign -k cx-apt-signing@cxlinux-ai.com \
+    cx-archive-keyring_${VERSION}_all.changes
 ```
 
 ## Signing Infrastructure
@@ -272,7 +272,7 @@ jobs:
       - name: Sign artifact
         run: |
           gpg --detach-sign --armor \
-              -u cortex-apt-signing@cortexlinux.com \
+              -u cx-apt-signing@cxlinux-ai.com \
               ${{ inputs.artifact }}
 
       - name: Upload signature
@@ -295,7 +295,7 @@ jobs:
 
 ```bash
 # 1. Import revocation certificate
-gpg --import cortex-root-revoke.asc
+gpg --import cx-root-revoke.asc
 
 # 2. Publish revoked key
 gpg --keyserver keys.openpgp.org --send-keys <KEY_ID>
@@ -317,16 +317,16 @@ gpg --keyserver keys.openpgp.org --send-keys <KEY_ID>
 
 ## Summary
 
-The Cortex Linux signing key [KEY_ID] has been revoked.
+The CX Linux signing key [KEY_ID] has been revoked.
 
 ## Affected Versions
 
-- cortex-archive-keyring < [new_version]
+- cx-archive-keyring < [new_version]
 
 ## Action Required
 
-1. Update keyring: `apt update && apt install cortex-archive-keyring`
-2. Verify new key: `gpg --show-keys /usr/share/keyrings/cortex-archive-keyring.gpg`
+1. Update keyring: `apt update && apt install cx-archive-keyring`
+2. Verify new key: `gpg --show-keys /usr/share/keyrings/cx-archive-keyring.gpg`
 
 ## Timeline
 
@@ -336,7 +336,7 @@ The Cortex Linux signing key [KEY_ID] has been revoked.
 
 ## Contact
 
-security@cortexlinux.com
+security@cxlinux-ai.com
 ```
 
 ## Audit and Compliance
@@ -362,6 +362,6 @@ security@cortexlinux.com
 
 ## Contact
 
-- Security Team: security@cortexlinux.com
+- Security Team: security@cxlinux-ai.com
 - Key Custodians: (internal contact list)
 - Emergency: (24/7 pager)

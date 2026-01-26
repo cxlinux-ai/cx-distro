@@ -1,12 +1,12 @@
 #!/bin/bash
-# Cortex Linux live-build auto/config
+# CX Linux live-build auto/config
 # This script is called by lb config to set build parameters
 # Copyright 2025 AI Venture Holdings LLC
 # SPDX-License-Identifier: Apache-2.0
 
 set -e
 
-# Cortex Linux build configuration
+# CX Linux build configuration
 # Using bookworm (stable) for reliable package availability and GPG support
 CODENAME="bookworm"
 ARCH="amd64"
@@ -23,10 +23,10 @@ lb config noauto \
     --debian-installer-distribution "${CODENAME}" \
     --debian-installer live \
     --debian-installer-gui false \
-    --iso-application "Cortex Linux" \
-    --iso-preparer "Cortex Linux Build System" \
-    --iso-publisher "AI Venture Holdings LLC; https://cortexlinux.com" \
-    --iso-volume "Cortex Linux ${VERSION}" \
+    --iso-application "CX Linux" \
+    --iso-preparer "CX Linux Build System" \
+    --iso-publisher "AI Venture Holdings LLC; https://cxlinux-ai.com" \
+    --iso-volume "CX Linux ${VERSION}" \
     --memtest none \
     --security true \
     --backports true \
@@ -59,4 +59,4 @@ lb config noauto \
 mkdir -p config/package-lists
 echo "apt-transport-https ca-certificates gnupg" > config/package-lists/base.list.chroot
 
-echo "Cortex Linux live-build configured successfully"
+echo "CX Linux live-build configured successfully"

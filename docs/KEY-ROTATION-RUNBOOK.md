@@ -1,13 +1,13 @@
-# Cortex Linux Key Management Runbook
+# CX Linux Key Management Runbook
 
 ## Overview
 
-This runbook defines procedures for GPG signing key management for Cortex Linux repositories and artifacts.
+This runbook defines procedures for GPG signing key management for CX Linux repositories and artifacts.
 
 ## Key Hierarchy
 
 ```
-Cortex Root Key (offline, air-gapped)
+CX Root Key (offline, air-gapped)
 ├── Repository Signing Subkey (online, rotated annually)
 ├── ISO Signing Subkey (online, rotated annually)
 └── Build Attestation Subkey (CI/CD, rotated quarterly)
@@ -49,14 +49,14 @@ Cortex Root Key (offline, air-gapped)
    # Select: RSA and RSA (default)
    # Keysize: 4096
    # Validity: 0 (does not expire)
-   # Real name: Cortex Linux Signing Key
-   # Email: security@cortexlinux.com
+   # Real name: CX Linux Signing Key
+   # Email: security@cxlinux-ai.com
    # Comment: Root Key
    ```
 
 3. **Generate Signing Subkeys**
    ```bash
-   gpg --edit-key security@cortexlinux.com
+   gpg --edit-key security@cxlinux-ai.com
    
    gpg> addkey
    # Select: RSA (sign only)
@@ -73,13 +73,13 @@ Cortex Root Key (offline, air-gapped)
 4. **Export Keys**
    ```bash
    # Export public key (for distribution)
-   gpg --armor --export security@cortexlinux.com > cortex-archive-keyring.asc
+   gpg --armor --export security@cxlinux-ai.com > cx-archive-keyring.asc
    
    # Export secret keys (for HSM backup)
-   gpg --armor --export-secret-keys security@cortexlinux.com > root-key-secret.asc
+   gpg --armor --export-secret-keys security@cxlinux-ai.com > root-key-secret.asc
    
    # Export subkeys only (for signing servers)
-   gpg --armor --export-secret-subkeys security@cortexlinux.com > signing-subkeys.asc
+   gpg --armor --export-secret-subkeys security@cxlinux-ai.com > signing-subkeys.asc
    ```
 
 5. **Backup to HSMs**
@@ -111,7 +111,7 @@ Cortex Root Key (offline, air-gapped)
 1. **Generate New Subkey**
    ```bash
    # On signing server or with HSM
-   gpg --edit-key security@cortexlinux.com
+   gpg --edit-key security@cxlinux-ai.com
    
    gpg> addkey
    # Create new signing subkey with 2-year validity
@@ -122,11 +122,11 @@ Cortex Root Key (offline, air-gapped)
 2. **Update Keyring Package**
    ```bash
    # Export updated public key
-   gpg --export security@cortexlinux.com > cortex-archive-keyring.gpg
+   gpg --export security@cxlinux-ai.com > cx-archive-keyring.gpg
    
-   # Update cortex-archive-keyring package
-   cd packages/cortex-archive-keyring
-   cp cortex-archive-keyring.gpg keys/
+   # Update cx-archive-keyring package
+   cd packages/cx-archive-keyring
+   cp cx-archive-keyring.gpg keys/
    
    # Bump version
    dch -i "Add new signing subkey for 2026"
@@ -138,7 +138,7 @@ Cortex Root Key (offline, air-gapped)
 3. **Publish Updated Keyring**
    ```bash
    # Add to repository
-   ./repo-manage.sh add cortex-archive-keyring_*.deb
+   ./repo-manage.sh add cx-archive-keyring_*.deb
    ./repo-manage.sh publish
    
    # Announce rotation
@@ -163,7 +163,7 @@ Cortex Root Key (offline, air-gapped)
 1. **Generate Revocation Certificate**
    ```bash
    # If not pre-generated
-   gpg --gen-revoke security@cortexlinux.com > revoke.asc
+   gpg --gen-revoke security@cxlinux-ai.com > revoke.asc
    
    # Apply revocation
    gpg --import revoke.asc
@@ -172,7 +172,7 @@ Cortex Root Key (offline, air-gapped)
 2. **Publish Revocation**
    ```bash
    # Update keyring immediately
-   gpg --export security@cortexlinux.com > cortex-archive-keyring.gpg
+   gpg --export security@cxlinux-ai.com > cx-archive-keyring.gpg
    
    # Emergency keyring release
    # Bypass normal release process
@@ -216,9 +216,9 @@ Cortex Root Key (offline, air-gapped)
 
 | Role | Contact |
 |------|---------|
-| Key Custodian 1 | security@cortexlinux.com |
-| Key Custodian 2 | cto@cortexlinux.com |
-| Security Team | security@cortexlinux.com |
+| Key Custodian 1 | security@cxlinux-ai.com |
+| Key Custodian 2 | cto@cxlinux-ai.com |
+| Security Team | security@cxlinux-ai.com |
 | Emergency | +1-XXX-XXX-XXXX |
 
 ## Audit Schedule
@@ -232,4 +232,4 @@ Cortex Root Key (offline, air-gapped)
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
-| 1.0 | 2025-01-08 | Cortex Team | Initial runbook |
+| 1.0 | 2025-01-08 | CX Team | Initial runbook |

@@ -1,4 +1,4 @@
-# Cortex Linux Installation Tests (P0)
+# CX Linux Installation Tests (P0)
 # Runs on Ubuntu 24.04 and Debian 12 containers
 # Copyright 2025 AI Venture Holdings LLC
 # SPDX-License-Identifier: BUSL-1.1
@@ -59,23 +59,23 @@ jobs:
       - name: Add GPG Key
         run: |
           echo "=== Adding Cortex GPG Key ==="
-          curl -fsSL https://repo.cortexlinux.com/pub.gpg \
-            | sudo gpg --dearmor -o /usr/share/keyrings/cortex-archive-keyring.gpg
+          curl -fsSL https://repo.cxlinux-ai.com/pub.gpg \
+            | sudo gpg --dearmor -o /usr/share/keyrings/cx-archive-keyring.gpg
           gpg --no-default-keyring \
-            --keyring /usr/share/keyrings/cortex-archive-keyring.gpg \
+            --keyring /usr/share/keyrings/cx-archive-keyring.gpg \
             --list-keys
 
       - name: Add Repository
         run: |
           echo "=== Adding Cortex Repository ==="
-          echo "deb [signed-by=/usr/share/keyrings/cortex-archive-keyring.gpg] https://repo.cortexlinux.com cortex main" \
+          echo "deb [signed-by=/usr/share/keyrings/cx-archive-keyring.gpg] https://repo.cxlinux-ai.com cortex main" \
             | sudo tee /etc/apt/sources.list.d/cortex.list
           sudo apt update
 
-      - name: Install cortex-core
+      - name: Install cx-core
         run: |
-          echo "=== Installing cortex-core ==="
-          sudo apt install -y cortex-core
+          echo "=== Installing cx-core ==="
+          sudo apt install -y cx-core
           dpkg -l | grep cortex
 
       - name: Verify Installation
@@ -108,7 +108,7 @@ jobs:
           sudo apt autoremove -y
 
           # Check for leftover files
-          for path in /etc/cortex /var/lib/cortex /usr/local/bin/cortex; do
+          for path in /etc/cx /var/lib/cx /usr/local/bin/cortex; do
             if [ -e "$path" ]; then
               echo "ERROR: Leftover found: $path"
               exit 1
@@ -120,7 +120,7 @@ jobs:
         if: always()
         run: |
           sudo rm -f /etc/apt/sources.list.d/cortex.list
-          sudo rm -f /usr/share/keyrings/cortex-archive-keyring.gpg
+          sudo rm -f /usr/share/keyrings/cx-archive-keyring.gpg
           sudo apt update || true
 
   # Test on Debian 12
@@ -150,23 +150,23 @@ jobs:
       - name: Add GPG Key
         run: |
           echo "=== Adding Cortex GPG Key ==="
-          curl -fsSL https://repo.cortexlinux.com/pub.gpg \
-            | gpg --dearmor -o /usr/share/keyrings/cortex-archive-keyring.gpg
+          curl -fsSL https://repo.cxlinux-ai.com/pub.gpg \
+            | gpg --dearmor -o /usr/share/keyrings/cx-archive-keyring.gpg
           gpg --no-default-keyring \
-            --keyring /usr/share/keyrings/cortex-archive-keyring.gpg \
+            --keyring /usr/share/keyrings/cx-archive-keyring.gpg \
             --list-keys
 
       - name: Add Repository
         run: |
           echo "=== Adding Cortex Repository ==="
-          echo "deb [signed-by=/usr/share/keyrings/cortex-archive-keyring.gpg] https://repo.cortexlinux.com cortex main" \
+          echo "deb [signed-by=/usr/share/keyrings/cx-archive-keyring.gpg] https://repo.cxlinux-ai.com cortex main" \
             > /etc/apt/sources.list.d/cortex.list
           apt-get update
 
-      - name: Install cortex-core
+      - name: Install cx-core
         run: |
-          echo "=== Installing cortex-core ==="
-          apt-get install -y cortex-core || echo "Package not yet available"
+          echo "=== Installing cx-core ==="
+          apt-get install -y cx-core || echo "Package not yet available"
           dpkg -l | grep cortex || echo "No cortex packages (not yet published)"
 
       - name: Verify Installation
@@ -198,30 +198,30 @@ jobs:
 
       - name: Setup Repository
         run: |
-          curl -fsSL https://repo.cortexlinux.com/pub.gpg \
-            | sudo gpg --dearmor -o /usr/share/keyrings/cortex-archive-keyring.gpg
-          echo "deb [signed-by=/usr/share/keyrings/cortex-archive-keyring.gpg] https://repo.cortexlinux.com cortex main" \
+          curl -fsSL https://repo.cxlinux-ai.com/pub.gpg \
+            | sudo gpg --dearmor -o /usr/share/keyrings/cx-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/cx-archive-keyring.gpg] https://repo.cxlinux-ai.com cortex main" \
             | sudo tee /etc/apt/sources.list.d/cortex.list
           sudo apt update
 
       - name: Install Current Version
         run: |
           echo "=== Installing current version ==="
-          sudo apt install -y cortex-core || echo "Package not yet available"
+          sudo apt install -y cx-core || echo "Package not yet available"
 
-          CURRENT=$(dpkg -l cortex-core 2>/dev/null | grep "^ii" | awk '{print $3}' || echo "none")
+          CURRENT=$(dpkg -l cx-core 2>/dev/null | grep "^ii" | awk '{print $3}' || echo "none")
           echo "Installed version: $CURRENT"
 
       - name: Test Upgrade
         run: |
           echo "=== Testing upgrade ==="
           sudo apt update
-          AVAILABLE=$(apt-cache policy cortex-core 2>/dev/null | grep "Candidate:" | awk '{print $2}' || echo "none")
+          AVAILABLE=$(apt-cache policy cx-core 2>/dev/null | grep "Candidate:" | awk '{print $2}' || echo "none")
           echo "Available version: $AVAILABLE"
 
           # Upgrade if available
           if [ "$AVAILABLE" != "none" ]; then
-            sudo apt upgrade -y cortex-core
+            sudo apt upgrade -y cx-core
             echo "Upgrade complete"
           else
             echo "No upgrade available"
@@ -230,7 +230,7 @@ jobs:
       - name: Verify Upgrade
         run: |
           echo "=== Verifying upgrade ==="
-          dpkg -l cortex-core || echo "Package not installed"
+          dpkg -l cx-core || echo "Package not installed"
 
   # Full vs Minimal comparison
   package-comparison:
@@ -245,51 +245,51 @@ jobs:
 
       - name: Setup Repository
         run: |
-          curl -fsSL https://repo.cortexlinux.com/pub.gpg \
-            | sudo gpg --dearmor -o /usr/share/keyrings/cortex-archive-keyring.gpg
-          echo "deb [signed-by=/usr/share/keyrings/cortex-archive-keyring.gpg] https://repo.cortexlinux.com cortex main" \
+          curl -fsSL https://repo.cxlinux-ai.com/pub.gpg \
+            | sudo gpg --dearmor -o /usr/share/keyrings/cx-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/cx-archive-keyring.gpg] https://repo.cxlinux-ai.com cortex main" \
             | sudo tee /etc/apt/sources.list.d/cortex.list
           sudo apt update
 
       - name: Measure Minimal Install
         run: |
-          echo "=== Minimal (cortex-core) Installation ==="
+          echo "=== Minimal (cx-core) Installation ==="
           BEFORE=$(df / --output=used | tail -1)
-          sudo apt install -y cortex-core || echo "Package not available"
+          sudo apt install -y cx-core || echo "Package not available"
           AFTER=$(df / --output=used | tail -1)
 
           CORE_SIZE=$((AFTER - BEFORE))
-          echo "cortex-core disk usage: ${CORE_SIZE}KB"
+          echo "cx-core disk usage: ${CORE_SIZE}KB"
           echo "CORE_SIZE=${CORE_SIZE}" >> $GITHUB_ENV
 
           # Count dependencies
-          CORE_DEPS=$(apt-cache depends cortex-core 2>/dev/null | grep -c "Depends:" || echo "0")
-          echo "cortex-core dependencies: $CORE_DEPS"
+          CORE_DEPS=$(apt-cache depends cx-core 2>/dev/null | grep -c "Depends:" || echo "0")
+          echo "cx-core dependencies: $CORE_DEPS"
 
       - name: Measure Full Install
         run: |
-          echo "=== Full (cortex-full) Installation ==="
+          echo "=== Full (cx-full) Installation ==="
           BEFORE=$(df / --output=used | tail -1)
-          sudo apt install -y cortex-full || echo "Package not available"
+          sudo apt install -y cx-full || echo "Package not available"
           AFTER=$(df / --output=used | tail -1)
 
           FULL_SIZE=$((AFTER - BEFORE))
-          echo "cortex-full additional disk usage: ${FULL_SIZE}KB"
+          echo "cx-full additional disk usage: ${FULL_SIZE}KB"
 
           # Count dependencies
-          FULL_DEPS=$(apt-cache depends cortex-full 2>/dev/null | grep -c "Depends:" || echo "0")
-          echo "cortex-full dependencies: $FULL_DEPS"
+          FULL_DEPS=$(apt-cache depends cx-full 2>/dev/null | grep -c "Depends:" || echo "0")
+          echo "cx-full dependencies: $FULL_DEPS"
 
       - name: Compare Packages
         run: |
           echo "=== Package Comparison ==="
-          echo "cortex-core: Minimal installation for core functionality"
-          echo "cortex-full: Complete installation with all tools"
+          echo "cx-core: Minimal installation for core functionality"
+          echo "cx-full: Complete installation with all tools"
 
           # List package differences
           echo ""
-          echo "Packages in cortex-full but not cortex-core:"
-          apt-cache depends cortex-full 2>/dev/null | grep "Depends:" | sort || true
+          echo "Packages in cx-full but not cx-core:"
+          apt-cache depends cx-full 2>/dev/null | grep "Depends:" | sort || true
 
   # Signing verification
   signature-test:
@@ -304,7 +304,7 @@ jobs:
       - name: Download and Verify Key
         run: |
           echo "=== Downloading GPG Key ==="
-          curl -fsSL -o /tmp/cortex.gpg https://repo.cortexlinux.com/pub.gpg
+          curl -fsSL -o /tmp/cortex.gpg https://repo.cxlinux-ai.com/pub.gpg
 
           echo "=== Key Information ==="
           gpg --show-keys /tmp/cortex.gpg
@@ -318,8 +318,8 @@ jobs:
           gpg --dearmor -o /tmp/cortex-keyring.gpg /tmp/cortex.gpg
 
           echo "=== Checking Release File ==="
-          curl -fsSL -o /tmp/Release https://repo.cortexlinux.com/dists/cortex/Release || echo "Release file not found"
-          curl -fsSL -o /tmp/Release.gpg https://repo.cortexlinux.com/dists/cortex/Release.gpg || echo "Release.gpg not found"
+          curl -fsSL -o /tmp/Release https://repo.cxlinux-ai.com/dists/cortex/Release || echo "Release file not found"
+          curl -fsSL -o /tmp/Release.gpg https://repo.cxlinux-ai.com/dists/cortex/Release.gpg || echo "Release.gpg not found"
 
           if [ -f /tmp/Release ] && [ -f /tmp/Release.gpg ]; then
             gpg --no-default-keyring --keyring /tmp/cortex-keyring.gpg --verify /tmp/Release.gpg /tmp/Release

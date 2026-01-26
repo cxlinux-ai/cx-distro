@@ -1,5 +1,5 @@
 #!/bin/bash
-# Cortex Linux Package Verification Tests
+# CX Linux Package Verification Tests
 # Validates Debian package structure and dependencies
 # Copyright 2025 AI Venture Holdings LLC
 # SPDX-License-Identifier: BUSL-1.1
@@ -22,7 +22,7 @@ fail() { echo -e "${RED}[FAIL]${NC} $*"; ((FAIL++)); }
 info() { echo -e "[INFO] $*"; }
 
 info "================================================"
-info "Cortex Linux Package Verification"
+info "CX Linux Package Verification"
 info "================================================"
 
 # Test debian/control files

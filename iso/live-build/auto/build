@@ -1,12 +1,12 @@
 #!/bin/bash
-# Cortex Linux live-build auto/build
+# CX Linux live-build auto/build
 # Copyright 2025 AI Venture Holdings LLC
 # SPDX-License-Identifier: Apache-2.0
 
 set -e
 
 echo "================================================"
-echo "  Cortex Linux ISO Build"
+echo "  CX Linux ISO Build"
 echo "  Started: $(date)"
 echo "================================================"
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Cortex Linux Installation & Upgrade Tests (P0)
+# CX Linux Installation & Upgrade Tests (P0)
 # Run on clean Ubuntu 24.04 / Debian 12 VMs
 # Copyright 2025 AI Venture Holdings LLC
 # SPDX-License-Identifier: BUSL-1.1
@@ -7,7 +7,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LOG_FILE="/tmp/cortex-install-test-$(date +%Y%m%d-%H%M%S).log"
+LOG_FILE="/tmp/cx-install-test-$(date +%Y%m%d-%H%M%S).log"
 
 # Colors
 RED='\033[0;31m'
@@ -51,30 +51,30 @@ detect_os() {
     fi
 }
 
-# Verify clean system (no Cortex packages installed)
+# Verify clean system (no CX packages installed)
 verify_clean_system() {
     section "Verifying Clean System"
 
-    if dpkg -l | grep -q "^ii.*cortex"; then
-        fail "Cortex packages already installed - not a clean system"
-        dpkg -l | grep cortex | tee -a "$LOG_FILE"
+    if dpkg -l | grep -q "^ii.*cx"; then
+        fail "CX packages already installed - not a clean system"
+        dpkg -l | grep cx | tee -a "$LOG_FILE"
         return 1
     else
-        pass "System is clean (no Cortex packages)"
+        pass "System is clean (no CX packages)"
     fi
 
-    if [ -f /etc/apt/sources.list.d/cortex.list ]; then
-        fail "Cortex repository already configured"
+    if [ -f /etc/apt/sources.list.d/cx.list ]; then
+        fail "CX repository already configured"
         return 1
     else
-        pass "No existing Cortex repository"
+        pass "No existing CX repository"
     fi
 
-    if [ -f /usr/share/keyrings/cortex-archive-keyring.gpg ]; then
-        fail "Cortex keyring already installed"
+    if [ -f /usr/share/keyrings/cx-archive-keyring.gpg ]; then
+        fail "CX keyring already installed"
         return 1
     else
-        pass "No existing Cortex keyring"
+        pass "No existing CX keyring"
     fi
 }
 
@@ -82,9 +82,9 @@ verify_clean_system() {
 test_add_gpg_key() {
     section "Test: Add GPG Key"
 
-    info "Downloading GPG key from repo.cortexlinux.com..."
+    info "Downloading GPG key from repo.cxlinux-ai.com..."
 
-    if curl -fsSL https://repo.cortexlinux.com/pub.gpg | gpg --dearmor -o /usr/share/keyrings/cortex-archive-keyring.gpg 2>&1 | tee -a "$LOG_FILE"; then
+    if curl -fsSL https://repo.cxlinux-ai.com/pub.gpg | gpg --dearmor -o /usr/share/keyrings/cx-archive-keyring.gpg 2>&1 | tee -a "$LOG_FILE"; then
         pass "GPG key downloaded and installed"
     else
         fail "Failed to download/install GPG key"
@@ -92,7 +92,7 @@ test_add_gpg_key() {
     fi
 
     # Verify key
-    if gpg --no-default-keyring --keyring /usr/share/keyrings/cortex-archive-keyring.gpg --list-keys 2>&1 | tee -a "$LOG_FILE"; then
+    if gpg --no-default-keyring --keyring /usr/share/keyrings/cx-archive-keyring.gpg --list-keys 2>&1 | tee -a "$LOG_FILE"; then
         pass "GPG key is valid"
     else
         fail "GPG key validation failed"
@@ -104,11 +104,11 @@ test_add_gpg_key() {
 test_add_repository() {
     section "Test: Add APT Repository"
 
-    local repo_line="deb [signed-by=/usr/share/keyrings/cortex-archive-keyring.gpg] https://repo.cortexlinux.com cortex main"
+    local repo_line="deb [signed-by=/usr/share/keyrings/cx-archive-keyring.gpg] https://repo.cxlinux-ai.com cx main"
 
-    echo "$repo_line" > /etc/apt/sources.list.d/cortex.list
+    echo "$repo_line" > /etc/apt/sources.list.d/cx.list
 
-    if [ -f /etc/apt/sources.list.d/cortex.list ]; then
+    if [ -f /etc/apt/sources.list.d/cx.list ]; then
         pass "Repository added to sources.list.d"
     else
         fail "Failed to add repository"
@@ -124,31 +124,31 @@ test_add_repository() {
     fi
 
     # Verify packages are available
-    if apt-cache show cortex-core 2>&1 | head -20 | tee -a "$LOG_FILE"; then
-        pass "cortex-core package available in repository"
+    if apt-cache show cx-core 2>&1 | head -20 | tee -a "$LOG_FILE"; then
+        pass "cx-core package available in repository"
     else
-        fail "cortex-core package not found"
+        fail "cx-core package not found"
         return 1
     fi
 }
 
-# Test: Install cortex-core (minimal)
+# Test: Install cx-core (minimal)
 test_install_core() {
-    section "Test: Install cortex-core"
+    section "Test: Install cx-core"
 
-    info "Installing cortex-core..."
-    if DEBIAN_FRONTEND=noninteractive apt install -y cortex-core 2>&1 | tee -a "$LOG_FILE"; then
-        pass "cortex-core installed successfully"
+    info "Installing cx-core..."
+    if DEBIAN_FRONTEND=noninteractive apt install -y cx-core 2>&1 | tee -a "$LOG_FILE"; then
+        pass "cx-core installed successfully"
     else
-        fail "Failed to install cortex-core"
+        fail "Failed to install cx-core"
         return 1
     fi
 
     # Verify installation
-    if dpkg -l | grep -q "^ii.*cortex-core"; then
-        pass "cortex-core shows as installed"
+    if dpkg -l | grep -q "^ii.*cx-core"; then
+        pass "cx-core shows as installed"
     else
-        fail "cortex-core not properly installed"
+        fail "cx-core not properly installed"
         return 1
     fi
 
@@ -169,23 +169,23 @@ test_install_core() {
     fi
 }
 
-# Test: Install cortex-full
+# Test: Install cx-full
 test_install_full() {
-    section "Test: Install cortex-full"
+    section "Test: Install cx-full"
 
-    info "Installing cortex-full..."
-    if DEBIAN_FRONTEND=noninteractive apt install -y cortex-full 2>&1 | tee -a "$LOG_FILE"; then
-        pass "cortex-full installed successfully"
+    info "Installing cx-full..."
+    if DEBIAN_FRONTEND=noninteractive apt install -y cx-full 2>&1 | tee -a "$LOG_FILE"; then
+        pass "cx-full installed successfully"
     else
-        fail "Failed to install cortex-full"
+        fail "Failed to install cx-full"
         return 1
     fi
 
     # Verify installation
-    if dpkg -l | grep -q "^ii.*cortex-full"; then
-        pass "cortex-full shows as installed"
+    if dpkg -l | grep -q "^ii.*cx-full"; then
+        pass "cx-full shows as installed"
     else
-        fail "cortex-full not properly installed"
+        fail "cx-full not properly installed"
         return 1
     fi
 
@@ -219,26 +219,26 @@ test_install_gpu() {
     info "Detected GPU type: $gpu_type"
 
     if [ "$gpu_type" = "nvidia" ]; then
-        if apt-cache show cortex-gpu-nvidia &>/dev/null; then
-            if DEBIAN_FRONTEND=noninteractive apt install -y cortex-gpu-nvidia 2>&1 | tee -a "$LOG_FILE"; then
-                pass "cortex-gpu-nvidia installed"
+        if apt-cache show cx-gpu-nvidia &>/dev/null; then
+            if DEBIAN_FRONTEND=noninteractive apt install -y cx-gpu-nvidia 2>&1 | tee -a "$LOG_FILE"; then
+                pass "cx-gpu-nvidia installed"
             else
-                fail "Failed to install cortex-gpu-nvidia"
+                fail "Failed to install cx-gpu-nvidia"
                 return 1
             fi
         else
-            skip "cortex-gpu-nvidia not available in repository"
+            skip "cx-gpu-nvidia not available in repository"
         fi
     elif [ "$gpu_type" = "amd" ]; then
-        if apt-cache show cortex-gpu-amd &>/dev/null; then
-            if DEBIAN_FRONTEND=noninteractive apt install -y cortex-gpu-amd 2>&1 | tee -a "$LOG_FILE"; then
-                pass "cortex-gpu-amd installed"
+        if apt-cache show cx-gpu-amd &>/dev/null; then
+            if DEBIAN_FRONTEND=noninteractive apt install -y cx-gpu-amd 2>&1 | tee -a "$LOG_FILE"; then
+                pass "cx-gpu-amd installed"
             else
-                fail "Failed to install cortex-gpu-amd"
+                fail "Failed to install cx-gpu-amd"
                 return 1
             fi
         else
-            skip "cortex-gpu-amd not available in repository"
+            skip "cx-gpu-amd not available in repository"
         fi
     fi
 }
@@ -274,11 +274,11 @@ test_apt_upgrade() {
     fi
 
     # Check for held packages
-    if apt-mark showhold | grep -q cortex; then
-        info "Some Cortex packages are held"
+    if apt-mark showhold | grep -q cx; then
+        info "Some CX packages are held"
         apt-mark showhold | tee -a "$LOG_FILE"
     else
-        pass "No Cortex packages held back"
+        pass "No CX packages held back"
     fi
 }
 
@@ -288,12 +288,12 @@ test_version_upgrade() {
 
     # Get current version
     local current_version
-    current_version=$(dpkg -l cortex-core 2>/dev/null | grep "^ii" | awk '{print $3}' || echo "not installed")
-    info "Current cortex-core version: $current_version"
+    current_version=$(dpkg -l cx-core 2>/dev/null | grep "^ii" | awk '{print $3}' || echo "not installed")
+    info "Current cx-core version: $current_version"
 
     # Check for available upgrades
     local available_version
-    available_version=$(apt-cache policy cortex-core 2>/dev/null | grep "Candidate:" | awk '{print $2}' || echo "unknown")
+    available_version=$(apt-cache policy cx-core 2>/dev/null | grep "Candidate:" | awk '{print $2}' || echo "unknown")
     info "Available version: $available_version"
 
     if [ "$current_version" = "$available_version" ]; then
@@ -301,7 +301,7 @@ test_version_upgrade() {
         pass "Version check complete (no upgrade needed)"
     else
         info "Upgrade available: $current_version -> $available_version"
-        if DEBIAN_FRONTEND=noninteractive apt upgrade -y cortex-core 2>&1 | tee -a "$LOG_FILE"; then
+        if DEBIAN_FRONTEND=noninteractive apt upgrade -y cx-core 2>&1 | tee -a "$LOG_FILE"; then
             pass "Upgrade succeeded"
         else
             fail "Upgrade failed"
@@ -314,19 +314,19 @@ test_version_upgrade() {
 test_uninstall() {
     section "Test: Uninstallation"
 
-    # Get list of installed cortex packages
+    # Get list of installed cx packages
     local packages
-    packages=$(dpkg -l | grep "^ii.*cortex" | awk '{print $2}' | tr '\n' ' ')
+    packages=$(dpkg -l | grep "^ii.*cx" | awk '{print $2}' | tr '\n' ' ')
 
     if [ -z "$packages" ]; then
-        skip "No Cortex packages to uninstall"
+        skip "No CX packages to uninstall"
         return 0
     fi
 
     info "Packages to remove: $packages"
 
     # Purge packages
-    info "Purging Cortex packages..."
+    info "Purging CX packages..."
     # shellcheck disable=SC2086
     if apt purge -y $packages 2>&1 | tee -a "$LOG_FILE"; then
         pass "Packages purged successfully"
@@ -345,12 +345,12 @@ test_uninstall() {
     local leftover_files=0
 
     local paths_to_check=(
-        "/etc/cortex"
-        "/var/lib/cortex"
-        "/var/log/cortex"
-        "/usr/local/bin/cortex"
-        "/usr/share/cortex"
-        "/opt/cortex"
+        "/etc/cx"
+        "/var/lib/cx"
+        "/var/log/cx"
+        "/usr/local/bin/cx"
+        "/usr/share/cx"
+        "/opt/cx"
     )
 
     for path in "${paths_to_check[@]}"; do
@@ -367,16 +367,16 @@ test_uninstall() {
     fi
 
     # Check for leftover processes
-    if pgrep -f cortex &>/dev/null; then
-        fail "Leftover Cortex processes running"
-        pgrep -af cortex | tee -a "$LOG_FILE"
+    if pgrep -f cx &>/dev/null; then
+        fail "Leftover CX processes running"
+        pgrep -af cx | tee -a "$LOG_FILE"
     else
-        pass "No leftover Cortex processes"
+        pass "No leftover CX processes"
     fi
 
     # Clean up repository config
-    rm -f /etc/apt/sources.list.d/cortex.list
-    rm -f /usr/share/keyrings/cortex-archive-keyring.gpg
+    rm -f /etc/apt/sources.list.d/cx.list
+    rm -f /usr/share/keyrings/cx-archive-keyring.gpg
     apt update &>/dev/null
 
     pass "Cleanup complete"
@@ -453,7 +453,7 @@ print_summary() {
 # Usage
 usage() {
     cat <<EOF
-Cortex Linux Installation Tests (P0)
+CX Linux Installation Tests (P0)
 
 Usage: $0 [OPTIONS] [TEST...]
 
@@ -467,8 +467,8 @@ Tests (run in order):
     clean       Verify clean system
     gpg         Add GPG key
     repo        Add APT repository
-    core        Install cortex-core
-    full        Install cortex-full
+    core        Install cx-core
+    full        Install cx-full
     gpu         Install GPU packages
     upgrade     Test apt upgrade cycle
     version     Test version upgrade
@@ -477,7 +477,7 @@ Tests (run in order):
 Examples:
     $0                           # Run all tests
     $0 clean gpg repo core       # Run specific tests
-    $0 --offline cortex-1.0.iso  # Test offline installation
+    $0 --offline cx-1.0.iso  # Test offline installation
     $0 --skip-uninstall          # Don't uninstall at end
 
 EOF
@@ -519,7 +519,7 @@ main() {
     # Header
     echo ""
     echo "╔═══════════════════════════════════════════════════════════════════════════╗"
-    echo "║           CORTEX LINUX INSTALLATION TEST SUITE (P0)                       ║"
+    echo "║           CX LINUX INSTALLATION TEST SUITE (P0)                       ║"
     echo "╚═══════════════════════════════════════════════════════════════════════════╝"
     echo ""
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Cortex Linux APT Repository Management
+# CX Linux APT Repository Management
 # Manages package publishing, signing, and snapshots
 # Copyright 2025 AI Venture Holdings LLC
 # SPDX-License-Identifier: BUSL-1.1
@@ -14,13 +14,13 @@ POOL_DIR="${REPO_DIR}/pool"
 DISTS_DIR="${REPO_DIR}/dists"
 
 # Configuration
-GPG_KEY_ID="${CORTEX_GPG_KEY_ID:-}"
-REPO_ORIGIN="Cortex"
-REPO_LABEL="Cortex"
-REPO_CODENAME="cortex"
+GPG_KEY_ID="${CX_GPG_KEY_ID:-}"
+REPO_ORIGIN="CX"
+REPO_LABEL="CX"
+REPO_CODENAME="cx"
 REPO_ARCHITECTURES="amd64 arm64"
 REPO_COMPONENTS="main"
-REPO_DESCRIPTION="Cortex Linux Package Repository"
+REPO_DESCRIPTION="CX Linux Package Repository"
 
 # Colors
 RED='\033[0;31m'
@@ -34,7 +34,7 @@ error() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 
 usage() {
     cat << EOF
-Cortex Linux Repository Management
+CX Linux Repository Management
 
 Usage: $(basename "$0") <command> [options]
 
@@ -53,18 +53,18 @@ Options:
     -h, --help      Show this help message
 
 Environment:
-    CORTEX_GPG_KEY_ID    GPG key ID for signing
+    CX_GPG_KEY_ID    GPG key ID for signing
 
 Examples:
     $(basename "$0") init
-    $(basename "$0") add packages/cortex-core_0.1.0-1_all.deb
+    $(basename "$0") add packages/cx-core_0.1.0-1_all.deb
     $(basename "$0") publish
     $(basename "$0") snapshot
 EOF
 }
 
 cmd_init() {
-    log "Initializing Cortex repository structure..."
+    log "Initializing CX repository structure..."
     
     # Create directory structure
     mkdir -p "${POOL_DIR}/main"
@@ -123,7 +123,7 @@ cmd_publish() {
     
     if [ -z "$GPG_KEY_ID" ]; then
         warn "No GPG key ID set. Repository will not be signed."
-        warn "Set CORTEX_GPG_KEY_ID or use --key-id"
+        warn "Set CX_GPG_KEY_ID or use --key-id"
     fi
     
     for suite in "${REPO_CODENAME}" "${REPO_CODENAME}-updates" "${REPO_CODENAME}-security"; do
@@ -256,7 +256,7 @@ cmd_verify() {
 }
 
 cmd_export() {
-    local export_dir="${1:-cortex-repo-export}"
+    local export_dir="${1:-cx-repo-export}"
     
     log "Exporting repository for offline use..."
     
@@ -268,9 +268,9 @@ cmd_export() {
     
     # Create README
     cat > "${export_dir}/README.md" << 'EOF'
-# Cortex Linux Offline Repository
+# CX Linux Offline Repository
 
-This is an offline export of the Cortex Linux APT repository.
+This is an offline export of the CX Linux APT repository.
 
 ## Usage
 
@@ -278,12 +278,12 @@ This is an offline export of the Cortex Linux APT repository.
 2. Add to APT sources:
 
 ```
-# /etc/apt/sources.list.d/cortex-offline.sources
+# /etc/apt/sources.list.d/cx-offline.sources
 Types: deb
 URIs: file:/path/to/this/directory
-Suites: cortex
+Suites: cx
 Components: main
-Signed-By: /usr/share/keyrings/cortex-archive-keyring.gpg
+Signed-By: /usr/share/keyrings/cx-archive-keyring.gpg
 ```
 
 3. Update package lists:
@@ -295,7 +295,7 @@ sudo apt update
 
 Verify the repository signature:
 ```
-gpg --verify dists/cortex/InRelease
+gpg --verify dists/cx/InRelease
 ```
 EOF
     

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Cortex Linux Preseed Verification Tests
+# CX Linux Preseed Verification Tests
 # Validates preseed files for automated installation
 # Copyright 2025 AI Venture Holdings LLC
 # SPDX-License-Identifier: BUSL-1.1
@@ -24,7 +24,7 @@ warn() { echo -e "${YELLOW}[WARN]${NC} $*"; ((WARN++)); }
 info() { echo -e "[INFO] $*"; }
 
 info "================================================"
-info "Cortex Linux Preseed Verification"
+info "CX Linux Preseed Verification"
 info "================================================"
 
 # Find preseed files

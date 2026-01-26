@@ -1,4 +1,4 @@
-# Cortex Linux Distribution Build System
+# CX Linux Distribution Build System
 # Copyright 2025 AI Venture Holdings LLC
 # SPDX-License-Identifier: Apache-2.0
 
@@ -10,7 +10,7 @@ CODENAME := trixie
 ARCH := amd64
 VERSION := 0.1.0
 BUILD_DATE := $(shell date +%Y%m%d)
-ISO_NAME := cortex-linux-$(VERSION)-$(ARCH)-$(BUILD_DATE)
+ISO_NAME := cx-linux-$(VERSION)-$(ARCH)-$(BUILD_DATE)
 
 # Directories
 BUILD_DIR := build
@@ -25,7 +25,7 @@ RED := \033[0;31m
 NC := \033[0m
 
 help:
-	@echo "Cortex Linux Distribution Build System"
+	@echo "CX Linux Distribution Build System"
 	@echo ""
 	@echo "Usage: make [target]"
 	@echo ""
@@ -34,7 +34,7 @@ help:
 	@echo "  iso-netinst   Build minimal network installer ISO"
 	@echo "  iso-offline   Build full offline ISO with package pool"
 	@echo "  package       Build all meta-packages"
-	@echo "  package PKG=x Build specific package (cortex-core, cortex-full, cortex-archive-keyring)"
+	@echo "  package PKG=x Build specific package (cx-core, cx-full, cx-archive-keyring)"
 	@echo "  sbom          Generate Software Bill of Materials"
 	@echo "  test          Run build verification tests"
 	@echo "  clean         Remove build artifacts"
@@ -80,9 +80,9 @@ $(BUILD_DIR)/.configured:
 		--bootloaders "grub-efi,syslinux" \
 		--debian-installer live \
 		--debian-installer-gui false \
-		--iso-application "Cortex Linux" \
+		--iso-application "CX Linux" \
 		--iso-publisher "AI Venture Holdings LLC" \
-		--iso-volume "Cortex Linux $(VERSION)" \
+		--iso-volume "CX Linux $(VERSION)" \
 		--memtest none \
 		--security true \
 		--updates true \
@@ -133,7 +133,7 @@ ifdef PKG
 	cd $(PACKAGES_DIR)/$(PKG) && dpkg-buildpackage -us -uc -b
 else
 	@echo -e "$(GREEN)Building all packages...$(NC)"
-	for pkg in cortex-archive-keyring cortex-core cortex-full; do \
+	for pkg in cx-archive-keyring cx-core cx-full; do \
 		echo -e "$(YELLOW)Building $$pkg...$(NC)"; \
 		cd $(PACKAGES_DIR)/$$pkg && dpkg-buildpackage -us -uc -b && cd ../..; \
 	done
