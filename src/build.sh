@@ -184,12 +184,12 @@ function build_iso() {
 
     print_ok "Creating image directory..."
     # Unmount any existing EFI boot image mounts before removing directory
-    if mountpoint -q "$SCRIPT_DIR/image/isolinux/efi" 2>/dev/null; then
+    if mountpoint -q "$SCRIPT_DIR/image/boot-prep/efi" 2>/dev/null; then
         print_ok "Unmounting existing EFI boot image mount..."
-        sudo umount -lf "$SCRIPT_DIR/image/isolinux/efi" 2>/dev/null || true
+        sudo umount -lf "$SCRIPT_DIR/image/boot-prep/efi" 2>/dev/null || true
     fi
     sudo rm -rf image
-    mkdir -p image/{casper,isolinux,.disk}
+    mkdir -p image/{casper,boot-prep,.disk}
     judge "Create image directory"
 
     # Verify kernel files exist before proceeding
@@ -247,7 +247,7 @@ function build_iso() {
     # Configurations are setup in new_building_os/usr/share/initramfs-tools/scripts/casper-bottom/25configure_init
     TRY_TEXT="Try and Install $TARGET_BUSINESS_NAME"
     TOGO_TEXT="$TARGET_BUSINESS_NAME To Go (Persistent on USB)"
-    cat << EOF > image/isolinux/grub.cfg
+    cat << EOF > image/boot-prep/grub.cfg
 
 search --set=root --file /$TARGET_NAME
 
@@ -309,7 +309,7 @@ EOF
     sudo mksquashfs new_building_os image/casper/filesystem.squashfs \
         -noappend -no-duplicates -no-recovery \
         -wildcards -b 1M \
-        -comp zstd -Xcompression-level 19 \
+        -comp zstd -Xcompression-level 6 \
         -e "var/cache/apt/archives/*" \
         -e "root/*" \
         -e "root/.*" \
@@ -381,128 +381,358 @@ For detailed instructions, please visit [$TARGET_BUSINESS_NAME Document](https:/
 EOF
 
     pushd $SCRIPT_DIR/image
-    print_ok "Creating EFI boot image on /isolinux/efiboot.img..."
+    print_ok "Creating EFI boot image using live-build two-step approach..."
     
-    # Check available disk space before creating EFI image
-    AVAILABLE_SPACE=$(df -BM "$SCRIPT_DIR/image" 2>/dev/null | tail -1 | awk '{print $4}' | sed 's/M//' || echo "0")
-    if [ "$AVAILABLE_SPACE" -lt 50 ] 2>/dev/null; then
-        print_error "Insufficient disk space. Need at least 50MB, have ${AVAILABLE_SPACE}MB"
-        print_error "Please free up disk space and try again."
-        exit 1
+    # Set SOURCE_DATE_EPOCH for reproducible builds (default to current time if not set)
+    if [ -z "${SOURCE_DATE_EPOCH:-}" ]; then
+        SOURCE_DATE_EPOCH=$(date +%s)
     fi
     
+    # Set UEFI Secure Boot mode (default to "auto" like live-build)
+    UEFI_SECURE_BOOT="${UEFI_SECURE_BOOT:-auto}"
+    
     (
-        cd isolinux && \
-        # Clean up any existing mount or directory first
-        if mountpoint -q efi 2>/dev/null; then
-            sudo umount -lf efi 2>/dev/null || true
-        fi
-        rm -rf efi efiboot.img 2>/dev/null || true
-        # Increase EFI image size to 20MB to ensure enough space for GRUB files
-        dd if=/dev/zero of=efiboot.img bs=1M count=20 2>/dev/null && \
-        sudo mkfs.vfat -F 32 efiboot.img >/dev/null 2>&1 && \
-        mkdir -p efi && \
-        sudo mount -o loop efiboot.img efi && \
-        sudo mkdir -p efi/EFI/BOOT && \
-        if [ "$TARGET_ARCH" = "amd64" ]; then
-            sudo grub-install --target=x86_64-efi --efi-directory=efi --boot-directory=efi/EFI/BOOT --uefi-secure-boot --removable --no-nvram
-        elif [ "$TARGET_ARCH" = "arm64" ]; then
-            sudo grub-install --target=arm64-efi --efi-directory=efi --boot-directory=efi/EFI/BOOT --uefi-secure-boot --removable --no-nvram
-        fi && \
-        sudo cp grub.cfg efi/EFI/BOOT/grub.cfg && \
-        # Copy EFI/BOOT directory to ISO filesystem for ARM64 compatibility
-        # Some UEFI implementations require EFI/BOOT in the ISO filesystem
-        if [ "$TARGET_ARCH" = "arm64" ]; then
-            print_ok "Copying EFI/BOOT directory to ISO filesystem for ARM64 UEFI compatibility..."
+        cd boot-prep && \
+        rm -rf efi efiboot.img grub-efi-temp* grub-efi-temp-cfg 2>/dev/null || true
+        if [ "$TARGET_ARCH" = "amd64" ] || [ "$TARGET_ARCH" = "arm64" ]; then
+            # Use live-build's two-step approach: efi-image then binary_grub-efi
+            if [ "$TARGET_ARCH" = "amd64" ]; then
+                GRUB_PLATFORM="x86_64-efi"
+                EFI_NAME="x64"
+                BOOT_EFI="bootx64.efi"
+                GRUB_MODULES_DIR="/usr/lib/grub/x86_64-efi"
+                SB_EFI_PLATFORM="x86_64"
+                SB_EFI_NAME="x64"
+                SB_EFI_DEB="amd64"
+            else
+                GRUB_PLATFORM="arm64-efi"
+                EFI_NAME="aa64"
+                BOOT_EFI="bootaa64.efi"
+                GRUB_MODULES_DIR="/usr/lib/grub/arm64-efi"
+                SB_EFI_PLATFORM="arm64"
+                SB_EFI_NAME="aa64"
+                SB_EFI_DEB="arm64"
+            fi
+            
+            print_ok "Step 1: Creating initial EFI boot image (like efi-image script)..."
+            if [ ! -f "grub.cfg" ]; then
+                print_error "grub.cfg not found in boot-prep directory!"
+                exit 1
+            fi
+            
+            # Use system GRUB modules (like live-build)
+            if [ ! -d "$GRUB_MODULES_DIR" ]; then
+                print_error "GRUB modules directory not found: $GRUB_MODULES_DIR"
+                if [ "$TARGET_ARCH" = "amd64" ]; then
+                    print_error "Please install grub-efi-amd64-bin package"
+                else
+                    print_error "Please install grub-efi-arm64-bin package"
+                fi
+                exit 1
+            fi
+            
+            # Step 1: Create initial efi.img (like efi-image script)
+            INITIAL_OUTDIR="grub-efi-temp-${GRUB_PLATFORM}"
+            rm -rf "$INITIAL_OUTDIR"
+            mkdir -p "$INITIAL_OUTDIR"
+            
+            GRUB_WORKDIR=$(mktemp -d)
+            MEMDISK_IMG=$(mktemp)
+            trap "sudo rm -rf $GRUB_WORKDIR $MEMDISK_IMG $INITIAL_OUTDIR grub-efi-temp grub-efi-temp-cfg" EXIT
+            
+            # Create boot/grub structure with grub.cfg (like live-build efi-image)
+            sudo mkdir -p "$GRUB_WORKDIR/boot/grub"
+            cat <<EOF | sudo tee "$GRUB_WORKDIR/boot/grub/grub.cfg" > /dev/null
+search --file --set=root /.disk/info
+set prefix=(\$root)/boot/grub
+source \$prefix/$GRUB_PLATFORM/grub.cfg
+EOF
+            # Set timestamps (like live-build)
+            find "$GRUB_WORKDIR" -newermt "$(date -d@${SOURCE_DATE_EPOCH} '+%Y-%m-%d %H:%M:%S')" -exec sudo touch '{}' -d@${SOURCE_DATE_EPOCH} ';' 2>/dev/null || true
+            
+            # Get partition modules list (like live-build)
+            PARTITIONLIST=""
+            for i in "$GRUB_MODULES_DIR"/part_*.mod; do
+                if [ -f "$i" ]; then
+                    PARTITIONLIST="$PARTITIONLIST $(basename "$i" .mod)"
+                fi
+            done
+            
+            # Create platform-specific grub.cfg (like live-build efi-image)
+            mkdir -p "$INITIAL_OUTDIR/boot/grub/$GRUB_PLATFORM"
+            cat <<EOF > "$INITIAL_OUTDIR/boot/grub/$GRUB_PLATFORM/grub.cfg"
+if [ x\$grub_platform == xefi -a x\$lockdown != xy ] ; then
+$(printf "    insmod %s\n" $PARTITIONLIST)
+fi
+source /boot/grub/grub.cfg
+EOF
+            
+            # Create memdisk image (tar archive) with boot/grub structure
+            (cd "$GRUB_WORKDIR" && sudo tar -cf - boot) > "$MEMDISK_IMG"
+            
+            # Create boot*.efi using grub-mkimage with memdisk (like live-build efi-image)
+            print_ok "Creating $BOOT_EFI with grub-mkimage..."
+            sudo grub-mkimage -O "$GRUB_PLATFORM" -m "$MEMDISK_IMG" \
+                -o "$GRUB_WORKDIR/$BOOT_EFI" \
+                -p '(memdisk)/boot/grub' \
+                search iso9660 configfile normal memdisk tar $PARTITIONLIST fat
+            
+            # Set timestamp on EFI binary (like live-build)
+            sudo touch "$GRUB_WORKDIR/$BOOT_EFI" -d@${SOURCE_DATE_EPOCH}
+            
+            # Create initial efi.img with just boot*.efi (like live-build efi-image)
+            INITIAL_SIZE=$(( ($(stat -c %s "$GRUB_WORKDIR/$BOOT_EFI") / 1024 + 55) / 32 * 32 ))
+            sudo mkfs.msdos -C "$INITIAL_OUTDIR/efi.img" $INITIAL_SIZE \
+                -i $(printf "%08x" $((${SOURCE_DATE_EPOCH}%4294967296))) >/dev/null
+            sudo mmd -i "$INITIAL_OUTDIR/efi.img" ::efi
+            sudo mmd -i "$INITIAL_OUTDIR/efi.img" ::efi/boot
+            sudo mcopy -m -i "$INITIAL_OUTDIR/efi.img" "$GRUB_WORKDIR/$BOOT_EFI" "::efi/boot/$BOOT_EFI"
+            
+            # Copy GRUB modules using grub-cpmodules logic (like live-build)
+            print_ok "Copying GRUB modules..."
+            # Copy .lst files
+            sudo cp "$GRUB_MODULES_DIR"/*.lst "$INITIAL_OUTDIR/boot/grub/$GRUB_PLATFORM/" 2>/dev/null || true
+            # Copy modules (excluding those already in the binary)
+            for mod in "$GRUB_MODULES_DIR"/*.mod; do
+                if [ -f "$mod" ]; then
+                    modname=$(basename "$mod" .mod)
+                    case "$modname" in
+                        configfile|fshelp|iso9660|memdisk|search|search_fs_file|search_fs_uuid|search_label|tar)
+                            # Already included in boot image
+                            ;;
+                        *)
+                            sudo cp "$mod" "$INITIAL_OUTDIR/boot/grub/$GRUB_PLATFORM/"
+                            ;;
+                    esac
+                fi
+            done
+            
+            # Copy unicode font (like live-build)
+            if [ -f /usr/share/grub/unicode.pf2 ]; then
+                sudo cp -a /usr/share/grub/unicode.pf2 "$INITIAL_OUTDIR/boot/grub/"
+            fi
+            
+            # Step 2: Create final efi.img (like binary_grub-efi)
+            print_ok "Step 2: Creating final EFI boot image with secure boot support..."
+            mkdir -p grub-efi-temp/EFI/boot
+            
+            # Extract boot*.efi from initial efi.img (like live-build binary_grub-efi line 173)
+            sudo mcopy -m -n -i "$INITIAL_OUTDIR/efi.img" '::efi/boot/boot*.efi' grub-efi-temp/EFI/boot/
+            
+            # Copy everything from initial outdir (like live-build binary_grub-efi line 174)
+            sudo cp -a "$INITIAL_OUTDIR"/* grub-efi-temp/
+            
+            # Secure Boot support (like live-build binary_grub-efi lines 195-213)
+            if [ -r "/usr/lib/grub/${SB_EFI_PLATFORM}-efi-signed/gcd${SB_EFI_NAME}.efi.signed" -a \
+                 -r "/usr/lib/shim/shim${SB_EFI_NAME}.efi.signed" -a \
+                 "$UEFI_SECURE_BOOT" != "disable" ]; then
+                print_ok "Secure Boot: Using signed GRUB and shim..."
+                sudo cp -a "/usr/lib/grub/${SB_EFI_PLATFORM}-efi-signed/gcd${SB_EFI_NAME}.efi.signed" \
+                    grub-efi-temp/EFI/boot/grub${SB_EFI_NAME}.efi
+                sudo cp -a --dereference "/usr/lib/shim/shim${SB_EFI_NAME}.efi.signed" \
+                    grub-efi-temp/EFI/boot/boot${SB_EFI_NAME}.efi
+            elif [ ! -r "/usr/lib/grub/${SB_EFI_PLATFORM}-efi-signed/gcd${SB_EFI_NAME}.efi.signed" -a \
+                   -r "/usr/lib/shim/shim${SB_EFI_NAME}.efi.signed" -a \
+                   "$UEFI_SECURE_BOOT" = "auto" ]; then
+                # Allow a shim-only scenario
+                print_ok "Secure Boot: Using shim-only (user must enroll grub hash)..."
+                sudo cp -a --dereference "/usr/lib/shim/shim${SB_EFI_NAME}.efi.signed" \
+                    grub-efi-temp/EFI/boot/boot${SB_EFI_NAME}.efi
+                sudo cp -a "/usr/lib/grub/${GRUB_PLATFORM}/monolithic/gcd${SB_EFI_NAME}.efi" \
+                    grub-efi-temp/EFI/boot/grub${SB_EFI_NAME}.efi
+                # Needed to allow the user to enroll the hash of grub*.efi
+                sudo cp -a "/usr/lib/shim/mm${SB_EFI_NAME}.efi.signed" \
+                    grub-efi-temp/EFI/boot/mm${SB_EFI_NAME}.efi 2>/dev/null || true
+            else
+                print_ok "Secure Boot: Disabled or not available, using unsigned GRUB..."
+            fi
+            
+            # Create minimal grub.cfg for EFI partition (like live-build binary_grub-efi)
+            mkdir -p grub-efi-temp-cfg
+            cat <<EOF > grub-efi-temp-cfg/grub.cfg
+search --set=root --file /.disk/info
+set prefix=(\$root)/boot/grub
+configfile (\$root)/boot/grub/grub.cfg
+EOF
+            # Set timestamp (like live-build)
+            touch grub-efi-temp-cfg/grub.cfg -d@${SOURCE_DATE_EPOCH}
+            
+            # Calculate final EFI image size (like live-build binary_grub-efi lines 274-283)
+            size=0
+            for file in grub-efi-temp/EFI/boot/*.efi grub-efi-temp-cfg/grub.cfg; do
+                if [ -f "$file" ]; then
+                    size=$((size + $(stat -c %s "$file")))
+                fi
+            done
+            # directories: EFI EFI/boot boot boot/grub
+            size=$((size + 4096 * 4))
+            blocks=$(((size / 1024 + 55) / 32 * 32))
+            
+            # Create final efi.img using mkfs.msdos (like live-build binary_grub-efi)
+            print_ok "Creating final efi.img with calculated size ($blocks KB)..."
+            rm -f grub-efi-temp/boot/grub/efi.img
+            # The VOLID must be (truncated to) a 32bit hexadecimal number
+            sudo mkfs.msdos -C grub-efi-temp/boot/grub/efi.img $blocks \
+                -i $(printf "%08x" $((${SOURCE_DATE_EPOCH}%4294967296))) >/dev/null
+            
+            # Populate final efi.img using mcopy (like live-build binary_grub-efi)
+            sudo mmd -i grub-efi-temp/boot/grub/efi.img ::EFI
+            sudo mmd -i grub-efi-temp/boot/grub/efi.img ::EFI/boot
+            sudo mcopy -m -o -i grub-efi-temp/boot/grub/efi.img grub-efi-temp/EFI/boot/*.efi "::EFI/boot"
+            
+            sudo mmd -i grub-efi-temp/boot/grub/efi.img ::boot
+            sudo mmd -i grub-efi-temp/boot/grub/efi.img ::boot/grub
+            sudo mcopy -m -o -i grub-efi-temp/boot/grub/efi.img grub-efi-temp-cfg/grub.cfg "::boot/grub"
+            
+            # Copy everything to ISO filesystem (like live-build binary_grub-efi line 329)
+            print_ok "Copying EFI structure to ISO filesystem..."
             sudo mkdir -p ../EFI/BOOT
-            sudo cp -r efi/EFI/BOOT/* ../EFI/BOOT/
-            judge "Copy EFI/BOOT to ISO filesystem"
-        fi && \
-        sudo umount efi && \
-        rm -rf efi
+            sudo cp -r grub-efi-temp/EFI/boot/* ../EFI/BOOT/
+            
+            # Copy boot/grub structure to ISO filesystem (modules go here, NOT in efi.img)
+            sudo mkdir -p "../boot/grub/$GRUB_PLATFORM"
+            sudo cp -r grub-efi-temp/boot/grub/$GRUB_PLATFORM/* "../boot/grub/$GRUB_PLATFORM/" 2>/dev/null || true
+            # We're already in boot-prep/ directory, so use grub.cfg directly
+            if [ -f "grub.cfg" ]; then
+                sudo cp grub.cfg ../boot/grub/grub.cfg
+            else
+                print_error "grub.cfg not found in boot-prep directory!"
+                exit 1
+            fi
+            
+            # Copy final efi.img to ISO filesystem
+            sudo mkdir -p ../boot/grub
+            sudo cp grub-efi-temp/boot/grub/efi.img ../boot/grub/efi.img
+            
+            # Create efiboot.img for appended partition (ARM64) or as temporary file
+            sudo cp grub-efi-temp/boot/grub/efi.img efiboot.img
+            
+            # Set timestamps on ISO filesystem files
+            find ../EFI ../boot -type f -newermt "$(date -d@${SOURCE_DATE_EPOCH} '+%Y-%m-%d %H:%M:%S')" -exec sudo touch '{}' -d@${SOURCE_DATE_EPOCH} ';' 2>/dev/null || true
+            
+            sudo rm -rf "$GRUB_WORKDIR" "$MEMDISK_IMG" "$INITIAL_OUTDIR" grub-efi-temp grub-efi-temp-cfg
+            
+            print_ok "EFI boot image created successfully"
+        fi
     )
     judge "Create EFI boot image"
 
     # BIOS boot only for amd64
     if [ "$TARGET_ARCH" = "amd64" ]; then
-        print_ok "Creating BIOS boot image on /isolinux/bios.img..."
+        print_ok "Creating BIOS boot image on /boot-prep/bios.img..."
         grub-mkstandalone \
             --format=i386-pc \
-            --output=isolinux/core.img \
+            --output=boot-prep/core.img \
             --install-modules="linux16 linux normal iso9660 biosdisk memdisk search tar ls" \
             --modules="linux16 linux normal iso9660 biosdisk search" \
             --locales="" \
             --fonts="" \
-            "boot/grub/grub.cfg=isolinux/grub.cfg"
+            "boot/grub/grub.cfg=boot-prep/grub.cfg"
         judge "Create BIOS boot image"
 
-        print_ok "Creating hybrid boot image on /isolinux/bios.img..."
-        cat /usr/lib/grub/i386-pc/cdboot.img isolinux/core.img > isolinux/bios.img
+        print_ok "Creating hybrid boot image on /boot-prep/bios.img..."
+        cat /usr/lib/grub/i386-pc/cdboot.img boot-prep/core.img > boot-prep/bios.img
+        # Set timestamp (like live-build)
+        touch boot-prep/bios.img -d@${SOURCE_DATE_EPOCH}
+        # Clean up temporary core.img (not needed after creating bios.img)
+        rm -f boot-prep/core.img
         judge "Create hybrid boot image"
     else
         print_ok "Skipping BIOS boot image (not supported for $TARGET_ARCH)"
-        touch isolinux/bios.img
     fi
 
     print_ok "Creating .disk/info..."
     echo "$TARGET_BUSINESS_NAME $TARGET_BUILD_VERSION $TARGET_UBUNTU_VERSION - Release $TARGET_ARCH ($(date +%Y%m%d))" | sudo tee .disk/info
+    # Set timestamp (like live-build)
+    sudo touch .disk/info -d@${SOURCE_DATE_EPOCH}
     judge "Create .disk/info"
 
     print_ok "Creating md5sum.txt..."
-    sudo /bin/bash -c "(find . -type f -print0 | xargs -0 md5sum | grep -v -e 'md5sum.txt' -e 'bios.img' -e 'efiboot.img' > md5sum.txt)"
+    sudo /bin/bash -c "(find . -type f -print0 | xargs -0 md5sum | grep -v -e 'md5sum.txt' -e 'bios.img' -e 'efiboot.img' -e 'boot-prep/core.img' > md5sum.txt)"
+    sudo touch md5sum.txt -d@${SOURCE_DATE_EPOCH}
     judge "Create md5sum.txt"
 
     print_ok "Creating iso image on $SCRIPT_DIR/$TARGET_NAME.iso..."
     if [ "$TARGET_ARCH" = "amd64" ]; then
         # AMD64: Hybrid ISO with both BIOS and EFI boot
+        # According to Debian wiki https://wiki.debian.org/RepackBootableISO, AMD64 needs:
+        # - boot/grub/efi.img for El Torito EFI boot (already created in EFI step)
+        # - isohybrid-gpt-basdat for EFI USB boot support
+        # - isohybrid-apm-hfsplus for Apple compatibility
+        # boot/grub/efi.img should already exist from EFI creation step
+        
         sudo xorriso \
             -as mkisofs \
+            -r \
             -iso-level 3 \
             -full-iso9660-filenames \
             -volid "$TARGET_NAME" \
+            -J -J -joliet-long -cache-inodes \
             -eltorito-boot boot/grub/bios.img \
                 -no-emul-boot \
                 -boot-load-size 4 \
                 -boot-info-table \
-                --eltorito-catalog boot/grub/boot.cat \
                 --grub2-boot-info \
                 --grub2-mbr /usr/lib/grub/i386-pc/boot_hybrid.img \
             -eltorito-alt-boot \
-                -e EFI/efiboot.img \
+                -e boot/grub/efi.img \
                 -no-emul-boot \
-                -append_partition 2 0xef isolinux/efiboot.img \
+                -isohybrid-gpt-basdat \
+                -isohybrid-apm-hfsplus \
+            --modification-date=$(date --utc -d@${SOURCE_DATE_EPOCH} +%Y%m%d%H%M%S00) \
             -output "$SCRIPT_DIR/$TARGET_NAME.iso" \
-            -m "isolinux/efiboot.img" \
-            -m "isolinux/bios.img" \
+            -m "boot-prep/efiboot.img" \
+            -m "boot-prep/bios.img" \
             -graft-points \
-                "/EFI/efiboot.img=isolinux/efiboot.img" \
-                "/boot/grub/grub.cfg=isolinux/grub.cfg" \
-                "/boot/grub/bios.img=isolinux/bios.img" \
+                "/EFI/BOOT=EFI/BOOT" \
+                "/boot/grub=boot/grub" \
+                "/boot/grub/grub.cfg=boot-prep/grub.cfg" \
+                "/boot/grub/bios.img=boot-prep/bios.img" \
                 "."
     elif [ "$TARGET_ARCH" = "arm64" ]; then
         # ARM64: EFI-only ISO (no BIOS boot)
+        # According to Debian wiki https://wiki.debian.org/RepackBootableISO and
+        # Ask Ubuntu: https://askubuntu.com/questions/1110651/how-to-produce-an-iso-image-that-boots-only-on-uefi
+        # ARM64 needs:
+        # - Use --interval:appended_partition_2:all:: to avoid EFI image duplication (xorriso >= 1.4.6)
+        #   This references the appended partition directly instead of storing it in ISO filesystem
+        # - append_partition 2 0xef for USB boot support
+        # - partition_cyl_align all for proper alignment
+        # - partition_offset 16 for better partition editor compatibility
+        # Note: This optimization saves a few MB by not duplicating the EFI image in the ISO filesystem
+        
         sudo xorriso \
             -as mkisofs \
+            -r \
             -iso-level 3 \
             -full-iso9660-filenames \
             -volid "$TARGET_NAME" \
-            -eltorito-alt-boot \
-                -e EFI/efiboot.img \
-                -no-emul-boot \
-                -append_partition 2 0xef isolinux/efiboot.img \
+            -J -joliet-long -cache-inodes \
+            -e "--interval:appended_partition_2:all::" \
+            -no-emul-boot \
+            -append_partition 2 0xef boot-prep/efiboot.img \
+            -partition_cyl_align all \
+            -partition_offset 16 \
+            --modification-date=$(date --utc -d@${SOURCE_DATE_EPOCH} +%Y%m%d%H%M%S00) \
             -output "$SCRIPT_DIR/$TARGET_NAME.iso" \
-            -m "isolinux/efiboot.img" \
+            -m "boot-prep/efiboot.img" \
             -graft-points \
-                "/EFI/efiboot.img=isolinux/efiboot.img" \
                 "/EFI/BOOT=EFI/BOOT" \
-                "/boot/grub/grub.cfg=isolinux/grub.cfg" \
+                "/boot/grub=boot/grub" \
+                "/boot/grub/grub.cfg=boot-prep/grub.cfg" \
                 "."
     fi
     judge "Create iso image"
+    
+    # Set timestamp on ISO image (like live-build)
+    # Use sudo since ISO was created with sudo xorriso
+    sudo touch "$SCRIPT_DIR/$TARGET_NAME.iso" -d@${SOURCE_DATE_EPOCH}
 
     print_ok "Moving iso image to $SCRIPT_DIR/dist/$TARGET_BUSINESS_NAME-$TARGET_BUILD_VERSION-$TARGET_ARCH-$LANG_MODE-$DATE.iso..."
     mkdir -p "$SCRIPT_DIR/dist"
     mv "$SCRIPT_DIR/$TARGET_NAME.iso" "$SCRIPT_DIR/dist/$TARGET_BUSINESS_NAME-$TARGET_BUILD_VERSION-$TARGET_ARCH-$LANG_MODE-$DATE.iso"
+    # Set timestamp on final ISO (like live-build)
+    sudo touch "$SCRIPT_DIR/dist/$TARGET_BUSINESS_NAME-$TARGET_BUILD_VERSION-$TARGET_ARCH-$LANG_MODE-$DATE.iso" -d@${SOURCE_DATE_EPOCH}
     judge "Move iso image"
 
     print_ok "Generating sha256 checksum..."
@@ -530,8 +760,8 @@ function umount_on_exit() {
         sudo umount "$SCRIPT_DIR/new_building_os/run" || sudo umount -lf "$SCRIPT_DIR/new_building_os/run" || true
     fi
     # Also check for loop mounts (EFI boot image)
-    if mountpoint -q "$SCRIPT_DIR/image/isolinux/efi" 2>/dev/null; then
-        sudo umount "$SCRIPT_DIR/image/isolinux/efi" || sudo umount -lf "$SCRIPT_DIR/image/isolinux/efi" || true
+    if mountpoint -q "$SCRIPT_DIR/image/boot-prep/efi" 2>/dev/null; then
+        sudo umount "$SCRIPT_DIR/image/boot-prep/efi" || sudo umount -lf "$SCRIPT_DIR/image/boot-prep/efi" || true
     fi
     print_ok "Umount cleanup completed"
 }
@@ -585,10 +815,16 @@ function build_from_config() {
     for key in $keys; do
         # Convert key to uppercase for environment variable naming
         local env_var=$(echo "$key" | tr '[:lower:]' '[:upper:]')
-        # Get the value and escape any special characters
+        # Get the value
         local value=$(echo "$lang_info" | jq -r --arg k "$key" '.[$k]')
-        local escaped_value=$(echo "$value" | sed 's/[\/&]/\\&/g')
-        sed -i "s|^export ${env_var}=\".*\"|export ${env_var}=\"${escaped_value}\"|" $SCRIPT_DIR/args.sh
+        # Escape special characters for sed: &, \, and the delimiter #
+        local escaped_value=$(printf '%s' "$value" | sed 's/\\/\\\\/g; s/&/\\&/g; s/#/\\#/g')
+        # Only update if the variable exists in args.sh (use # as delimiter to avoid conflicts)
+        if grep -q "^export ${env_var}=" "$SCRIPT_DIR/args.sh"; then
+            sed -i "s#^export ${env_var}=\".*\"#export ${env_var}=\"${escaped_value}\"#" $SCRIPT_DIR/args.sh
+        else
+            print_warn "Variable ${env_var} not found in args.sh, skipping..."
+        fi
     done
     
     # Reload args.sh with updated values

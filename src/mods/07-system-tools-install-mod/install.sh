@@ -101,6 +101,19 @@ apt install $INTERACTIVE \
     --no-install-recommends
 judge "Install basic system tool packages"
 
+# Install GRUB EFI packages for Ubiquity installer (needed to install GRUB to target system)
+# Note: We install WITH recommends to ensure secure boot support (grub-efi-*-signed) is available
+print_ok "Installing GRUB EFI packages for installer..."
+ARCH=$(dpkg --print-architecture)
+if [ "$ARCH" = "amd64" ]; then
+    apt install $INTERACTIVE \
+        grub-efi-amd64-bin grub-pc-bin
+elif [ "$ARCH" = "arm64" ]; then
+    apt install $INTERACTIVE \
+        grub-efi-arm64-bin
+fi
+judge "Install GRUB EFI packages"
+
 print_ok "Fixing the package base-files to avoid system upgrading it..."
 # Fix the package base-files to avoid system upgrading it. This is because Ubuntu may upgrade the package base-files and caused Cortex Linux to be changed to Ubuntu.
 # This will edit the file /var/lib/dpkg/status and change the status of the package base-files to hold.
