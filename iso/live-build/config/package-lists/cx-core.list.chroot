@@ -97,13 +97,12 @@ rsyslog
 logrotate
 
 # =============================================================================
-# FIRMWARE & DRIVERS
+# FIRMWARE & DRIVERS - Ubuntu 24.04 LTS
 # =============================================================================
-# Essential firmware
-firmware-linux-free
-firmware-misc-nonfree
-amd64-microcode
+# Essential firmware (Ubuntu packages)
+linux-firmware
 intel-microcode
+amd64-microcode
 
 # =============================================================================
 # CX PACKAGES (from CX repository)

@@ -210,12 +210,23 @@ provision_apt_repos() {
         log "APT repositories already configured, skipping"
         return 0
     fi
-    
+
     log_section "Configuring APT Repositories"
-    
+
+    # Enable Ubuntu updates and backports
+    add-apt-repository -y universe
+    add-apt-repository -y multiverse
+
     # Update package lists
     apt-get update || log "WARNING: apt-get update failed (offline mode?)"
-    
+
+    # Configure automatic updates for security patches
+    if [ ! -f /etc/apt/apt.conf.d/20auto-upgrades ]; then
+        echo 'APT::Periodic::Update-Package-Lists "1";' > /etc/apt/apt.conf.d/20auto-upgrades
+        echo 'APT::Periodic::Unattended-Upgrade "1";' >> /etc/apt/apt.conf.d/20auto-upgrades
+        log "Automatic security updates configured"
+    fi
+
     log "APT repositories configured"
     state_done "apt_repos"
 }
@@ -229,7 +240,7 @@ provision_cx() {
     log_section "Installing CX"
     
     # Check if we have network for installation
-    if ping -c 1 -W 5 repo.cxlinux-ai.com &>/dev/null; then
+    if ping -c 1 -W 5 repo.cxlinux.ai &>/dev/null; then
         apt-get install -y cx-core || log "WARNING: cx-core installation failed"
     else
         log "No network access to CX repository"
@@ -332,17 +343,52 @@ provision_webconsole() {
     state_done "webconsole"
 }
 
+provision_gpu_drivers() {
+    if state_check "gpu_drivers"; then
+        log "GPU drivers already configured, skipping"
+        return 0
+    fi
+
+    log_section "Configuring GPU Drivers (Ubuntu 24.04)"
+
+    # Detect GPU hardware
+    local nvidia_gpu=$(lspci | grep -i nvidia | wc -l)
+    local amd_gpu=$(lspci | grep -i 'vga.*amd\|vga.*ati' | wc -l)
+
+    if [ "$nvidia_gpu" -gt 0 ]; then
+        log "NVIDIA GPU detected, installing drivers..."
+        # Use ubuntu-drivers for automatic driver selection
+        ubuntu-drivers autoinstall || log "WARNING: NVIDIA driver installation failed"
+        log "NVIDIA drivers installed (reboot required)"
+    fi
+
+    if [ "$amd_gpu" -gt 0 ]; then
+        log "AMD GPU detected, installing drivers..."
+        apt-get install -y mesa-vulkan-drivers xserver-xorg-video-amdgpu
+        log "AMD drivers installed"
+    fi
+
+    # Install common GPU monitoring tools
+    apt-get install -y \
+        mesa-utils \
+        vulkan-tools \
+        vainfo \
+        vdpauinfo || log "WARNING: GPU tools installation failed"
+
+    state_done "gpu_drivers"
+}
+
 # =============================================================================
 # MAIN
 # =============================================================================
 
 main() {
-    log_section "CX Linux First Boot Provisioning v${PROVISION_VERSION}"
+    log_section "CX Linux First Boot Provisioning v${PROVISION_VERSION} (Ubuntu 24.04)"
     log "Started: $(date)"
-    
+
     # Create log directory
     mkdir -p "$(dirname "$PROVISION_LOG")"
-    
+
     # Run provisioning steps in order
     provision_hostname
     provision_network
@@ -352,6 +398,7 @@ main() {
     provision_apt_repos
     provision_cx
     provision_security
+    provision_gpu_drivers
     provision_webconsole
     
     # Mark provisioning complete

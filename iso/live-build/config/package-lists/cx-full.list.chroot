@@ -64,12 +64,12 @@ nvidia-smi
 ocl-icd-libopencl1
 
 # =============================================================================
-# GPU SUPPORT (AMD)
+# GPU SUPPORT (AMD) - Ubuntu 24.04 LTS
 # =============================================================================
-firmware-amd-graphics
-libdrm-amdgpu1
 mesa-vulkan-drivers
+libdrm-amdgpu1
 radeontop
+xserver-xorg-video-amdgpu
 
 # =============================================================================
 # AI/ML PREREQUISITES

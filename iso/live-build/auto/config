@@ -7,17 +7,21 @@
 set -e
 
 # CX Linux build configuration
-# Using bookworm (stable) for reliable package availability and GPG support
-CODENAME="bookworm"
+# Using Ubuntu 24.04 LTS (noble) for latest hardware support and AI compatibility
+CODENAME="noble"
 ARCH="amd64"
 VERSION="0.1.0"
 
-# Ubuntu 24.04 compatible live-build options
+# Ubuntu 24.04 LTS live-build configuration
 lb config noauto \
     --distribution "${CODENAME}" \
     --parent-distribution "${CODENAME}" \
     --parent-debian-installer-distribution "${CODENAME}" \
-    --archive-areas "main contrib non-free non-free-firmware" \
+    --parent-mirror-bootstrap "http://archive.ubuntu.com/ubuntu/" \
+    --parent-mirror-chroot-security "http://security.ubuntu.com/ubuntu/" \
+    --parent-mirror-binary "http://archive.ubuntu.com/ubuntu/" \
+    --parent-mirror-binary-security "http://security.ubuntu.com/ubuntu/" \
+    --archive-areas "main restricted universe multiverse" \
     --architectures "${ARCH}" \
     --binary-images iso-hybrid \
     --debian-installer-distribution "${CODENAME}" \
@@ -25,7 +29,7 @@ lb config noauto \
     --debian-installer-gui false \
     --iso-application "CX Linux" \
     --iso-preparer "CX Linux Build System" \
-    --iso-publisher "AI Venture Holdings LLC; https://cxlinux-ai.com" \
+    --iso-publisher "AI Venture Holdings LLC; https://cxlinux.ai" \
     --iso-volume "CX Linux ${VERSION}" \
     --memtest none \
     --security true \
@@ -57,6 +61,6 @@ lb config noauto \
 
 # Create package lists directory
 mkdir -p config/package-lists
-echo "apt-transport-https ca-certificates gnupg" > config/package-lists/base.list.chroot
+echo "apt-transport-https ca-certificates gnupg software-properties-common ubuntu-keyring" > config/package-lists/base.list.chroot
 
 echo "CX Linux live-build configured successfully"

@@ -35,13 +35,13 @@ d-i netcfg/hostname string cx
 d-i netcfg/wireless_wep string
 
 # =============================================================================
-# MIRROR CONFIGURATION
+# MIRROR CONFIGURATION - Ubuntu 24.04 LTS
 # =============================================================================
 d-i mirror/country string manual
-d-i mirror/http/hostname string deb.debian.org
-d-i mirror/http/directory string /debian
+d-i mirror/http/hostname string archive.ubuntu.com
+d-i mirror/http/directory string /ubuntu
 d-i mirror/http/proxy string
-d-i mirror/suite string trixie
+d-i mirror/suite string noble
 
 # =============================================================================
 # CLOCK AND TIMEZONE
@@ -126,7 +126,7 @@ d-i passwd/user-default-groups string sudo docker
 # APT CONFIGURATION
 # =============================================================================
 d-i apt-setup/services-select multiselect security, updates
-d-i apt-setup/security_host string security.debian.org
+d-i apt-setup/security_host string security.ubuntu.com
 d-i apt-setup/non-free-firmware boolean true
 d-i apt-setup/non-free boolean false
 d-i apt-setup/contrib boolean true

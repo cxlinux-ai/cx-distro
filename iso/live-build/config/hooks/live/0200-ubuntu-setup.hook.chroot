@@ -1,0 +1,199 @@
+#!/bin/bash
+# CX Linux Ubuntu 24.04 Specific Configuration
+# Configure Ubuntu-specific repositories and settings
+# Copyright 2025 AI Venture Holdings LLC
+# SPDX-License-Identifier: Apache-2.0
+
+set -e
+
+echo "================================================"
+echo "  CX Linux Ubuntu 24.04 Specific Setup"
+echo "================================================"
+
+# =============================================================================
+# UBUNTU PACKAGE REPOSITORIES
+# =============================================================================
+
+# Update package lists for Ubuntu
+apt-get update
+
+# Enable additional Ubuntu repositories
+add-apt-repository -y universe
+add-apt-repository -y multiverse
+add-apt-repository -y restricted
+
+# =============================================================================
+# SNAP CONFIGURATION
+# =============================================================================
+
+# Configure snapd (Ubuntu's package manager)
+apt-get install -y snapd
+systemctl enable snapd
+systemctl enable snapd.socket
+
+# Create snap mount directory
+mkdir -p /var/lib/snapd/snaps
+
+# =============================================================================
+# AI/ML OPTIMIZED PACKAGES FOR UBUNTU
+# =============================================================================
+
+# Python packages optimized for Ubuntu
+apt-get install -y \
+    python3.12 \
+    python3.12-dev \
+    python3.12-venv \
+    python3-pip \
+    python3-setuptools \
+    python3-wheel
+
+# Development tools
+apt-get install -y \
+    build-essential \
+    cmake \
+    pkg-config \
+    libssl-dev \
+    libffi-dev \
+    libxml2-dev \
+    libxslt1-dev \
+    libblas-dev \
+    liblapack-dev \
+    libatlas-base-dev \
+    gfortran
+
+# =============================================================================
+# GPU DRIVERS PREPARATION
+# =============================================================================
+
+# Add graphics drivers PPA (for latest NVIDIA/AMD support)
+add-apt-repository -y ppa:graphics-drivers/ppa
+
+# Install Ubuntu graphics stack
+apt-get install -y \
+    ubuntu-drivers-common \
+    mesa-utils \
+    vulkan-tools \
+    vainfo \
+    vdpauinfo
+
+# =============================================================================
+# CONTAINER RUNTIME (Ubuntu optimized)
+# =============================================================================
+
+# Docker from Ubuntu repositories (stable)
+apt-get install -y \
+    docker.io \
+    docker-compose \
+    containerd \
+    runc
+
+# Add docker group
+groupadd -f docker
+
+# =============================================================================
+# MODERN CLI TOOLS (Ubuntu packages)
+# =============================================================================
+
+# Install modern replacements via snap where Ubuntu packages are outdated
+snap install --classic code
+snap install --classic go
+snap install --classic node
+snap install --classic rust
+
+# Install via apt where available
+apt-get install -y \
+    ripgrep \
+    fd-find \
+    bat \
+    exa \
+    fzf \
+    jq \
+    yq
+
+# =============================================================================
+# UBUNTU NETWORK CONFIGURATION
+# =============================================================================
+
+# Use netplan for network configuration (Ubuntu default)
+cat > /etc/netplan/01-cx-config.yaml << 'EOF'
+# CX Linux Network Configuration
+# Ubuntu 24.04 Netplan Configuration
+network:
+  version: 2
+  renderer: systemd-networkd
+  ethernets:
+    ens3:
+      dhcp4: true
+      dhcp6: true
+      optional: true
+    eth0:
+      dhcp4: true
+      dhcp6: true
+      optional: true
+  wifis:
+    wlan0:
+      dhcp4: true
+      dhcp6: true
+      optional: true
+      access-points: {}
+EOF
+
+# Enable systemd-networkd
+systemctl enable systemd-networkd
+systemctl enable systemd-resolved
+
+# =============================================================================
+# UBUNTU SECURITY UPDATES
+# =============================================================================
+
+# Enable automatic security updates
+apt-get install -y unattended-upgrades
+dpkg-reconfigure -plow unattended-upgrades
+
+# Configure automatic updates for security only
+cat > /etc/apt/apt.conf.d/50unattended-upgrades << 'EOF'
+// CX Linux Automatic Updates Configuration
+Unattended-Upgrade::Allowed-Origins {
+    "${distro_id}:${distro_codename}-security";
+    "CX Linux:cx-security";
+};
+
+Unattended-Upgrade::Package-Blacklist {
+    "cx-core";
+    "cx-full";
+    "linux-image-*";
+    "linux-headers-*";
+};
+
+Unattended-Upgrade::AutoFixInterruptedDpkg "true";
+Unattended-Upgrade::MinimalSteps "true";
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+Unattended-Upgrade::Automatic-Reboot "false";
+EOF
+
+# =============================================================================
+# UBUNTU APPARMOR PROFILES
+# =============================================================================
+
+# Install additional AppArmor profiles for Ubuntu
+apt-get install -y \
+    apparmor-profiles \
+    apparmor-profiles-extra \
+    apparmor-utils
+
+# Enable AppArmor
+systemctl enable apparmor
+aa-enforce /etc/apparmor.d/* 2>/dev/null || true
+
+# =============================================================================
+# CLEANUP
+# =============================================================================
+
+# Clean package cache
+apt-get autoremove -y
+apt-get autoclean
+snap refresh
+
+echo "================================================"
+echo "  CX Linux Ubuntu 24.04 Setup Complete"
+echo "================================================"
