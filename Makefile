@@ -5,8 +5,8 @@
 SHELL := /bin/bash
 .PHONY: all iso iso-netinst iso-offline package sbom clean test help
 
-# Build configuration
-CODENAME := trixie
+# Build configuration - Ubuntu 24.04 LTS
+CODENAME := noble
 ARCH := amd64
 VERSION := 0.1.0
 BUILD_DATE := $(shell date +%Y%m%d)
@@ -157,6 +157,8 @@ sbom:
 # Run tests
 test:
 	@echo -e "$(GREEN)Running build verification tests...$(NC)"
+	./tests/verify-ubuntu.sh || true
+	./tests/verify-github-actions.sh || true
 	./tests/verify-iso.sh $(OUTPUT_DIR)/$(ISO_NAME)-offline.iso || true
 	./tests/verify-packages.sh || true
 	./tests/verify-preseed.sh || true
