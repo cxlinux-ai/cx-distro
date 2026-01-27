@@ -1,0 +1,7 @@
+# Reprepro incoming configuration
+Name: default
+IncomingDir: incoming
+TempDir: tmp
+Allow: cx cx-testing
+Cleanup: on_deny on_error
+

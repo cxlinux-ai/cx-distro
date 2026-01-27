@@ -1,0 +1,9 @@
+# CX Linux APT Repository (legacy one-line format)
+# Save this file to: /etc/apt/sources.list.d/cxlinux.list
+#
+# First, add the GPG key:
+#   curl -fsSL https://repo.cxlinux.com/pub.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cxlinux-archive-keyring.gpg
+#
+# Then either copy this file or add this line to your sources:
+
+deb [signed-by=/usr/share/keyrings/cxlinux-archive-keyring.gpg arch=amd64,arm64] https://repo.cxlinux.com stable main

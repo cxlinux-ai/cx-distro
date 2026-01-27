@@ -1,0 +1,5 @@
+theme: jekyll-theme-primer
+title: CX Linux APT Repository
+description: Official package repository for CX Linux
+exclude: ["README.md"]
+

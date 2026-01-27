@@ -1,0 +1,4 @@
+# Reprepro options
+verbose
+basedir .
+
