@@ -1,0 +1,9 @@
+[Plymouth Theme]
+Name=CX Boot Animation
+Description=Cortex boot animation theme with custom frames
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/cx-boot-animation
+ScriptFile=/usr/share/plymouth/themes/cx-boot-animation/cx-boot-animation.script
+

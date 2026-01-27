@@ -1,0 +1,65 @@
+# CX Boot Animation Script
+# Loads 240 frames and animates them in a loop
+
+# Load all 240 frames into an array (frame_0001.png to frame_0240.png)
+for(i = 0; i <= 239; i++) {
+    frame_num = i + 1;
+    # Format frame number with zero padding
+    if (frame_num < 10) {
+        frame_name = "frame_000" + frame_num + ".png";
+    } else if (frame_num < 100) {
+        frame_name = "frame_00" + frame_num + ".png";
+    } else if (frame_num < 1000) {
+        frame_name = "frame_0" + frame_num + ".png";
+    } else {
+        frame_name = "frame_" + frame_num + ".png";
+    }
+    cx_frame_arr[i] = Image(frame_name);
+}
+
+# Calculate centered position
+pos_x = Window.GetWidth()/2 - cx_frame_arr[0].GetWidth()/2;
+pos_y = Window.GetHeight()/2 - cx_frame_arr[0].GetHeight()/2;
+
+# Create sprite and set initial position
+sprite = Sprite(cx_frame_arr[0]);
+sprite.SetX(pos_x);
+sprite.SetY(pos_y);
+
+# Frame counter (0-239)
+count = 0;
+
+# Refresh callback function - cycles through frames
+fun refresh_callback () {
+    sprite.SetImage(cx_frame_arr[count]);
+    sprite.SetOpacity(1);
+    sprite.SetZ(15);
+    
+    # Increment frame counter and loop back to 0 after frame 239
+    count = (count + 1) % 240;
+}
+
+# Set the refresh function
+Plymouth.SetRefreshFunction(refresh_callback);
+
+# Display normal callback (when showing boot progress)
+fun display_normal_callback () {
+    # Keep animation running
+}
+
+# Display password callback (when password prompt is shown)
+fun display_password_callback (prompt, bullets) {
+    # Keep animation running in background
+}
+
+# Set display callbacks
+Plymouth.SetDisplayNormalFunction(display_normal_callback);
+Plymouth.SetDisplayPasswordFunction(display_password_callback);
+
+# Quit callback (when Plymouth exits)
+fun quit_callback () {
+    sprite.SetOpacity(1);
+}
+
+Plymouth.SetQuitFunction(quit_callback);
+

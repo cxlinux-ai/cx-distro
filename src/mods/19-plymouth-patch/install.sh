@@ -21,3 +21,26 @@ Pin: release o=Ubuntu
 Pin-Priority: -1
 EOF
 judge "Create PIN file for plymouth-theme-spinner"
+
+# Install custom cx-boot-animation theme
+print_ok "Installing cx-boot-animation Plymouth theme..."
+THEME_DIR="/usr/share/plymouth/themes/cx-boot-animation"
+mkdir -p "$THEME_DIR"
+judge "Create theme directory"
+
+print_ok "Copying animation frames..."
+cp ./frames/frame_*.png "$THEME_DIR/"
+judge "Copy animation frames"
+
+print_ok "Copying theme files..."
+cp ./cx-boot-animation.plymouth "$THEME_DIR/"
+cp ./cx-boot-animation.script "$THEME_DIR/"
+judge "Copy theme files"
+
+print_ok "Installing cx-boot-animation theme via update-alternatives..."
+update-alternatives --install /usr/share/plymouth/themes/default.plymouth default.plymouth "$THEME_DIR/cx-boot-animation.plymouth" 100
+judge "Install theme via update-alternatives"
+
+print_ok "Setting cx-boot-animation as default theme..."
+update-alternatives --set default.plymouth "$THEME_DIR/cx-boot-animation.plymouth"
+judge "Set cx-boot-animation as default theme"

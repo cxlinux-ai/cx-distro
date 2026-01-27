@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg
+  width="900"
+  height="240"
+  viewBox="0 0 900 240"
+  xmlns="http://www.w3.org/2000/svg"
+  role="img"
+  aria-label="CX Linux Logo">
+
+  <!-- Transparent background -->
+
+  <g
+    transform="translate(450 120)"
+    text-anchor="middle"
+    fill="#ffffff">
+
+    <text
+      y="40"
+      font-family="Inter, SF Pro Display, Segoe UI, Helvetica, Arial, sans-serif"
+      font-size="140"
+      font-weight="700"
+      letter-spacing="-2">
+      CX
+      <tspan
+        font-weight="500"
+        letter-spacing="6"
+        dx="20">
+        LINUX
+      </tspan>
+    </text>
+
+  </g>
+</svg>

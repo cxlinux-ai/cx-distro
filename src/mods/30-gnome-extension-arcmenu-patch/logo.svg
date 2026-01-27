@@ -1,8 +1,94 @@
-<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="20px" height="20px" viewBox="0 0 20 20" enable-background="new 0 0 20 20" xml:space="preserve">
-        <path fill="#78a6f0" d="M19.4,4.1l-9-4C10.1,0,9.9,0,9.6,0.1l-9,4C0.2,4.2,0,4.6,0,5s0.2,0.8,0.6,0.9l9,4C9.7,10,9.9,10,10,10s0.3,0,0.4-0.1l9-4
-          C19.8,5.8,20,5.4,20,5S19.8,4.2,19.4,4.1z"></path>
-        <path fill="#3f80ea" d="M10,15c-0.1,0-0.3,0-0.4-0.1l-9-4c-0.5-0.2-0.7-0.8-0.5-1.3c0.2-0.5,0.8-0.7,1.3-0.5l8.6,3.8l8.6-3.8c0.5-0.2,1.1,0,1.3,0.5
-          c0.2,0.5,0,1.1-0.5,1.3l-9,4C10.3,15,10.1,15,10,15z"></path>
-        <path fill="#3f80ea" d="M10,20c-0.1,0-0.3,0-0.4-0.1l-9-4c-0.5-0.2-0.7-0.8-0.5-1.3c0.2-0.5,0.8-0.7,1.3-0.5l8.6,3.8l8.6-3.8c0.5-0.2,1.1,0,1.3,0.5
-          c0.2,0.5,0,1.1-0.5,1.3l-9,4C10.3,20,10.1,20,10,20z"></path>
-      </svg>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 20 20"
+  width="20"
+  height="20"
+>
+  <defs>
+    <!-- Base gradient -->
+    <linearGradient id="cxBase" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#5B7CFA"/>
+      <stop offset="50%" stop-color="#6A5CF6"/>
+      <stop offset="100%" stop-color="#4B3BBE"/>
+    </linearGradient>
+
+    <!-- Edge darkening gradients -->
+    <linearGradient id="edgeDarkTL" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#000000" stop-opacity="0.55"/>
+      <stop offset="40%" stop-color="#000000" stop-opacity="0"/>
+    </linearGradient>
+
+    <linearGradient id="edgeDarkBR" x1="100%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#000000" stop-opacity="0.45"/>
+      <stop offset="40%" stop-color="#000000" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Clip CX -->
+    <clipPath id="cxClip">
+      <path d="
+        M7.8 4
+        C4.9 4 3 6.2 3 10
+        C3 13.8 4.9 16 7.8 16
+        C9.4 16 10.7 15.3 11.6 14.2
+        L10 12.9
+        C9.4 13.6 8.7 14 7.8 14
+        C6.2 14 5.2 12.6 5.2 10
+        C5.2 7.4 6.2 6 7.8 6
+        C8.7 6 9.4 6.4 10 7.1
+        L11.6 5.8
+        C10.7 4.7 9.4 4 7.8 4Z
+
+        M14.2 5
+        L16.2 9
+        L18.2 5
+        L20.2 5
+        L17.2 10
+        L20.2 15
+        L18.2 15
+        L16.2 11
+        L14.2 15
+        L12.2 15
+        L15.2 10
+        L12.2 5
+        Z
+      "/>
+    </clipPath>
+  </defs>
+
+  <!-- Base CX -->
+  <g transform="translate(-1.7 0)">
+    <path fill="url(#cxBase)" d="
+      M7.8 4
+      C4.9 4 3 6.2 3 10
+      C3 13.8 4.9 16 7.8 16
+      C9.4 16 10.7 15.3 11.6 14.2
+      L10 12.9
+      C9.4 13.6 8.7 14 7.8 14
+      C6.2 14 5.2 12.6 5.2 10
+      C5.2 7.4 6.2 6 7.8 6
+      C8.7 6 9.4 6.4 10 7.1
+      L11.6 5.8
+      C10.7 4.7 9.4 4 7.8 4Z
+    "/>
+
+    <g transform="translate(16.2 10) scale(1.1) translate(-16.2 -10)">
+      <path fill="url(#cxBase)" d="
+        M14.2 5
+        L16.2 9
+        L18.2 5
+        L20.2 5
+        L17.2 10
+        L20.2 15
+        L18.2 15
+        L16.2 11
+        L14.2 15
+        L12.2 15
+        L15.2 10
+        L12.2 5
+        Z
+      "/>
+    </g>
+  </g>
+
+
+</svg>
