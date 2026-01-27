@@ -197,7 +197,7 @@ Triggered by: pushes to main/develop, PRs
 - Verifies GPG signatures
 - Tests uninstall/cleanup
 
-**Note**: Tests may show "package not available" until published to repo.cxlinux-ai.com
+**Note**: Tests expect packages published to repo.cxlinux-ai.com (not yet deployed). Tests will show "package not available" until repository is set up.
 
 ### reproducible-builds.yml
 Triggered by: changes to packages/
@@ -212,7 +212,7 @@ Triggered by: changes to packages/
 ### Making Changes to a Package
 
 1. Edit files in `packages/PACKAGE_NAME/`
-2. Update `debian/changelog`:
+2. Update `debian/changelog` (using `dch` from devscripts):
    ```bash
    cd packages/PACKAGE_NAME
    dch -i "Description of change"
@@ -273,7 +273,7 @@ cd iso/live-build && sudo lb clean --purge  # Deep clean ISO build
 - Production builds need GPG signing (`-k KEYID`)
 
 ### Repository Management
-**Not yet deployed** - repo.cxlinux-ai.com doesn't exist yet
+**Repository not yet deployed** - repo.cxlinux-ai.com is not available yet and needs to be set up.
 
 When deploying:
 ```bash
