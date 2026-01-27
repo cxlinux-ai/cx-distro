@@ -1,0 +1,209 @@
+#!/bin/bash
+#
+# Cortex Branding Post-Installation Script
+#
+# This script configures the system after cortex-branding package is installed.
+# It sets up Plymouth, GRUB, MOTD, GDM, and other branding elements.
+#
+# Compatible with:
+#   - Live-build (ISO creation)
+#   - apt install (end-user installation)
+#   - dpkg -i (manual installation)
+#
+
+set -e
+
+case "$1" in
+    configure)
+        echo "Configuring Cortex Linux branding..."
+
+        # ====================================================================
+        # OS Identity Files (copy templates to avoid base-files conflict)
+        # ====================================================================
+        
+        if [ -d /usr/share/cortex/templates ]; then
+            echo "  -> Installing OS identity files..."
+            cp -f /usr/share/cortex/templates/os-release /etc/os-release
+            cp -f /usr/share/cortex/templates/lsb-release /etc/lsb-release
+            cp -f /usr/share/cortex/templates/issue /etc/issue
+            cp -f /usr/share/cortex/templates/issue.net /etc/issue.net
+        fi
+
+        # ====================================================================
+        # Plymouth Theme Configuration
+        # ====================================================================
+        
+        if [ -f /usr/share/plymouth/themes/cortex/cortex.plymouth ]; then
+            # Register with update-alternatives at high priority
+            if command -v update-alternatives &>/dev/null; then
+                update-alternatives --install /usr/share/plymouth/themes/default.plymouth default.plymouth \
+                    /usr/share/plymouth/themes/cortex/cortex.plymouth 200 || true
+                update-alternatives --set default.plymouth \
+                    /usr/share/plymouth/themes/cortex/cortex.plymouth || true
+            fi
+
+            # Set theme via plymouth command
+            if command -v plymouth-set-default-theme &>/dev/null; then
+                plymouth-set-default-theme cortex || true
+            fi
+
+            # Configure plymouthd.conf (owned by plymouth package, so we modify in-place)
+            if [ -f /etc/plymouth/plymouthd.conf ]; then
+                # Set Theme=cortex
+                if grep -q "^Theme=" /etc/plymouth/plymouthd.conf; then
+                    sed -i 's|^Theme=.*|Theme=cortex|' /etc/plymouth/plymouthd.conf
+                else
+                    echo "Theme=cortex" >> /etc/plymouth/plymouthd.conf
+                fi
+                # Set ShowDelay=0 for instant splash
+                if grep -q "^ShowDelay=" /etc/plymouth/plymouthd.conf; then
+                    sed -i 's|^ShowDelay=.*|ShowDelay=0|' /etc/plymouth/plymouthd.conf
+                else
+                    echo "ShowDelay=0" >> /etc/plymouth/plymouthd.conf
+                fi
+                # Set DeviceTimeout=8
+                if grep -q "^DeviceTimeout=" /etc/plymouth/plymouthd.conf; then
+                    sed -i 's|^DeviceTimeout=.*|DeviceTimeout=8|' /etc/plymouth/plymouthd.conf
+                else
+                    echo "DeviceTimeout=8" >> /etc/plymouth/plymouthd.conf
+                fi
+                # Set UseSimpleDrm=2 for smooth EFI framebuffer transition (Ubuntu technique)
+                if grep -q "^UseSimpleDrm=" /etc/plymouth/plymouthd.conf; then
+                    sed -i 's|^UseSimpleDrm=.*|UseSimpleDrm=2|' /etc/plymouth/plymouthd.conf
+                else
+                    echo "UseSimpleDrm=2" >> /etc/plymouth/plymouthd.conf
+                fi
+            fi
+
+            # Set in plymouthd.defaults as fallback
+            if [ -f /usr/share/plymouth/plymouthd.defaults ]; then
+                sed -i 's|^Theme=.*|Theme=cortex|' /usr/share/plymouth/plymouthd.defaults
+            else
+                mkdir -p /usr/share/plymouth
+                cat > /usr/share/plymouth/plymouthd.defaults << 'EOF'
+[Daemon]
+Theme=cortex
+EOF
+            fi
+
+            # Configure GDM to use Xorg instead of Wayland (prevents black screen after Plymouth)
+            if [ -f /etc/gdm3/custom.conf ]; then
+                # Ensure [daemon] section exists and set WaylandEnable=false
+                if grep -q "^\[daemon\]" /etc/gdm3/custom.conf; then
+                    if grep -q "^WaylandEnable=" /etc/gdm3/custom.conf; then
+                        sed -i 's|^WaylandEnable=.*|WaylandEnable=false|' /etc/gdm3/custom.conf
+                    else
+                        # Add WaylandEnable=false after [daemon] section
+                        sed -i '/^\[daemon\]/a WaylandEnable=false' /etc/gdm3/custom.conf
+                    fi
+                else
+                    # Add [daemon] section with WaylandEnable=false
+                    echo -e "\n[daemon]\nWaylandEnable=false" >> /etc/gdm3/custom.conf
+                fi
+            fi
+
+            # Update initramfs to include Plymouth theme
+            if command -v update-initramfs &>/dev/null; then
+                update-initramfs -u || true
+            fi
+        fi
+
+        # ====================================================================
+        # GRUB Theme Configuration
+        # ====================================================================
+        
+        if [ -f /etc/default/grub ]; then
+            # Set GRUB theme path
+            if grep -q "^GRUB_THEME=" /etc/default/grub; then
+                sed -i 's|^GRUB_THEME=.*|GRUB_THEME="/boot/grub/themes/cortex/theme.txt"|' /etc/default/grub
+            else
+                echo 'GRUB_THEME="/boot/grub/themes/cortex/theme.txt"' >> /etc/default/grub
+            fi
+
+            # Set distributor name
+            if grep -q "^GRUB_DISTRIBUTOR=" /etc/default/grub; then
+                sed -i 's|^GRUB_DISTRIBUTOR=.*|GRUB_DISTRIBUTOR="Cortex Linux"|' /etc/default/grub
+            else
+                echo 'GRUB_DISTRIBUTOR="Cortex Linux"' >> /etc/default/grub
+            fi
+
+            # Update GRUB configuration
+            if command -v update-grub &>/dev/null; then
+                update-grub || true
+            fi
+        fi
+
+        # ====================================================================
+        # MOTD Configuration
+        # ====================================================================
+        
+        if [ -d /etc/update-motd.d ]; then
+            # Make Cortex MOTD scripts executable
+            for script in 00-cortex-banner 10-cortex-sysinfo 20-cortex-updates 99-cortex-footer; do
+                [ -f "/etc/update-motd.d/$script" ] && chmod +x "/etc/update-motd.d/$script"
+            done
+
+            # Disable default Ubuntu/Debian MOTD scripts
+            for f in /etc/update-motd.d/??-*; do
+                if [ -f "$f" ]; then
+                    case "$(basename "$f")" in
+                        *cortex*) ;;  # Keep our scripts
+                        *) chmod -x "$f" 2>/dev/null || true ;;
+                    esac
+                fi
+            done
+        fi
+
+        # ====================================================================
+        # GDM/dconf Configuration
+        # ====================================================================
+        
+        if command -v dconf &>/dev/null; then
+            dconf update || true
+        fi
+
+        # ====================================================================
+        # GDM Theme (GNOME Shell login screen)
+        # ====================================================================
+        
+        if [ -f /usr/share/gnome-shell/theme/Cortex/gnome-shell.css ]; then
+            # Register Cortex GDM theme with update-alternatives
+            if command -v update-alternatives &>/dev/null; then
+                # Check if gdm3-theme alternative exists
+                if update-alternatives --list gdm3-theme.css &>/dev/null 2>&1; then
+                    update-alternatives --install /usr/share/gnome-shell/theme/gdm3.css gdm3-theme.css \
+                        /usr/share/gnome-shell/theme/Cortex/gnome-shell.css 200 || true
+                    update-alternatives --set gdm3-theme.css \
+                        /usr/share/gnome-shell/theme/Cortex/gnome-shell.css 2>/dev/null || true
+                fi
+            fi
+            echo "  -> GDM theme installed (Cortex)"
+        fi
+
+        # ====================================================================
+        # GSettings Schema Compilation
+        # ====================================================================
+        
+        if command -v glib-compile-schemas &>/dev/null; then
+            glib-compile-schemas /usr/share/glib-2.0/schemas/ || true
+        fi
+
+        # ====================================================================
+        # Done
+        # ====================================================================
+        
+        echo "Cortex Linux branding installed successfully."
+        echo "Some changes may require a reboot to take effect."
+        ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+        ;;
+
+    *)
+        echo "postinst called with unknown argument '$1'" >&2
+        exit 1
+        ;;
+esac
+
+exit 0
+

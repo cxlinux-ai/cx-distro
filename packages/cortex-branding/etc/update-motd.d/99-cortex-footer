@@ -1,0 +1,30 @@
+#!/bin/bash
+#
+# Cortex Linux MOTD Footer
+# Shows helpful links and tips
+#
+
+# Colors
+PURPLE='\033[0;35m'
+CYAN='\033[0;36m'
+GRAY='\033[0;90m'
+RESET='\033[0m'
+
+# Random tips
+TIPS=(
+    "Use 'cortex' command for AI-powered shell assistance"
+    "Run 'cortex-update' to check for Cortex component updates"
+    "Enable dark mode: gsettings set org.gnome.desktop.interface color-scheme prefer-dark"
+    "Check security status: sudo lynis audit system"
+    "View system logs: journalctl -xe"
+    "Monitor resources: htop or btop"
+)
+
+# Pick random tip
+TIP="${TIPS[$RANDOM % ${#TIPS[@]}]}"
+
+echo -e "  ${GRAY}─────────────────────────────────────────────────────────────────────${RESET}"
+echo -e "  ${PURPLE}Tip:${RESET} ${TIP}"
+echo -e "  ${GRAY}─────────────────────────────────────────────────────────────────────${RESET}"
+echo -e "  ${CYAN}Docs:${RESET} https://docs.cortexlinux.com  ${CYAN}Support:${RESET} https://cortexlinux.com/support"
+echo ""

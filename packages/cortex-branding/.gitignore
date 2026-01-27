@@ -1,0 +1,13 @@
+# dpkg-buildpackage artifacts
+debian/cortex-branding/
+debian/files
+debian/*.substvars
+debian/.debhelper/
+debian/*.debhelper.log
+debian/debhelper-build-stamp
+
+# Build outputs (stored in output/ instead)
+*.deb
+*.changes
+*.buildinfo
+

@@ -1,0 +1,13 @@
+[Unit]
+Description=Monitor .desktop files on the Desktop
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/bin/sh -c "sleep 5 && /usr/local/bin/deskmon"
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=graphical-session.target

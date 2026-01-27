@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE wallpapers SYSTEM "gnome-wp-list.dtd">
+<wallpapers>
+
+  <wallpaper deleted="false">
+    <name>Cortex Minimal Dark (Default)</name>
+    <filename>/usr/share/backgrounds/cortex/minimal-dark.png</filename>
+    <options>zoom</options>
+    <shade_type>solid</shade_type>
+    <pcolor>#0F0F23</pcolor>
+    <scolor>#0F0F23</scolor>
+  </wallpaper>
+
+  <wallpaper deleted="false">
+    <name>Cortex Circuit Board</name>
+    <filename>/usr/share/backgrounds/cortex/circuit-board.png</filename>
+    <options>zoom</options>
+    <shade_type>solid</shade_type>
+    <pcolor>#0F0F23</pcolor>
+    <scolor>#0F0F23</scolor>
+  </wallpaper>
+
+</wallpapers>
