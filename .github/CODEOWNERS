@@ -1,0 +1,28 @@
+# CX Linux AI - Code Ownership Rules
+# GidTeam has final approval on all sensitive files
+
+# Default owners for everything
+* @cxlinux-ai/GidTeam
+
+# Financial/Subscription files require GidTeam approval
+**/subscription/** @cxlinux-ai/GidTeam
+**/pricing*.rs @cxlinux-ai/GidTeam
+**/pricing*.ts @cxlinux-ai/GidTeam
+**/pricing*.tsx @cxlinux-ai/GidTeam
+**/stripe*.rs @cxlinux-ai/GidTeam
+**/stripe*.ts @cxlinux-ai/GidTeam
+**/billing*.rs @cxlinux-ai/GidTeam
+**/billing*.ts @cxlinux-ai/GidTeam
+**/license*.rs @cxlinux-ai/GidTeam
+**/license*.ts @cxlinux-ai/GidTeam
+
+# License and legal files
+LICENSE* @cxlinux-ai/GidTeam
+COPYING* @cxlinux-ai/GidTeam
+
+# CI/CD and workflows
+.github/workflows/ @cxlinux-ai/GidTeam
+
+# AI instructions (private)
+CLAUDE.md @cxlinux-ai/GidTeam
+
