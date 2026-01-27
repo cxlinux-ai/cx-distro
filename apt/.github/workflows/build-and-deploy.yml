@@ -1,0 +1,274 @@
+# CX Linux APT Repository Build & Deploy
+# Based on: https://github.com/Itsblue/github-pages-deb-repo
+#
+# This workflow:
+# 1. Takes .deb packages from packages/ directory (Git LFS)
+# 2. Builds APT repository metadata using reprepro
+# 3. Deploys to GitHub Pages
+#
+# SPDX-License-Identifier: Apache-2.0
+
+name: Build and Deploy APT Repo
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/**'
+      - 'conf/**'
+      - 'deploy/**'
+      - '.github/workflows/build-and-deploy.yml'
+
+  # Triggered by cx-distro on new releases
+  repository_dispatch:
+    types: [add-packages]
+
+  workflow_dispatch:
+    inputs:
+      force_rebuild:
+        description: 'Force rebuild even without package changes'
+        required: false
+        default: 'false'
+      package_url:
+        description: 'Direct URL to .deb package to add'
+        required: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+          fetch-depth: 0
+
+      - name: Checkout LFS objects
+        run: git lfs checkout
+
+      # ========================================================================
+      # Handle packages from repository_dispatch (cross-repo trigger)
+      # ========================================================================
+      - name: Download packages from dispatch
+        if: github.event_name == 'repository_dispatch'
+        run: |
+          echo "Received dispatch from: ${{ github.event.client_payload.source_repo }}"
+          echo "Version: ${{ github.event.client_payload.version }}"
+          echo "Suite: ${{ github.event.client_payload.suite }}"
+
+          SUITE="${{ github.event.client_payload.suite }}"
+          SUITE="${SUITE:-cx}"
+
+          mkdir -p "packages/${SUITE}"
+
+          # Download each package from the payload
+          echo '${{ toJson(github.event.client_payload.packages) }}' | jq -c '.[]' | while read pkg; do
+            URL=$(echo "$pkg" | jq -r '.url')
+            FILE=$(echo "$pkg" | jq -r '.file')
+            NAME=$(echo "$pkg" | jq -r '.name')
+
+            echo "Downloading $NAME from $URL"
+            curl -fsSL -o "packages/${SUITE}/${FILE}" "$URL"
+
+            if [ -f "packages/${SUITE}/${FILE}" ]; then
+              echo "Downloaded: ${FILE}"
+              ls -la "packages/${SUITE}/${FILE}"
+            else
+              echo "Failed to download: ${FILE}"
+            fi
+          done
+
+          echo "Packages directory:"
+          find packages -name "*.deb" -ls
+
+      - name: Download package from manual URL
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.package_url != ''
+        run: |
+          URL="${{ github.event.inputs.package_url }}"
+          FILE=$(basename "$URL")
+
+          mkdir -p packages/cx
+          echo "Downloading from $URL"
+          curl -fsSL -o "packages/cx/${FILE}" "$URL"
+
+          if [ -f "packages/cx/${FILE}" ]; then
+            echo "Downloaded: ${FILE}"
+          else
+            echo "Failed to download"
+            exit 1
+          fi
+
+      - name: Commit new packages to repo
+        if: github.event_name == 'repository_dispatch' || (github.event_name == 'workflow_dispatch' && github.event.inputs.package_url != '')
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Track new .deb files with LFS
+          git lfs track "*.deb"
+
+          # Add and commit
+          git add packages/ .gitattributes
+
+          if git diff --staged --quiet; then
+            echo "No new packages to commit"
+          else
+            VERSION="${{ github.event.client_payload.version }}"
+            VERSION="${VERSION:-manual}"
+            git commit -m "Add packages from ${VERSION}"
+            git push
+            echo "Committed and pushed new packages"
+          fi
+
+      - name: Check for packages
+        id: check-packages
+        run: |
+          if find packages -name "*.deb" -o -name "*.changes" 2>/dev/null | grep -q .; then
+            echo "has_packages=true" >> $GITHUB_OUTPUT
+            echo "Found packages to process"
+          else
+            echo "has_packages=false" >> $GITHUB_OUTPUT
+            echo "No packages found in packages/ directory"
+          fi
+
+      - name: Install Dependencies
+        if: steps.check-packages.outputs.has_packages == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y reprepro python3 python3-pip
+          pip3 install mako
+
+      - name: Import GPG Keys
+        if: steps.check-packages.outputs.has_packages == 'true'
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          # Import public key
+          gpg2 --import deploy/pub.gpg
+
+          # Import private key from secrets (with passphrase support)
+          echo -e "$GPG_PRIVATE_KEY" | gpg2 --batch --import
+
+          # Get the key ID
+          KEY_ID=$(gpg2 --list-secret-keys --keyid-format LONG | grep -oP '(?<=sec\s{3}rsa4096/)[A-F0-9]+' | head -1)
+          echo "Using key: $KEY_ID"
+
+          # Trust the key
+          echo "${KEY_ID}:6:" | gpg2 --import-ownertrust
+
+          # Configure GPG for non-interactive signing with passphrase
+          mkdir -p ~/.gnupg
+          chmod 700 ~/.gnupg
+
+          cat > ~/.gnupg/gpg.conf << EOF
+          use-agent
+          pinentry-mode loopback
+          EOF
+
+          cat > ~/.gnupg/gpg-agent.conf << EOF
+          allow-loopback-pinentry
+          EOF
+
+          # Restart gpg-agent to pick up config
+          gpgconf --kill gpg-agent || true
+          gpg-agent --daemon || true
+
+          # Pre-cache the passphrase by signing a test message
+          if [ -n "$GPG_PASSPHRASE" ]; then
+            echo "test" | gpg2 --batch --yes --passphrase "$GPG_PASSPHRASE" \
+              --pinentry-mode loopback -u "$KEY_ID" --clearsign > /dev/null 2>&1
+            echo "GPG passphrase configured"
+          else
+            echo "No passphrase configured (key has no passphrase)"
+          fi
+
+          # Export key ID for later steps
+          echo "GPG_KEY_ID=$KEY_ID" >> $GITHUB_ENV
+
+      - name: Build Repository
+        if: steps.check-packages.outputs.has_packages == 'true'
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          # Create incoming directory and copy packages
+          mkdir -p incoming tmp
+
+          # Copy all .deb and related files to incoming
+          find packages -name "*.deb" -exec cp {} incoming/ \;
+          find packages -name "*.changes" -exec cp {} incoming/ \; 2>/dev/null || true
+
+          echo "Packages to process:"
+          ls -la incoming/
+
+          # Set up signing environment for reprepro
+          export GPG_TTY=$(tty) || true
+
+          # Create a wrapper script for GPG signing with passphrase
+          if [ -n "$GPG_PASSPHRASE" ]; then
+            cat > /tmp/gpg-sign.sh << 'SIGNEOF'
+          #!/bin/bash
+          echo "$GPG_PASSPHRASE" | gpg2 --batch --yes --passphrase-fd 0 --pinentry-mode loopback "$@"
+          SIGNEOF
+            chmod +x /tmp/gpg-sign.sh
+            export GNUPGHOME=~/.gnupg
+          fi
+
+          # Process packages with reprepro
+          # Use --ask-passphrase with our configured loopback pinentry
+          reprepro -V processincoming default || {
+            # If processincoming fails, try direct include
+            echo "processincoming failed, trying direct includedeb..."
+            for deb in incoming/*.deb; do
+              if [ -f "$deb" ]; then
+                # Determine suite from package path or default to cx
+                if [ -n "$GPG_PASSPHRASE" ]; then
+                  echo "$GPG_PASSPHRASE" | reprepro -V --ask-passphrase includedeb cx "$deb" || echo "Failed to add $deb"
+                else
+                  reprepro -V includedeb cx "$deb" || echo "Failed to add $deb"
+                fi
+              fi
+            done
+          }
+
+          # Export repository
+          reprepro -V export
+
+          echo "Repository built successfully"
+          ls -la dists/ pool/ 2>/dev/null || echo "No dists/pool created"
+
+      - name: Prepare Deploy Directory
+        if: steps.check-packages.outputs.has_packages == 'true'
+        run: |
+          # Move repository data to deploy folder
+          mv dists deploy/ 2>/dev/null || mkdir -p deploy/dists
+          mv pool deploy/ 2>/dev/null || mkdir -p deploy/pool
+
+          # Rename disclaimer to README
+          mv deploy/deploy-disclaimer.md deploy/README.md 2>/dev/null || true
+
+          # Create static directory listings for browsing
+          python3 createStaticDirectoryListing.py deploy --indexPage deploy/README.md
+
+          echo "Deploy directory contents:"
+          find deploy -type f | head -20
+
+      - name: Deploy to GitHub Pages
+        if: steps.check-packages.outputs.has_packages == 'true'
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: deploy
+          folder: deploy
+          clean: true
+
+      - name: Skip Deploy (No Packages)
+        if: steps.check-packages.outputs.has_packages == 'false'
+        run: |
+          echo "No packages to deploy. Add .deb files to packages/ directory."
+          echo "See README.md for instructions."
+

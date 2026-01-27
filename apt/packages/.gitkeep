@@ -1,0 +1,20 @@
+# Place .deb packages here
+#
+# Directory structure:
+#   packages/
+#   ├── cx/               # Stable releases
+#   │   └── cx-branding_1.0.0_all.deb
+#   └── cx-testing/       # Testing releases
+#       └── cx-branding_1.1.0-rc1_all.deb
+#
+# After adding packages:
+#   git lfs track "*.deb"  # If not already tracked
+#   git add packages/
+#   git commit -m "Add cx-branding 1.0.0"
+#   git push
+#
+# The GitHub Action will automatically:
+# 1. Process packages with reprepro
+# 2. Build APT repository metadata
+# 3. Deploy to GitHub Pages
+

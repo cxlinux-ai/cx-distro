@@ -1,0 +1,19 @@
+# CX Linux APT Repository Distribution Configuration
+# Used by reprepro to manage package distribution
+
+Origin: repo.cxlinux.com
+Label: CX Linux
+Codename: cx
+Architectures: amd64 arm64 source
+Components: main contrib
+Description: CX Linux stable packages
+SignWith: 9FA39683613B13D0
+
+Origin: repo.cxlinux.com
+Label: CX Linux Testing
+Codename: cx-testing
+Architectures: amd64 arm64 source
+Components: main contrib
+Description: CX Linux testing packages
+SignWith: 9FA39683613B13D0
+

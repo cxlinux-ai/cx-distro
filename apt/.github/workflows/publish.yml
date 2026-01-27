@@ -1,0 +1,339 @@
+# CX Linux APT Repository - Build, Sign & Publish
+#
+# This workflow:
+# 1. Builds .deb packages from source (or uses pre-built)
+# 2. Signs packages and Release files with GPG
+# 3. Publishes to GitHub Pages at repo.cxlinux.com
+#
+# SPDX-License-Identifier: Apache-2.0
+
+name: Publish APT Repository
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'packages/**'
+      - 'pool/**'
+      - 'conf/**'
+      - 'scripts/**'
+      - '.github/workflows/publish.yml'
+
+  # Triggered by other repos (cx-distro, cx-cli, etc.)
+  repository_dispatch:
+    types: [package-ready, add-packages]
+
+  workflow_dispatch:
+    inputs:
+      package_url:
+        description: 'URL to .deb package to add'
+        required: false
+      suite:
+        description: 'Distribution suite (stable, testing, unstable)'
+        required: false
+        default: 'stable'
+      force_rebuild:
+        description: 'Force rebuild even without changes'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  GPG_KEY_ID: '9FA39683613B13D0'  # Update with your actual key ID
+
+jobs:
+  build-packages:
+    name: Build Packages
+    runs-on: ubuntu-latest
+    outputs:
+      has_packages: ${{ steps.check.outputs.has_packages }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+          fetch-depth: 0
+
+      - name: Pull LFS objects
+        run: git lfs pull
+
+      - name: Download package from URL
+        if: github.event.inputs.package_url != ''
+        run: |
+          URL="${{ github.event.inputs.package_url }}"
+          SUITE="${{ github.event.inputs.suite || 'stable' }}"
+          FILENAME=$(basename "$URL")
+
+          mkdir -p "pool/main/c/cx"
+          echo "Downloading: $URL"
+          curl -fsSL -o "pool/main/c/cx/${FILENAME}" "$URL"
+
+          echo "Downloaded: ${FILENAME}"
+          ls -la "pool/main/c/cx/"
+
+      - name: Handle repository dispatch
+        if: github.event_name == 'repository_dispatch'
+        run: |
+          echo "Received dispatch: ${{ github.event.action }}"
+          echo "Payload: ${{ toJson(github.event.client_payload) }}"
+
+          SUITE="${{ github.event.client_payload.suite || 'stable' }}"
+          mkdir -p "pool/main/c/cx"
+
+          # Download packages from payload
+          if [ -n "${{ github.event.client_payload.packages }}" ]; then
+            echo '${{ toJson(github.event.client_payload.packages) }}' | jq -c '.[]' | while read pkg; do
+              URL=$(echo "$pkg" | jq -r '.url')
+              FILE=$(echo "$pkg" | jq -r '.file // .name')
+              echo "Downloading: $FILE from $URL"
+              curl -fsSL -o "pool/main/c/cx/${FILE}" "$URL"
+            done
+          fi
+
+          ls -la pool/main/c/cx/
+
+      - name: Check for packages
+        id: check
+        run: |
+          if find pool -name "*.deb" 2>/dev/null | grep -q .; then
+            echo "has_packages=true" >> $GITHUB_OUTPUT
+            echo "Found packages:"
+            find pool -name "*.deb" -ls
+          else
+            echo "has_packages=false" >> $GITHUB_OUTPUT
+            echo "No .deb packages found"
+          fi
+
+      - name: Upload packages artifact
+        if: steps.check.outputs.has_packages == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: pool/
+          retention-days: 1
+
+  sign-and-publish:
+    name: Sign & Publish
+    runs-on: ubuntu-latest
+    needs: build-packages
+    if: needs.build-packages.outputs.has_packages == 'true'
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download packages artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: packages
+          path: pool/
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dpkg-dev apt-utils gzip
+
+      - name: Import GPG key
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          # Import private key
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+
+          # Import public key if exists
+          if [ -f deploy/pub.gpg ]; then
+            gpg --import deploy/pub.gpg
+          fi
+
+          # Trust the key
+          echo "${{ env.GPG_KEY_ID }}:6:" | gpg --import-ownertrust
+
+          # Configure GPG for non-interactive use
+          mkdir -p ~/.gnupg
+          chmod 700 ~/.gnupg
+          echo "use-agent" >> ~/.gnupg/gpg.conf
+          echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+          gpgconf --kill gpg-agent || true
+
+          # Test signing
+          echo "test" | gpg --batch --yes --passphrase "$GPG_PASSPHRASE" \
+            --pinentry-mode loopback -u "${{ env.GPG_KEY_ID }}" --clearsign > /dev/null
+          echo "GPG signing configured successfully"
+
+      - name: Generate APT repository metadata
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          # Create directory structure
+          mkdir -p dists/stable/main/binary-amd64
+          mkdir -p dists/stable/main/binary-arm64
+
+          echo "Packages in pool:"
+          find pool -name "*.deb" -ls
+
+          # Generate Packages file for amd64
+          echo "Generating Packages index..."
+          cd pool
+          dpkg-scanpackages -m . > ../dists/stable/main/binary-amd64/Packages
+          cd ..
+
+          # Compress Packages file
+          gzip -9c dists/stable/main/binary-amd64/Packages > dists/stable/main/binary-amd64/Packages.gz
+
+          echo "Packages index:"
+          cat dists/stable/main/binary-amd64/Packages
+
+          # Generate Release file
+          echo "Generating Release file..."
+          cd dists/stable
+
+          # Calculate checksums
+          cat > Release << EOF
+          Origin: CX Linux
+          Label: CX Linux Repository
+          Suite: stable
+          Codename: stable
+          Architectures: amd64 arm64
+          Components: main
+          Description: CX Linux APT Repository
+          Date: $(date -Ru)
+          EOF
+
+          # Add checksums for all files
+          {
+            echo "MD5Sum:"
+            find main -type f | while read f; do
+              echo " $(md5sum "$f" | cut -d' ' -f1) $(stat -c%s "$f") $f"
+            done
+            echo "SHA256:"
+            find main -type f | while read f; do
+              echo " $(sha256sum "$f" | cut -d' ' -f1) $(stat -c%s "$f") $f"
+            done
+          } >> Release
+
+          cd ../..
+
+          echo "Release file:"
+          cat dists/stable/Release
+
+      - name: Sign Release files
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          cd dists/stable
+
+          # Create InRelease (clearsigned)
+          echo "$GPG_PASSPHRASE" | gpg --batch --yes --passphrase-fd 0 \
+            --pinentry-mode loopback -u "${{ env.GPG_KEY_ID }}" \
+            --clearsign -o InRelease Release
+
+          # Create Release.gpg (detached signature)
+          echo "$GPG_PASSPHRASE" | gpg --batch --yes --passphrase-fd 0 \
+            --pinentry-mode loopback -u "${{ env.GPG_KEY_ID }}" \
+            --detach-sign --armor -o Release.gpg Release
+
+          echo "Signed files created:"
+          ls -la Release Release.gpg InRelease
+
+          cd ../..
+
+      - name: Prepare deployment directory
+        run: |
+          mkdir -p _site
+
+          # Copy repository structure
+          cp -r dists _site/
+          cp -r pool _site/
+
+          # Copy public key
+          cp deploy/pub.gpg _site/
+
+          # Create index page
+          cat > _site/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>CX Linux APT Repository</title>
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+              pre { background: #f4f4f4; padding: 15px; border-radius: 5px; overflow-x: auto; }
+              code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; }
+              h1 { color: #333; }
+              .warning { background: #fff3cd; border: 1px solid #ffc107; padding: 10px; border-radius: 5px; margin: 20px 0; }
+            </style>
+          </head>
+          <body>
+            <h1>CX Linux APT Repository</h1>
+            <p>Official package repository for CX Linux.</p>
+
+            <h2>Quick Install</h2>
+            <pre>curl -fsSL https://repo.cxlinux.com/pub.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cxlinux-archive-keyring.gpg
+
+          echo "deb [signed-by=/usr/share/keyrings/cxlinux-archive-keyring.gpg] https://repo.cxlinux.com stable main" | sudo tee /etc/apt/sources.list.d/cxlinux.list
+
+          sudo apt update</pre>
+
+            <h2>Repository Structure</h2>
+            <ul>
+              <li><a href="dists/">dists/</a> - Distribution metadata</li>
+              <li><a href="pool/">pool/</a> - Package files</li>
+              <li><a href="pub.gpg">pub.gpg</a> - GPG public key</li>
+            </ul>
+
+            <h2>Available Packages</h2>
+            <p>View the <a href="dists/stable/main/binary-amd64/Packages">Packages</a> file for a complete list.</p>
+
+            <div class="warning">
+              <strong>Note:</strong> This repository is for CX Linux. Packages may not be compatible with other distributions.
+            </div>
+
+            <hr>
+            <p><a href="https://github.com/allbots/apt-repo">Source</a> | <a href="https://cxlinux.com">CX Linux</a></p>
+          </body>
+          </html>
+          EOF
+
+          # Create .nojekyll for GitHub Pages
+          touch _site/.nojekyll
+
+          echo "Deployment directory:"
+          find _site -type f
+
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: _site
+          clean: true
+
+      - name: Summary
+        run: |
+          echo "## APT Repository Published" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**URL:** https://repo.cxlinux.com" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Packages" >> $GITHUB_STEP_SUMMARY
+          find pool -name "*.deb" -exec basename {} \; | while read pkg; do
+            echo "- \`$pkg\`" >> $GITHUB_STEP_SUMMARY
+          done
+
+  no-packages:
+    name: No Packages Found
+    runs-on: ubuntu-latest
+    needs: build-packages
+    if: needs.build-packages.outputs.has_packages == 'false'
+
+    steps:
+      - name: Notice
+        run: |
+          echo "No .deb packages found in pool/ directory."
+          echo "Add packages to pool/main/c/cx/ and push to trigger a build."
+          echo ""
+          echo "Or use workflow_dispatch with a package_url to add a package."

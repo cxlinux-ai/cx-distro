@@ -1,0 +1,19 @@
+# Git LFS tracking for binary package files
+# This prevents .deb files from bloating the git repository
+
+# Debian packages
+*.deb filter=lfs diff=lfs merge=lfs -text
+*.ddeb filter=lfs diff=lfs merge=lfs -text
+*.udeb filter=lfs diff=lfs merge=lfs -text
+
+# Source packages
+*.orig.tar.gz filter=lfs diff=lfs merge=lfs -text
+*.orig.tar.xz filter=lfs diff=lfs merge=lfs -text
+*.orig.tar.bz2 filter=lfs diff=lfs merge=lfs -text
+*.debian.tar.gz filter=lfs diff=lfs merge=lfs -text
+*.debian.tar.xz filter=lfs diff=lfs merge=lfs -text
+
+# Other large files
+*.tar.gz filter=lfs diff=lfs merge=lfs -text
+*.tar.xz filter=lfs diff=lfs merge=lfs -text
+

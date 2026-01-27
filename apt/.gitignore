@@ -1,0 +1,24 @@
+# Private AI instructions (kept locally, not in repo)
+CLAUDE.md
+
+# Reprepro working directories
+db/
+incoming/
+tmp/
+dists/
+pool/
+
+# Build artifacts
+*.log
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
