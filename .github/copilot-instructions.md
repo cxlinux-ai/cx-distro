@@ -197,8 +197,6 @@ Triggered by: pushes to main/develop, PRs
 - Verifies GPG signatures
 - Tests uninstall/cleanup
 
-**Note**: Tests expect packages published to repo.cxlinux-ai.com (not yet deployed). Tests will show "package not available" until repository is set up.
-
 ### reproducible-builds.yml
 Triggered by: changes to packages/
 
@@ -268,14 +266,13 @@ cd iso/live-build && sudo lb clean --purge  # Deep clean ISO build
 
 ### Package Building
 - Build deps error is normal if tools not installed
-- Built packages appear in `packages/` (parent dir), not in subdirs
+- Built packages appear in repository root's `packages/` directory (not within individual package subdirectories)
 - Use `-us -uc` flags to skip signing during development
 - Production builds need GPG signing (`-k KEYID`)
+- **Note**: Repository deployment status - repo.cxlinux-ai.com is not yet available. Installation tests in CI will show "package not available" until the repository is deployed.
 
 ### Repository Management
-**Repository not yet deployed** - repo.cxlinux-ai.com is not available yet and needs to be set up.
-
-When deploying:
+When repository is deployed:
 ```bash
 ./repository/scripts/repo-manage.sh init
 ./repository/scripts/repo-manage.sh add packages/*.deb
