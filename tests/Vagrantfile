@@ -1,0 +1,99 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+#
+# CX Linux P0 Installation Test VMs
+# Copyright 2025 AI Venture Holdings LLC
+# SPDX-License-Identifier: BUSL-1.1
+#
+# Usage:
+#   vagrant up ubuntu     # Test on Ubuntu 24.04
+#   vagrant up debian     # Test on Debian 12
+#   vagrant up all        # Test both
+#   vagrant ssh ubuntu    # Debug session
+#   vagrant destroy -f    # Cleanup
+
+Vagrant.configure("2") do |config|
+  # Shared provisioner
+  config.vm.provision "shell", inline: <<-SHELL
+    # Copy test script
+    cp /vagrant/installation-tests.sh /tmp/
+    chmod +x /tmp/installation-tests.sh
+  SHELL
+
+  # Ubuntu 24.04 LTS
+  config.vm.define "ubuntu", primary: true do |ubuntu|
+    ubuntu.vm.box = "bento/ubuntu-24.04"
+    ubuntu.vm.hostname = "cx-test-ubuntu"
+
+    ubuntu.vm.provider "virtualbox" do |vb|
+      vb.name = "cx-test-ubuntu"
+      vb.memory = 4096
+      vb.cpus = 2
+    end
+
+    ubuntu.vm.provider "libvirt" do |lv|
+      lv.memory = 4096
+      lv.cpus = 2
+    end
+
+    ubuntu.vm.provision "shell", inline: <<-SHELL
+      echo "=== Ubuntu 24.04 LTS Installation Test ==="
+      apt-get update
+      apt-get install -y curl gnupg lsb-release
+
+      # Run installation tests
+      /tmp/installation-tests.sh 2>&1 | tee /tmp/test-results.log
+
+      # Save results
+      cp /tmp/test-results.log /vagrant/results-ubuntu-$(date +%Y%m%d).log
+    SHELL
+  end
+
+  # Debian 12 (Bookworm)
+  config.vm.define "debian" do |debian|
+    debian.vm.box = "debian/bookworm64"
+    debian.vm.hostname = "cx-test-debian"
+
+    debian.vm.provider "virtualbox" do |vb|
+      vb.name = "cx-test-debian"
+      vb.memory = 4096
+      vb.cpus = 2
+    end
+
+    debian.vm.provider "libvirt" do |lv|
+      lv.memory = 4096
+      lv.cpus = 2
+    end
+
+    debian.vm.provision "shell", inline: <<-SHELL
+      echo "=== Debian 12 (Bookworm) Installation Test ==="
+      apt-get update
+      apt-get install -y curl gnupg lsb-release
+
+      # Run installation tests
+      /tmp/installation-tests.sh 2>&1 | tee /tmp/test-results.log
+
+      # Save results
+      cp /tmp/test-results.log /vagrant/results-debian-$(date +%Y%m%d).log
+    SHELL
+  end
+
+  # GPU test (NVIDIA) - requires GPU passthrough setup
+  config.vm.define "nvidia", autostart: false do |nvidia|
+    nvidia.vm.box = "bento/ubuntu-24.04"
+    nvidia.vm.hostname = "cx-test-nvidia"
+
+    nvidia.vm.provider "libvirt" do |lv|
+      lv.memory = 8192
+      lv.cpus = 4
+      # GPU passthrough requires manual setup
+      # See: https://wiki.archlinux.org/title/PCI_passthrough_via_OVMF
+    end
+
+    nvidia.vm.provision "shell", inline: <<-SHELL
+      echo "=== NVIDIA GPU Installation Test ==="
+      # GPU test requires actual hardware
+      /tmp/installation-tests.sh gpu
+    SHELL
+  end
+end

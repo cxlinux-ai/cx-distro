@@ -1,0 +1,22 @@
+Source: cx-archive-keyring
+Section: misc
+Priority: important
+Maintainer: CX Linux Team <team@cxlinux-ai.com>
+Build-Depends: debhelper-compat (= 13), gnupg
+Standards-Version: 4.6.2
+Homepage: https://cxlinux-ai.com
+Vcs-Browser: https://github.com/cortexlinux/cx-distro
+Vcs-Git: https://github.com/cortexlinux/cx-distro.git
+Rules-Requires-Root: no
+
+Package: cx-archive-keyring
+Architecture: all
+Multi-Arch: foreign
+Depends: ${misc:Depends}
+Description: GnuPG archive keys for the CX Linux repository
+ This package contains the GnuPG keys used to sign the CX Linux
+ APT repository. Installing this package allows APT to verify the
+ authenticity of packages from the CX repository.
+ .
+ The keyring is installed to /usr/share/keyrings/ and should be
+ referenced using the Signed-By option in APT sources files.

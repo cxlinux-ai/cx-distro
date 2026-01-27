@@ -1,0 +1,8 @@
+cx-full (0.1.0-1) trixie; urgency=medium
+
+  * Initial release
+  * Full meta-package for CX Linux
+  * Includes containers, monitoring, security, and GPU support
+  * Modern CLI tools and server management utilities
+
+ -- CX Linux Team <team@cxlinux-ai.com>  Wed, 08 Jan 2025 00:00:00 +0000

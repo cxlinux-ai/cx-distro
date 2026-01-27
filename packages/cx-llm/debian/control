@@ -1,0 +1,92 @@
+Source: cx-llm
+Section: admin
+Priority: optional
+Maintainer: CX Linux Team <team@cxlinux-ai.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Homepage: https://cxlinux-ai.com
+Vcs-Browser: https://github.com/cortexlinux/cx-distro
+Vcs-Git: https://github.com/cortexlinux/cx-distro.git
+Rules-Requires-Root: no
+
+Package: cx-llm
+Architecture: all
+Depends: ${misc:Depends},
+ cx-core,
+ python3 (>= 3.11),
+ python3-pip,
+ python3-venv,
+ python3-numpy,
+ python3-scipy,
+ python3-pandas,
+ libopenblas0,
+ libblas3,
+ liblapack3
+Recommends:
+ python3-torch,
+ python3-transformers,
+ build-essential,
+ python3-dev
+Suggests:
+ cx-gpu-nvidia | cx-gpu-amd,
+ cx-model-tiny,
+ ollama
+Provides: cx-llm-backend
+Description: CX Linux local LLM runtime support
+ This meta-package provides local LLM inference capabilities
+ for CX Linux, enabling offline AI operations.
+ .
+ Features:
+  - PyTorch inference runtime
+  - Transformers library support
+  - CPU-optimized inference (default)
+  - GPU acceleration when available
+ .
+ For GPU-accelerated inference, also install:
+  - cx-gpu-nvidia (NVIDIA GPUs)
+  - cx-gpu-amd-rocm (AMD GPUs)
+ .
+ Pre-packaged models available:
+  - cx-model-tiny (CPU-friendly, ~500MB)
+  - cx-model-base (balanced, ~2GB)
+  - cx-model-large (high-quality, ~8GB)
+
+Package: cx-model-tiny
+Architecture: all
+Depends: ${misc:Depends},
+ cx-llm
+Description: CX Linux tiny LLM model package
+ A small, CPU-friendly language model for basic CX operations.
+ .
+ Model characteristics:
+  - Size: ~500MB
+  - Memory: ~2GB RAM
+  - Inference: CPU-optimized
+  - Quality: Good for simple tasks
+ .
+ This model is suitable for:
+  - Package management assistance
+  - Basic system queries
+  - Simple natural language commands
+  - Offline operation on low-resource systems
+
+Package: cx-model-base
+Architecture: all
+Depends: ${misc:Depends},
+ cx-llm
+Recommends:
+ cx-gpu-nvidia | cx-gpu-amd
+Description: CX Linux base LLM model package
+ A balanced language model for CX operations.
+ .
+ Model characteristics:
+  - Size: ~2GB
+  - Memory: ~8GB RAM (16GB with GPU)
+  - Inference: CPU or GPU
+  - Quality: Good for most tasks
+ .
+ This model is suitable for:
+  - Complex system administration tasks
+  - Code generation and analysis
+  - Detailed explanations
+  - Multi-step operations

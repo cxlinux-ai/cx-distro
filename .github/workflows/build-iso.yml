@@ -1,5 +1,5 @@
-# Cortex Linux ISO Build Workflow
-# Builds and publishes Cortex Linux ISO images
+# CX Linux ISO Build Workflow
+# Builds and publishes CX Linux ISO images
 # Copyright 2025 AI Venture Holdings LLC
 # SPDX-License-Identifier: Apache-2.0
 
@@ -10,8 +10,7 @@ on:
     branches: [main]
     tags: ['v*']
     paths:
-      - 'src/**'
-      - 'config/**'
+      - 'iso/**'
       - 'packages/**'
       - 'scripts/**'
       - 'Makefile'
@@ -19,8 +18,7 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'src/**'
-      - 'config/**'
+      - 'iso/**'
       - 'packages/**'
       - 'scripts/**'
       - 'Makefile'
@@ -30,18 +28,50 @@ env:
   DEBIAN_FRONTEND: noninteractive
 
 jobs:
+  build-packages:
+    name: Build Debian Packages
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build packages in Debian container
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            -e DEBIAN_FRONTEND=noninteractive \
+            debian:bookworm /bin/bash -c '
+              set -e
+              apt-get update
+              apt-get install -y build-essential dpkg-dev devscripts debhelper fakeroot gnupg
+
+              for pkg in cx-archive-keyring cx-core cx-full; do
+                echo "Building $pkg..."
+                cd /workspace/packages/$pkg
+                dpkg-buildpackage -us -uc -b
+                cd /workspace
+              done
+
+              mkdir -p /workspace/output/packages
+              mv /workspace/packages/*.deb /workspace/output/packages/ 2>/dev/null || true
+              ls -la /workspace/output/packages/
+            '
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: debian-packages
+          path: output/packages/*.deb
+          retention-days: 7
 
   build-iso:
-    name: Build ISO (${{ matrix.arch }})
-    runs-on: ${{ matrix.runner }}
+    name: Build ISO Image
+    runs-on: ubuntu-24.04
+    needs: build-packages
     strategy:
-      fail-fast: false
       matrix:
-        include:
-          - arch: amd64
-            runner: ubuntu-24.04
-          - arch: arm64
-            runner: ubuntu-24.04-arm
+        arch: [amd64]
     steps:
       - name: Free disk space
         uses: jlumbroso/free-disk-space@main
@@ -51,89 +81,75 @@ jobs:
           dotnet: true
           haskell: true
           large-packages: true
-          docker-images: true
+          docker-images: false
           swap-storage: true
-
-      - name: Additional cleanup
-        run: |
-          echo "=== Additional cleanup ==="
-          sudo rm -rf /home/runner/.rustup || true
-          sudo rm -rf /home/runner/.cargo || true
-          sudo rm -rf /usr/share/swift || true
-          sudo rm -rf /usr/lib/jvm || true
-          sudo rm -rf /usr/local/julia* || true
-          sudo rm -rf /usr/local/share/chromium || true
-          sudo rm -rf /usr/lib/google-cloud-sdk || true
-          sudo rm -rf /opt/hostedtoolcache/CodeQL || true
-          echo "=== Disk space after additional cleanup ==="
-          df -h
 
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Get Ubuntu version
-        id: ubuntu-version
-        run: |
-          UBUNTU_VERSION=$(grep -E '^export TARGET_UBUNTU_VERSION=' src/args.sh | cut -d'"' -f2)
-          echo "version=$UBUNTU_VERSION" >> $GITHUB_OUTPUT
-          echo "Ubuntu version: $UBUNTU_VERSION"
-
-      - name: Setup debootstrap cache directory
-        run: |
-          # Create user-writable cache directory
-          mkdir -p ~/.cache/debootstrap
-          # Remove existing /var/cache/debootstrap if it exists and create symlink
-          # This allows debootstrap to write to our cached location
-          sudo rm -rf /var/cache/debootstrap
-          sudo mkdir -p /var/cache
-          sudo ln -s $HOME/.cache/debootstrap /var/cache/debootstrap
-          echo "Debootstrap cache directory ready at $HOME/.cache/debootstrap"
-          echo "Symlink created: /var/cache/debootstrap -> $HOME/.cache/debootstrap"
-
-      - name: Cache debootstrap
-        id: cache-debootstrap
-        uses: actions/cache@v4
+      - name: Download packages
+        uses: actions/download-artifact@v4
         with:
-          path: ~/.cache/debootstrap
-          key: debootstrap-${{ matrix.arch }}-${{ steps.ubuntu-version.outputs.version }}
-          restore-keys: |
-            debootstrap-${{ matrix.arch }}-${{ steps.ubuntu-version.outputs.version }}
-            debootstrap-${{ matrix.arch }}-
+          name: debian-packages
+          path: packages/
 
-      - name: Build ISO
+      - name: Build ISO in Debian container
         run: |
-          # Use xz compression for releases (smaller), lz4 for PR/branch builds (faster)
-          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            COMPRESSION="xz"
-          else
-            COMPRESSION="lz4"
-          fi
-          export ARCH=${{ matrix.arch }}
-          export SQUASHFS_COMP=$COMPRESSION
-          export DEBIAN_FRONTEND=noninteractive
-          set -e
-          sudo bash scripts/install-deps.sh
-          make bootstrap
-          make build
-          
-          # Verify debootstrap cache was populated
-          echo "=== Checking debootstrap cache ==="
-          ls -la ~/.cache/debootstrap/ || echo "Cache directory empty or doesn't exist yet"
-          du -sh ~/.cache/debootstrap || echo "Cache size check failed"
+          docker run --rm --privileged \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            -e ARCH=${{ matrix.arch }} \
+            -e DEBIAN_FRONTEND=noninteractive \
+            debian:bookworm /bin/bash -c '
+              set -e
+              echo "=== Installing build dependencies ==="
+              apt-get update
+              apt-get install -y \
+                live-build \
+                debootstrap \
+                squashfs-tools \
+                xorriso \
+                isolinux \
+                syslinux-efi \
+                grub-pc-bin \
+                grub-efi-amd64-bin \
+                mtools \
+                dosfstools \
+                gnupg \
+                debian-archive-keyring
 
-      - name: List output
-        if: always()
-        run: |
-          ls -la src/dist/ || echo "No dist directory"
-          ls -la image/ || echo "No image directory"
+              echo "=== Configuring live-build ==="
+              cd /workspace/iso/live-build
+              chmod +x auto/* 2>/dev/null || true
+              lb config
+
+              echo "=== Building ISO (packages will be added post-install) ==="
+              lb build 2>&1 | tee /workspace/build.log
+
+              echo "=== Generating checksums ==="
+              if ls *.iso 1>/dev/null 2>&1; then
+                sha256sum *.iso > SHA256SUMS
+                sha512sum *.iso > SHA512SUMS
+                mkdir -p /workspace/output
+                mv *.iso *.sha* /workspace/output/ 2>/dev/null || true
+                mv SHA256SUMS SHA512SUMS /workspace/output/ 2>/dev/null || true
+              else
+                echo "No ISO files generated"
+                exit 1
+              fi
+
+              echo "=== Output ==="
+              ls -la /workspace/output/
+            '
 
       - name: Upload ISO
         uses: actions/upload-artifact@v4
         with:
           name: cortex-linux-${{ matrix.arch }}
           path: |
-            src/dist/*.iso
-            src/dist/*.sha256
+            output/*.iso
+            output/SHA256SUMS
+            output/SHA512SUMS
           retention-days: 14
 
       - name: Upload build log
@@ -144,7 +160,6 @@ jobs:
           path: build.log
           retention-days: 7
 
-
   release:
     name: Create Release
     runs-on: ubuntu-24.04
@@ -153,31 +168,30 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Download all ISO artifacts
+      - name: Download ISO artifacts
         uses: actions/download-artifact@v4
         with:
           pattern: cortex-linux-*
           merge-multiple: true
-          path: release/
 
-      - name: Generate combined checksums
-        run: |
-          cd release
-          sha256sum *.iso > SHA256SUMS
-          sha512sum *.iso > SHA512SUMS
+      - name: Download packages
+        uses: actions/download-artifact@v4
+        with:
+          name: debian-packages
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            release/*.iso
-            release/SHA256SUMS
-            release/SHA512SUMS
+            *.iso
+            *.deb
+            SHA256SUMS
+            SHA512SUMS
           body: |
-            ## Cortex Linux ${{ github.ref_name }}
+            ## CX Linux ${{ github.ref_name }}
 
             ### Downloads
-            - **cortex-linux-*.iso** - Cortex Linux ISO
+            - **cortex-linux-*-amd64-offline.iso** - Full offline installer
 
             ### Verification
             ```bash
@@ -185,12 +199,11 @@ jobs:
             ```
 
             ### Quick Start
-            1. Write ISO to USB: `sudo dd if=cortex-linux-*.iso of=/dev/sdX bs=4M status=progress oflag=sync`
+            1. Write ISO to USB: `dd if=cortex-linux-*.iso of=/dev/sdX bs=4M status=progress`
             2. Boot from USB
-            3. Select "Live Boot" or "Install"
+            3. Follow installation prompts
 
             ### Documentation
-            See https://github.com/cortexlinux/cortex-distro for documentation.
+            See https://cxlinux-ai.com/docs for full documentation.
           draft: false
           prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
-

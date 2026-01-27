@@ -1,0 +1,10 @@
+cx-core (0.1.0-1) trixie; urgency=medium
+
+  * Initial release
+  * AI-powered package manager with natural language support
+  * Multi-LLM support: Ollama (local), Claude, OpenAI
+  * Hardware detection and GPU awareness
+  * Security sandbox with Firejail integration
+  * Configuration management system
+
+ -- CX Linux Team <team@cxlinux-ai.com>  Sat, 25 Jan 2025 00:00:00 +0000

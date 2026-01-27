@@ -1,0 +1,51 @@
+Source: cx-core
+Section: admin
+Priority: optional
+Maintainer: CX Linux Team <team@cxlinux-ai.com>
+Build-Depends: debhelper-compat (= 13),
+ dh-python,
+ python3-all,
+ python3-setuptools
+Standards-Version: 4.6.2
+Homepage: https://cxlinux-ai.com
+Vcs-Browser: https://github.com/cortexlinux/cx-distro
+Vcs-Git: https://github.com/cortexlinux/cx-distro.git
+Rules-Requires-Root: no
+
+Package: cx-core
+Architecture: all
+Depends: ${python3:Depends},
+ ${misc:Depends},
+ python3 (>= 3.11),
+ python3-pip,
+ python3-venv,
+ python3-yaml,
+ python3-requests,
+ python3-dotenv,
+ python3-cryptography,
+ python3-rich,
+ firejail
+Recommends:
+ ollama,
+ apparmor,
+ apparmor-utils
+Suggests:
+ python3-anthropic,
+ python3-openai,
+ cx-llm
+Description: CX - AI-powered package manager for Linux
+ CX is an AI-powered package manager that understands natural language.
+ It translates plain English commands into Linux operations, eliminating
+ traditional documentation complexity.
+ .
+ Features:
+  - Natural language package installation and management
+  - Hardware-aware optimization with GPU detection
+  - Security sandbox using Firejail and AppArmor
+  - Multi-LLM support (Ollama, Claude, OpenAI)
+  - Offline-capable operation with local LLMs
+  - Smart dependency resolution
+  - Configuration management
+ .
+ The cx CLI is installed to /usr/bin/cx. Configuration files
+ are stored in /etc/cx/.
