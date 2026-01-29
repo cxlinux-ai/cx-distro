@@ -18,7 +18,7 @@
 
 ```bash
 # Clone repository
-git clone https://github.com/cxlinux-ai/cortex-distro.git
+git clone https://github.com/cxlinux-ai/cx-distro.git
 cd cx-distro
 
 # Install dependencies (requires sudo)
@@ -223,11 +223,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 3. Make changes
 4. Run tests: `make test`
 5. Submit PR
-
-## Related Repositories
-
-- [cortex](https://github.com/cxlinux-ai/cortex) - AI-powered package manager CLI
-- [website](https://github.com/cxlinux-ai/website) - cxlinux-ai.com
 
 ## License
 

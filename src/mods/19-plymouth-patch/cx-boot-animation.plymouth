@@ -1,6 +1,6 @@
 [Plymouth Theme]
 Name=CX Boot Animation
-Description=Cortex boot animation theme with custom frames
+Description=CX boot animation theme with custom frames
 ModuleName=script
 
 [script]

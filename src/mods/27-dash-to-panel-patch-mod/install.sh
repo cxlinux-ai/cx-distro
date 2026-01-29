@@ -12,7 +12,7 @@ fi
 
 print_ok "Applying new panel layout patch"
 sed -i '/export const defaults = \[/,/^\]$/c\
-\/\/ Cortex Linux custom default panel layout\
+\/\/ CX Linux custom default panel layout\
 export const defaults = [\
   { element: LEFT_BOX, visible: true, position: STACKED_TL },\
   { element: CENTER_BOX, visible: true, position: CENTERED_MONITOR },\
@@ -26,7 +26,7 @@ export const defaults = [\
 judge "Apply new panel layout patch"
 
 # --- Verify success ---
-if ! grep -q "Cortex Linux custom default panel layout" "$TARGET_FILE"; then
+if ! grep -q "CX Linux custom default panel layout" "$TARGET_FILE"; then
     echo "[ERROR] Replacement verification failed" >&2
     exit 1
 fi
