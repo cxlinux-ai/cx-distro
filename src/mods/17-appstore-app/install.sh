@@ -66,8 +66,8 @@ elif [ "$STORE_PROVIDER" == "snap" ]; then
     install_opt gnome-software-plugin-deb
     judge "Install snap store"
 elif [ "$STORE_PROVIDER" == "web" ]; then
-    print_ok "Adding new app called Cortex Linux Software..."
-    cat << EOF > /usr/share/applications/cortex-software.desktop
+    print_ok "Adding new app called CX Linux Software..."
+    cat << EOF > /usr/share/applications/cx-software.desktop
 [Desktop Entry]
 Name=Apps Store
 GenericName=Apps Store
@@ -91,29 +91,29 @@ Name[sv_SE]=App Store
 Name[pl_PL]=Sklep z aplikacjami
 Name[tr_TR]=Uygulama Mağazası
 Name[ro_RO]=Magazinul cu aplicații
-Comment=Browse Cortex Linux's software collection and install our verified applications
-Comment[zh_CN]=浏览 Cortex Linux 的软件商店并安装我们验证过的应用
-Comment[zh_TW]=瀏覽 Cortex Linux 的軟體商店並安裝我們驗證過的應用
-Comment[zh_HK]=瀏覽 Cortex Linux 的軟體商店並安裝我們驗證過的應用
-Comment[ja_JP]=Cortex Linux のソフトウェアコレクションを閲覧し、検証済みのアプリケーションをインストールします
-Comment[ko_KR]=Cortex Linux의 소프트웨어 컬렉션을 탐색하고 검증된 애플리케이션을 설치합니다
-Comment[vi_VN]=Duyệt bộ sưu tập phần mềm của Cortex Linux và cài đặt các ứng dụng đã được xác minh của chúng tôi
-Comment[th_TH]=เรียกดูคอลเลกชันซอฟต์แวร์ของ Cortex Linux และติดตั้งแอปพลิเคชันที่ได้รับการตรวจสอบของเรา
-Comment[de_DE]=Durchsuchen Sie die Softwarekollektion von Cortex Linux und installieren Sie unsere verifizierten Anwendungen
-Comment[fr_FR]=Parcourez la collection de logiciels d'Cortex Linux et installez nos applications vérifiées
-Comment[es_ES]=Explore la colección de software de Cortex Linux e instale nuestras aplicaciones verificadas
-Comment[ru_RU]=Просматривайте коллекцию программного обеспечения Cortex Linux и устанавливайте наши проверенные приложения
-Comment[it_IT]=Esplora la collezione di software di Cortex Linux e installa le nostre applicazioni verificate
-Comment[pt_PT]=Explore a coleção de software da Cortex Linux e instale nossos aplicativos verificados
-Comment[pt_BR]=Explore a coleção de software da Cortex Linux e instale nossos aplicativos verificados
-Comment[ar_SA]=تصفح مجموعة البرامج الخاصة بـ Cortex Linux وقم بتثبيت تطبيقاتنا الموثقة
-Comment[nl_NL]=Blader door de softwarecollectie van Cortex Linux en installeer onze geverifieerde applicaties
-Comment[sv_SE]=Bläddra i Cortex Linux programvarusamling och installera våra verifierade applikationer
-Comment[pl_PL]=Przeglądaj kolekcję oprogramowania Cortex Linux i instaluj nasze zweryfikowane aplikacje
-Comment[tr_TR]=Cortex Linux'un yazılım koleksiyonunu göz atın ve doğrulanmış uygulamalarımızı yükleyin
-Comment[ro_RO]=Explorează colecția de programe a lui Cortex Linux și instalează aplicațiile noastre verificate
+Comment=Browse CX Linux's software collection and install our verified applications
+Comment[zh_CN]=浏览 CX Linux 的软件商店并安装我们验证过的应用
+Comment[zh_TW]=瀏覽 CX Linux 的軟體商店並安裝我們驗證過的應用
+Comment[zh_HK]=瀏覽 CX Linux 的軟體商店並安裝我們驗證過的應用
+Comment[ja_JP]=CX Linux のソフトウェアコレクションを閲覧し、検証済みのアプリケーションをインストールします
+Comment[ko_KR]=CX Linux의 소프트웨어 컬렉션을 탐색하고 검증된 애플리케이션을 설치합니다
+Comment[vi_VN]=Duyệt bộ sưu tập phần mềm của CX Linux và cài đặt các ứng dụng đã được xác minh của chúng tôi
+Comment[th_TH]=เรียกดูคอลเลกชันซอฟต์แวร์ของ CX Linux และติดตั้งแอปพลิเคชันที่ได้รับการตรวจสอบของเรา
+Comment[de_DE]=Durchsuchen Sie die Softwarekollektion von CX Linux und installieren Sie unsere verifizierten Anwendungen
+Comment[fr_FR]=Parcourez la collection de logiciels d'CX Linux et installez nos applications vérifiées
+Comment[es_ES]=Explore la colección de software de CX Linux e instale nuestras aplicaciones verificadas
+Comment[ru_RU]=Просматривайте коллекцию программного обеспечения CX Linux и устанавливайте наши проверенные приложения
+Comment[it_IT]=Esplora la collezione di software di CX Linux e installa le nostre applicazioni verificate
+Comment[pt_PT]=Explore a coleção de software da CX Linux e instale nossos aplicativos verificados
+Comment[pt_BR]=Explore a coleção de software da CX Linux e instale nossos aplicativos verificados
+Comment[ar_SA]=تصفح مجموعة البرامج الخاصة بـ CX Linux وقم بتثبيت تطبيقاتنا الموثقة
+Comment[nl_NL]=Blader door de softwarecollectie van CX Linux en installeer onze geverifieerde applicaties
+Comment[sv_SE]=Bläddra i CX Linux programvarusamling och installera våra verifierade applikationer
+Comment[pl_PL]=Przeglądaj kolekcję oprogramowania CX Linux i instaluj nasze zweryfikowane aplikacje
+Comment[tr_TR]=CX Linux'un yazılım koleksiyonunu göz atın ve doğrulanmış uygulamalarımızı yükleyin
+Comment[ro_RO]=Explorează colecția de programe a lui CX Linux și instalează aplicațiile noastre verificate
 Categories=System;
-Exec=xdg-open https://docs.cortexlinux.com/Applications/Introduction.html
+Exec=xdg-open https://docs.cxlinux.com/Applications/Introduction.html
 Terminal=false
 Type=Application
 Icon=system-software-install

@@ -8,8 +8,8 @@ judge "Patch /usr/bin/add-apt-repository"
 #software-properties-common
 
 print_ok "Linking ubuntu templates and distro info for python-apt..."
-sudo ln -sf /usr/share/python-apt/templates/ubuntu.info /usr/share/python-apt/templates/cortex.info
-sudo ln -sf /usr/share/distro-info/ubuntu.csv /usr/share/distro-info/cortex.csv
+sudo ln -sf /usr/share/python-apt/templates/ubuntu.info /usr/share/python-apt/templates/cx.info
+sudo ln -sf /usr/share/distro-info/ubuntu.csv /usr/share/distro-info/cx.csv
 judge "Link ubuntu templates and distro info for python-apt"
 
 print_ok "Marking software-properties-common as held..."

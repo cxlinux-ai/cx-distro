@@ -4,8 +4,8 @@ set -u                  # treat unset variable as error
 
 print_ok "Patch plymouth"
 cp ./logo_128.png      /usr/share/plymouth/themes/spinner/bgrt-fallback.png
-cp ./cortex_text.png /usr/share/plymouth/ubuntu-logo.png
-cp ./cortex_text.png /usr/share/plymouth/themes/spinner/watermark.png
+cp ./cx_text.png /usr/share/plymouth/ubuntu-logo.png
+cp ./cx_text.png /usr/share/plymouth/themes/spinner/watermark.png
 #update-initramfs -u # We don't have to update initramfs here, because we did it in the end of this script
 judge "Patch plymouth and update initramfs"
 

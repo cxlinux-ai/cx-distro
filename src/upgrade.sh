@@ -8,7 +8,7 @@ set -u                  # treat unset variable as error
 export DEBIAN_FRONTEND=noninteractive
 export LATEST_VERSION="1.5.0"
 export CODE_NAME="plucky"
-export OS_ID="Cortex Linux"
+export OS_ID="CX Linux"
 export CURRENT_VERSION=$(cat /etc/lsb-release | grep DISTRIB_RELEASE | cut -d "=" -f 2)
 
 #==========================
@@ -53,10 +53,10 @@ function judge() {
   fi
 }
 
-function ensureCurrentOsCortexLinux() {
-    # Ensure the current OS is Cortex Linux
-    if ! grep -q "DISTRIB_ID=Cortex Linux" /etc/lsb-release; then
-        print_error "This script can only be run on Cortex Linux."
+function ensureCurrentOsCxLinux() {
+    # Ensure the current OS is CX Linux
+    if ! grep -q "DISTRIB_ID=CX Linux" /etc/lsb-release; then
+        print_error "This script can only be run on CX Linux."
         exit 1
     fi
 }
@@ -65,30 +65,30 @@ function applyLsbRelease() {
 
     # Update /etc/os-release
     sudo bash -c "cat > /etc/os-release <<EOF
-PRETTY_NAME=\"Cortex Linux $LATEST_VERSION\"
-NAME=\"Cortex Linux\"
+PRETTY_NAME=\"CX Linux $LATEST_VERSION\"
+NAME=\"CX Linux\"
 VERSION_ID=\"$LATEST_VERSION\"
 VERSION=\"$LATEST_VERSION ($CODE_NAME)\"
 VERSION_CODENAME=$CODE_NAME
 ID=ubuntu
 ID_LIKE=debian
-HOME_URL=\"https://www.cortexlinux.com/\"
-SUPPORT_URL=\"https://github.com/cortexlinux/cortex-distro/discussions\"
-BUG_REPORT_URL=\"https://github.com/cortexlinux/cortex-distro/issues\"
-PRIVACY_POLICY_URL=\"https://cortexlinux.com/privacy\"
+HOME_URL=\"https://www.cxlinux.com/\"
+SUPPORT_URL=\"https://github.com/cxlinux/cx-distro/discussions\"
+BUG_REPORT_URL=\"https://github.com/cxlinux/cx-distro/issues\"
+PRIVACY_POLICY_URL=\"https://cxlinux.com/privacy\"
 UBUNTU_CODENAME=$CODE_NAME
 EOF"
 
     # Update /etc/lsb-release
     sudo bash -c "cat > /etc/lsb-release <<EOF
-DISTRIB_ID=Cortex Linux
+DISTRIB_ID=CX Linux
 DISTRIB_RELEASE=$LATEST_VERSION
 DISTRIB_CODENAME=$CODE_NAME
-DISTRIB_DESCRIPTION=\"Cortex Linux $LATEST_VERSION\"
+DISTRIB_DESCRIPTION=\"CX Linux $LATEST_VERSION\"
 EOF"
 
     # Update /etc/issue
-    echo "Cortex Linux ${LATEST_VERSION} \n \l
+    echo "CX Linux ${LATEST_VERSION} \n \l
 " | sudo tee /etc/issue
 
     # Update /usr/lib/os-release
@@ -102,8 +102,8 @@ EOF"
 function main() {
     print_ok "Current version is: ${CURRENT_VERSION}. Checking for updates..."
 
-    # Ensure the current OS is Cortex Linux
-    ensureCurrentOsCortexLinux
+    # Ensure the current OS is CX Linux
+    ensureCurrentOsCxLinux
 
     # Compare current version with latest version
     if [ "$CURRENT_VERSION" == "$LATEST_VERSION" ]; then
