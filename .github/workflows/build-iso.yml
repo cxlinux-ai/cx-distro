@@ -58,6 +58,10 @@ jobs:
             -e DEBIAN_FRONTEND=noninteractive \
             ubuntu:latest /bin/bash -c '
               set -e
+              echo "=== Installing basic build tools ==="
+              apt-get update
+              apt-get install -y make sudo
+              
               echo "=== Building ISO using make build ==="
               export ARCH=${{ matrix.arch }}
               # make build will handle dependency installation and build process
