@@ -28,47 +28,9 @@ env:
   DEBIAN_FRONTEND: noninteractive
 
 jobs:
-  build-packages:
-    name: Build Debian Packages
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Build packages in Debian container
-        run: |
-          docker run --rm \
-            -v "${{ github.workspace }}:/workspace" \
-            -w /workspace \
-            -e DEBIAN_FRONTEND=noninteractive \
-            debian:bookworm /bin/bash -c '
-              set -e
-              apt-get update
-              apt-get install -y build-essential dpkg-dev devscripts debhelper fakeroot gnupg
-
-              for pkg in cx-archive-keyring cx-core cx-full; do
-                echo "Building $pkg..."
-                cd /workspace/packages/$pkg
-                dpkg-buildpackage -us -uc -b
-                cd /workspace
-              done
-
-              mkdir -p /workspace/output/packages
-              mv /workspace/packages/*.deb /workspace/output/packages/ 2>/dev/null || true
-              ls -la /workspace/output/packages/
-            '
-
-      - name: Upload packages
-        uses: actions/upload-artifact@v4
-        with:
-          name: debian-packages
-          path: output/packages/*.deb
-          retention-days: 7
-
   build-iso:
     name: Build ISO Image
     runs-on: ubuntu-24.04
-    needs: build-packages
     strategy:
       matrix:
         arch: [amd64]
@@ -87,59 +49,33 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download packages
-        uses: actions/download-artifact@v4
-        with:
-          name: debian-packages
-          path: packages/
-
-      - name: Build ISO in Debian container
+      - name: Build ISO in Ubuntu container
         run: |
           docker run --rm --privileged \
             -v "${{ github.workspace }}:/workspace" \
             -w /workspace \
             -e ARCH=${{ matrix.arch }} \
             -e DEBIAN_FRONTEND=noninteractive \
-            debian:bookworm /bin/bash -c '
+            ubuntu:latest /bin/bash -c '
               set -e
-              echo "=== Installing build dependencies ==="
-              apt-get update
-              apt-get install -y \
-                live-build \
-                debootstrap \
-                squashfs-tools \
-                xorriso \
-                isolinux \
-                syslinux-efi \
-                grub-pc-bin \
-                grub-efi-amd64-bin \
-                mtools \
-                dosfstools \
-                gnupg \
-                debian-archive-keyring
-
-              echo "=== Configuring live-build ==="
-              cd /workspace/iso/live-build
-              chmod +x auto/* 2>/dev/null || true
-              lb config
-
-              echo "=== Building ISO (packages will be added post-install) ==="
-              lb build 2>&1 | tee /workspace/build.log
+              echo "=== Building ISO using make build ==="
+              export ARCH=${{ matrix.arch }}
+              # make build will handle dependency installation and build process
+              make build 2>&1 | tee /workspace/build.log
 
               echo "=== Generating checksums ==="
-              if ls *.iso 1>/dev/null 2>&1; then
+              if ls output/*.iso 1>/dev/null 2>&1; then
+                cd output
                 sha256sum *.iso > SHA256SUMS
                 sha512sum *.iso > SHA512SUMS
-                mkdir -p /workspace/output
-                mv *.iso *.sha* /workspace/output/ 2>/dev/null || true
-                mv SHA256SUMS SHA512SUMS /workspace/output/ 2>/dev/null || true
+                cd ..
               else
                 echo "No ISO files generated"
                 exit 1
               fi
 
               echo "=== Output ==="
-              ls -la /workspace/output/
+              ls -la output/
             '
 
       - name: Upload ISO
@@ -174,17 +110,11 @@ jobs:
           pattern: cx-linux-*
           merge-multiple: true
 
-      - name: Download packages
-        uses: actions/download-artifact@v4
-        with:
-          name: debian-packages
-
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
             *.iso
-            *.deb
             SHA256SUMS
             SHA512SUMS
           body: |

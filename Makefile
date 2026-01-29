@@ -45,10 +45,6 @@ help:
 	@echo "  make bootstrap                    Validate environment and deps"
 
 bootstrap:
-	@if [ "$$(id -u)" -eq 0 ]; then \
-	  echo "Error: Do not run as root"; \
-	  exit 1; \
-	fi
 	@echo "[MAKE] Architecture: $(ARCH)"
 	@echo "[MAKE] Installing build dependencies..."
 	@ARCH=$(ARCH) sudo bash scripts/install-deps.sh
