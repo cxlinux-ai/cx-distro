@@ -68,18 +68,20 @@ jobs:
               make build 2>&1 | tee /workspace/build.log
 
               echo "=== Generating checksums ==="
-              if ls output/*.iso 1>/dev/null 2>&1; then
-                cd output
+              if ls src/dist/*.iso 1>/dev/null 2>&1; then
+                cd src/dist
                 sha256sum *.iso > SHA256SUMS
                 sha512sum *.iso > SHA512SUMS
-                cd ..
+                cd ../..
               else
                 echo "No ISO files generated"
+                echo "Contents of src/dist/:"
+                ls -la src/dist/ || true
                 exit 1
               fi
 
               echo "=== Output ==="
-              ls -la output/
+              ls -la src/dist/
             '
 
       - name: Upload ISO
@@ -87,9 +89,9 @@ jobs:
         with:
           name: cx-linux-${{ matrix.arch }}
           path: |
-            output/*.iso
-            output/SHA256SUMS
-            output/SHA512SUMS
+            src/dist/*.iso
+            src/dist/SHA256SUMS
+            src/dist/SHA512SUMS
           retention-days: 14
 
       - name: Upload build log

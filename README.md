@@ -202,7 +202,7 @@ This repository implements 9 major topics from the CX Linux planning:
 
 ### Build Host
 - Debian 12+ or Ubuntu 24.04+
-- 10GB+ free disk space
+- 20GB+ free disk space (30GB+ recommended for comfortable builds)
 - Internet connection (for package downloads)
 - Root/sudo access
 

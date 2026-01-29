@@ -731,11 +731,6 @@ EOF
     sudo touch "$SCRIPT_DIR/dist/$TARGET_BUSINESS_NAME-$TARGET_BUILD_VERSION-$TARGET_ARCH-$LANG_MODE-$DATE.iso" -d@${SOURCE_DATE_EPOCH}
     judge "Move iso image"
 
-    print_ok "Generating sha256 checksum..."
-    HASH=`sha256sum "$SCRIPT_DIR/dist/$TARGET_BUSINESS_NAME-$TARGET_BUILD_VERSION-$TARGET_ARCH-$LANG_MODE-$DATE.iso" | cut -d ' ' -f 1`
-    echo "SHA256: $HASH" > "$SCRIPT_DIR/dist/$TARGET_BUSINESS_NAME-$TARGET_BUILD_VERSION-$TARGET_ARCH-$LANG_MODE-$DATE.sha256"
-    judge "Generate sha256 checksum"
-
     popd
 }
 
