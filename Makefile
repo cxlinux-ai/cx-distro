@@ -12,10 +12,8 @@ CONFIG_DIR    := config
 # Architecture detection (defaults to amd64)
 ARCH ?= $(shell dpkg --print-architecture 2>/dev/null || echo amd64)
 
-# Check if apt-cacher-ng is running (only use if available)
-# First check if service is active, then test port connectivity
-# Falls back to empty string if not available (no caching)
-APT_CACHER_NG_URL := $(shell (systemctl is-active --quiet apt-cacher-ng 2>/dev/null || pgrep -x apt-cacher-ng >/dev/null 2>&1) && (timeout 1 bash -c 'exec 3<>/dev/tcp/localhost/3142' 2>/dev/null && echo "http://localhost:3142") || echo "")
+# APT cacher URL (disabled by default, set via APT_CACHER_NG_URL env var to enable)
+APT_CACHER_NG_URL ?=
 
 # Common dependencies
 COMMON_DEPS := \
@@ -54,7 +52,7 @@ build: bootstrap
 	@if [ -n "$(APT_CACHER_NG_URL)" ]; then \
 		echo "[MAKE] Using apt-cacher-ng: $(APT_CACHER_NG_URL)"; \
 	else \
-		echo "[MAKE] apt-cacher-ng not available, using direct connection"; \
+		echo "[MAKE] Using direct connection (apt-cacher-ng disabled)"; \
 	fi
 ifeq ($(ARCH),amd64)
 	@cd $(SRC_DIR) && ARCH=$(ARCH) APT_CACHER_NG_URL="$(APT_CACHER_NG_URL)" ./build.sh -c ../$(CONFIG_DIR)/release-amd64.json

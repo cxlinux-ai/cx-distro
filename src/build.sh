@@ -100,10 +100,6 @@ function download_base_system() {
 }
 
 function mount_folers() {
-    print_ok "Reloading systemd daemon..."
-    sudo systemctl daemon-reload
-    judge "Reload systemd daemon"
-
     print_ok "Mounting /dev /run from host to new_building_os..."
     sudo mount --bind /dev new_building_os/dev
     sudo mount --bind /run new_building_os/run
