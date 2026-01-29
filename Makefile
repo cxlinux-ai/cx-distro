@@ -49,10 +49,6 @@ bootstrap:
 	  echo "Error: Do not run as root"; \
 	  exit 1; \
 	fi
-	@if ! lsb_release -i | grep -qE "(Ubuntu|Debian|Tuxedo|CX)"; then \
-	  echo "Error: Unsupported OS — only Ubuntu, Debian, Tuxedo or CX Linux allowed"; \
-	  exit 1; \
-	fi
 	@echo "[MAKE] Architecture: $(ARCH)"
 	@echo "[MAKE] Installing build dependencies..."
 	@ARCH=$(ARCH) sudo bash scripts/install-deps.sh
