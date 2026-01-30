@@ -162,6 +162,14 @@ function umount_folers() {
     sudo rm -rf new_building_os/root/mods
     judge "Clean up new_building_os /root/mods"
 
+    # Remove apt-cacher-ng proxy configuration if it exists
+    # This proxy is only available during build, not in the final ISO
+    if [ -f "new_building_os/etc/apt/apt.conf.d/01proxy" ]; then
+        print_ok "Removing apt-cacher-ng proxy configuration from ISO..."
+        sudo rm -f new_building_os/etc/apt/apt.conf.d/01proxy
+        judge "Remove apt proxy configuration"
+    fi
+
     print_ok "Unmounting /proc /sys /dev/pts within chroot..."
     # Use lazy unmount to handle busy mounts
     sudo chroot new_building_os umount -lf /dev/pts 2>/dev/null || true
