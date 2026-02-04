@@ -18,7 +18,7 @@
 
 ```bash
 # Clone repository
-git clone https://github.com/cxlinux-ai/cortex-distro.git
+git clone https://github.com/cxlinux-ai/cx-distro.git
 cd cx-distro
 
 # Install dependencies (requires sudo)
