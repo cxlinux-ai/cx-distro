@@ -1,0 +1,7 @@
+PRETTY_NAME="Cortex OS 1.0"
+NAME="Cortex OS"
+VERSION_ID="1.0"
+VERSION="1.0 (based on Ubuntu 22.04)"
+ID=cortex
+ID_LIKE=ubuntu debian
+UBUNTU_CODENAME=jammy
