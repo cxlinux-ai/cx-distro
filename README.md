@@ -235,9 +235,9 @@ BSL 1.1 - See [LICENSE](LICENSE)
 
 ## Support
 
-- Documentation: https://cxlinux.ai/docs
-- Issues: https://github.com/cxlinux-ai/cx-distro/issues
-- Discord: https://discord.gg/cxlinux-ai
+- Documentation: <https://cxlinux.ai/docs>
+- Issues: <https://github.com/cxlinux-ai/cx-distro/issues>
+- Discord: <https://discord.gg/cxlinux-ai>
 
 ---
 
