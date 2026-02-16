@@ -7,4 +7,4 @@ cx-core (0.1.0-1) trixie; urgency=medium
   * Security sandbox with Firejail integration
   * Configuration management system
 
- -- CX Linux Team <team@cxlinux-ai.com>  Sat, 25 Jan 2025 00:00:00 +0000
+ -- CX Linux Team <team@cxlinux.ai>  Sat, 25 Jan 2025 00:00:00 +0000

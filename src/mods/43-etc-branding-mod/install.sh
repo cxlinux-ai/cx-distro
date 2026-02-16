@@ -20,10 +20,10 @@ VERSION="$TARGET_BUILD_VERSION ($TARGET_UBUNTU_VERSION)"
 VERSION_CODENAME=$TARGET_UBUNTU_VERSION
 ID=$TARGET_NAME
 ID_LIKE=debian
-HOME_URL="https://www.cortexlinux.com/"
+HOME_URL="https://cxlinux.ai/"
 SUPPORT_URL="https://github.com/cortexlinux/cortex-distro/discussions"
 BUG_REPORT_URL="https://github.com/cortexlinux/cortex-distro/issues"
-PRIVACY_POLICY_URL="https://cortexlinux.com/privacy"
+PRIVACY_POLICY_URL="https://cxlinux.ai/privacy"
 UBUNTU_CODENAME=$TARGET_UBUNTU_VERSION
 EOF
 # The ID have to be ubuntu to support some Ubuntu features, like add-apt-repository

@@ -2,14 +2,14 @@
 # Save this file to: /etc/apt/sources.list.d/cxlinux.sources
 #
 # Or run the quick install commands:
-#   curl -fsSL https://repo.cxlinux.com/pub.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cxlinux-archive-keyring.gpg
+#   curl -fsSL https://repo.cxlinux.ai/pub.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cxlinux-archive-keyring.gpg
 #   sudo cp cxlinux.sources /etc/apt/sources.list.d/
 #   sudo apt update
 #
 # DEB822 format (modern apt)
 
 Types: deb
-URIs: https://repo.cxlinux.com
+URIs: https://repo.cxlinux.ai
 Suites: stable
 Components: main
 Signed-By: /usr/share/keyrings/cxlinux-archive-keyring.gpg
