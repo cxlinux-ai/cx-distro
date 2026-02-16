@@ -1,6 +1,6 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: cx-linux
-Upstream-Contact: CX Linux Team <team@cxlinux-ai.com>
+Upstream-Contact: CX Linux Team <team@cxlinux.ai>
 Source: https://github.com/cortexlinux/cx-distro
 
 Files: *
@@ -37,7 +37,7 @@ License: BUSL-1.1
  commercial license from the Licensor, its affiliated entities, or
  authorized resellers.
  .
- For Commercial Use licensing, contact: licensing@cxlinux-ai.com
+ For Commercial Use licensing, contact: licensing@cxlinux.ai
  .
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF

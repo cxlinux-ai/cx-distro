@@ -72,10 +72,10 @@ VERSION=\"$LATEST_VERSION ($CODE_NAME)\"
 VERSION_CODENAME=$CODE_NAME
 ID=ubuntu
 ID_LIKE=debian
-HOME_URL=\"https://www.cortexlinux.com/\"
+HOME_URL=\"https://cxlinux.ai/\"
 SUPPORT_URL=\"https://github.com/cortexlinux/cortex-distro/discussions\"
 BUG_REPORT_URL=\"https://github.com/cortexlinux/cortex-distro/issues\"
-PRIVACY_POLICY_URL=\"https://cortexlinux.com/privacy\"
+PRIVACY_POLICY_URL=\"https://cxlinux.ai/privacy\"
 UBUNTU_CODENAME=$CODE_NAME
 EOF"
 

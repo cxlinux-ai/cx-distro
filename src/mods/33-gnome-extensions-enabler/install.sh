@@ -24,7 +24,7 @@ gext -F enable network-stats@gnome.noroadsleft.xyz
 gext -F enable simple-weather@romanlefler.com
 gext -F enable switcher@cortexlinux
 gext -F enable noti-bottom-right@cortexlinux
-gext -F enable loc@cortexlinux.com
+gext -F enable loc@cxlinux.ai
 gext -F enable lockkeys@vaina.lt
 gext -F enable tiling-assistant@leleat-on-github
 gext -F enable mediacontrols@cliffniff.github.com

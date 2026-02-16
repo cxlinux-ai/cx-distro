@@ -125,12 +125,17 @@ preseed/file=/cdrom/preseed/cx.preseed
 
 ## APT Repository
 
+> **⚠️ NOTICE: Repository Not Yet Deployed**
+> 
+> The APT repository at `repo.cxlinux.ai` is not yet live. DNS and GitHub Pages deployment are pending.
+> See [tests/TEST_RESULTS.md](tests/TEST_RESULTS.md) for deployment status and instructions.
+
 CX uses a signed APT repository with deb822 format:
 
 ```
 # /etc/apt/sources.list.d/cx.sources
 Types: deb
-URIs: https://repo.cxlinux-ai.com/apt
+URIs: https://repo.cxlinux.ai/apt
 Suites: cx cx-updates cx-security
 Components: main
 Signed-By: /usr/share/keyrings/cx-archive-keyring.gpg
@@ -227,7 +232,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 ## Related Repositories
 
 - [cortex](https://github.com/cxlinux-ai/cortex) - AI-powered package manager CLI
-- [website](https://github.com/cxlinux-ai/website) - cxlinux-ai.com
+- [website](https://github.com/cxlinux-ai/website) - https://cxlinux.ai
 
 ## License
 
@@ -235,9 +240,9 @@ BSL 1.1 - See [LICENSE](LICENSE)
 
 ## Support
 
-- Documentation: https://cxlinux-ai.com/docs
-- Issues: https://github.com/cxlinux-ai/cx-distro/issues
-- Discord: https://discord.gg/cxlinux-ai
+- Documentation: <https://cxlinux.ai/docs>
+- Issues: <https://github.com/cxlinux-ai/cx-distro/issues>
+- Discord: <https://discord.gg/cxlinux-ai>
 
 ---
 

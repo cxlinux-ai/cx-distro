@@ -3,4 +3,4 @@ cx-archive-keyring (2025.01.08) trixie; urgency=medium
   * Initial release
   * GPG keyring for CX Linux APT repository
 
- -- CX Linux Team <team@cxlinux-ai.com>  Wed, 08 Jan 2025 00:00:00 +0000
+ -- CX Linux Team <team@cxlinux.ai>  Wed, 08 Jan 2025 00:00:00 +0000

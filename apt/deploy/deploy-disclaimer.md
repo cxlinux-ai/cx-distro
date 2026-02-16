@@ -11,10 +11,10 @@ Official package repository for CX Linux.
 
 ```bash
 # 1. Add GPG key
-curl -fsSL https://repo.cxlinux.com/pub.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cx-archive-keyring.gpg
+curl -fsSL https://repo.cxlinux.ai/pub.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cx-archive-keyring.gpg
 
 # 2. Add repository
-echo "deb [signed-by=/usr/share/keyrings/cx-archive-keyring.gpg] https://repo.cxlinux.com cx main" | sudo tee /etc/apt/sources.list.d/cx.list
+echo "deb [signed-by=/usr/share/keyrings/cx-archive-keyring.gpg] https://repo.cxlinux.ai cx main" | sudo tee /etc/apt/sources.list.d/cx.list
 
 # 3. Update and install
 sudo apt update
