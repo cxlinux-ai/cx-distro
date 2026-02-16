@@ -28,10 +28,10 @@ apt-repo/
 ## Adding the Repository (User Instructions)
 ```bash
 # Add GPG key
-curl -fsSL https://apt.cxlinux.com/keys/cx.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cx.gpg
+curl -fsSL https://repo.cxlinux.ai/keys/cx.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cx.gpg
 
 # Add repository
-echo "deb [signed-by=/usr/share/keyrings/cx.gpg] https://apt.cxlinux.com stable main" | sudo tee /etc/apt/sources.list.d/cx.list
+echo "deb [signed-by=/usr/share/keyrings/cx.gpg] https://repo.cxlinux.ai stable main" | sudo tee /etc/apt/sources.list.d/cx.list
 
 # Install
 sudo apt update
