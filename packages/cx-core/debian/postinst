@@ -61,7 +61,7 @@ case "$1" in
         if [ ! -f "$CX_CONFIG_DIR/cx.yaml" ]; then
             cat > "$CX_CONFIG_DIR/cx.yaml" << 'EOF'
 # CX Configuration
-# See https://cxlinux-ai.com/docs/configuration for details
+# See https://cxlinux.ai/docs/configuration for details
 
 # LLM Provider Settings
 llm:

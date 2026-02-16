@@ -2,26 +2,26 @@
 
 Official APT package repository for CX Linux.
 
-**Repository URL:** https://repo.cxlinux.com
+**Repository URL:** https://repo.cxlinux.ai
 
 ## Quick Install
 
 ```bash
 # Add GPG signing key
-curl -fsSL https://repo.cxlinux.com/pub.gpg \
+curl -fsSL https://repo.cxlinux.ai/pub.gpg \
     | sudo gpg --dearmor -o /usr/share/keyrings/cxlinux-archive-keyring.gpg
 
 # Add repository (DEB822 format - recommended)
 sudo tee /etc/apt/sources.list.d/cxlinux.sources << 'EOF'
 Types: deb
-URIs: https://repo.cxlinux.com
+URIs: https://repo.cxlinux.ai
 Suites: stable
 Components: main
 Signed-By: /usr/share/keyrings/cxlinux-archive-keyring.gpg
 EOF
 
 # Or use one-line format (legacy)
-echo "deb [signed-by=/usr/share/keyrings/cxlinux-archive-keyring.gpg] https://repo.cxlinux.com stable main" \
+echo "deb [signed-by=/usr/share/keyrings/cxlinux-archive-keyring.gpg] https://repo.cxlinux.ai stable main" \
     | sudo tee /etc/apt/sources.list.d/cxlinux.list
 
 # Update and install packages

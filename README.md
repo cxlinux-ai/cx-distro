@@ -125,6 +125,11 @@ preseed/file=/cdrom/preseed/cx.preseed
 
 ## APT Repository
 
+> **⚠️ NOTICE: Repository Not Yet Deployed**
+> 
+> The APT repository at `repo.cxlinux.ai` is not yet live. DNS and GitHub Pages deployment are pending.
+> See [tests/TEST_RESULTS.md](tests/TEST_RESULTS.md) for deployment status and instructions.
+
 CX uses a signed APT repository with deb822 format:
 
 ```
