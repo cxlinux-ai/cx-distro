@@ -145,7 +145,7 @@ jobs:
       - name: Upload ISO
         uses: actions/upload-artifact@v4
         with:
-          name: cortex-linux-${{ matrix.arch }}
+          name: cx-linux-${{ matrix.arch }}
           path: |
             output/*.iso
             output/SHA256SUMS
@@ -171,7 +171,7 @@ jobs:
       - name: Download ISO artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: cortex-linux-*
+          pattern: cx-linux-*
           merge-multiple: true
 
       - name: Download packages
@@ -191,7 +191,7 @@ jobs:
             ## CX Linux ${{ github.ref_name }}
 
             ### Downloads
-            - **cortex-linux-*-amd64-offline.iso** - Full offline installer
+            - **cx-linux-*-amd64-offline.iso** - Full offline installer
 
             ### Verification
             ```bash
@@ -199,7 +199,7 @@ jobs:
             ```
 
             ### Quick Start
-            1. Write ISO to USB: `dd if=cortex-linux-*.iso of=/dev/sdX bs=4M status=progress`
+            1. Write ISO to USB: `dd if=cx-linux-*.iso of=/dev/sdX bs=4M status=progress`
             2. Boot from USB
             3. Follow installation prompts
 
