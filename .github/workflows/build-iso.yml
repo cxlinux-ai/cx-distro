@@ -59,6 +59,7 @@ jobs:
 
       - name: Generate checksums
         run: |
+          sudo chown -R $USER:$USER output/
           cd output/packages
           sha256sum *.deb > SHA256SUMS
           cat SHA256SUMS
