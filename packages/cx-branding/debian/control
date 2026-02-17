@@ -1,0 +1,38 @@
+Source: cx-branding
+Section: misc
+Priority: optional
+Maintainer: CX Linux Team <team@cxlinux.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Homepage: https://cxlinux.com
+Vcs-Browser: https://github.com/cxlinux/cx-distro
+Vcs-Git: https://github.com/cxlinux/cx-distro.git
+Rules-Requires-Root: no
+
+Package: cx-branding
+Architecture: all
+Depends: ${misc:Depends},
+ plymouth,
+ plymouth-themes
+Recommends:
+ gnome-shell,
+ gdm3
+Suggests:
+ neofetch
+Description: CX Linux branding and visual identity
+ This package provides the complete CX Linux branding including:
+  - OS identity files (/etc/os-release, /etc/lsb-release)
+  - Plymouth boot splash theme
+  - GRUB bootloader theme
+  - Desktop wallpapers
+  - GDM login screen styling
+  - Terminal MOTD (Message of the Day)
+  - Neofetch configuration and ASCII art
+  - System logos and icons
+ .
+ Installing this package will replace Debian/Ubuntu branding with
+ CX Linux branding throughout the system.
+ .
+ The package works on any Debian-based distribution (Debian, Ubuntu,
+ Linux Mint, etc.) and can be installed via apt or dpkg.
+
