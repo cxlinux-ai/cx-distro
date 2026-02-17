@@ -44,7 +44,8 @@ jobs:
             debian:bookworm /bin/bash -c '
               set -e
               apt-get update
-              apt-get install -y build-essential dpkg-dev devscripts debhelper fakeroot gnupg
+              apt-get install -y build-essential dpkg-dev devscripts debhelper fakeroot gnupg \
+                dh-python python3-all python3-setuptools
 
               for pkg in cx-archive-keyring cx-core cx-full; do
                 echo "Building $pkg..."
