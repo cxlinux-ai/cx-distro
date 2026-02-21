@@ -7,7 +7,7 @@
 
 /* Login screen background */
 #lockDialogGroup {
-    background: #0F0F23 url('resource:///org/gnome/shell/theme/cortex-login-bg.png');
+    background: #0F0F23 url('resource:///org/gnome/shell/theme/cx-login-bg.png');
     background-size: cover;
     background-position: center;
 }
