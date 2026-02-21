@@ -5,8 +5,8 @@ Maintainer: CX Linux Team <team@cxlinux-ai.com>
 Build-Depends: debhelper-compat (= 13)
 Standards-Version: 4.6.2
 Homepage: https://cxlinux-ai.com
-Vcs-Browser: https://github.com/cortexlinux/cx-distro
-Vcs-Git: https://github.com/cortexlinux/cx-distro.git
+Vcs-Browser: https://github.com/cxlinux-ai/cx-distro
+Vcs-Git: https://github.com/cxlinux-ai/cx-distro.git
 Rules-Requires-Root: no
 
 Package: cx-gpu-amd
