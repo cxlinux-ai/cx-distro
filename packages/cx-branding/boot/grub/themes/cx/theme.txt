@@ -1,4 +1,4 @@
-# Cortex Linux GRUB Theme
+# CX Linux GRUB Theme
 # Modern boot menu with neural network aesthetics
 
 # Global properties
@@ -26,13 +26,13 @@ terminal-box: "terminal_box_*.png"
     selected_item_color = "#06B6D4"
 }
 
-# Title label (Cortex Linux)
+# Title label (CX Linux)
 + label {
     left = 50%-100
     top = 8%
     width = 200
     height = 40
-    text = "CORTEX LINUX"
+    text = "CX LINUX"
     font = "DejaVu Sans Bold 24"
     color = "#ffffff"
     align = "center"

@@ -1,6 +1,6 @@
-# Cortex Linux Default Settings
-# This file contains system-wide default settings for Cortex Linux
-# Path: /usr/share/glib-2.0/schemas/99-cortex-defaults.gschema.override
+# CX Linux Default Settings
+# This file contains system-wide default settings for CX Linux
+# Path: /usr/share/glib-2.0/schemas/99-cx-defaults.gschema.override
 
 # ============================================================================
 # Desktop Interface

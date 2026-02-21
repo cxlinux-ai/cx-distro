@@ -1,7 +1,7 @@
-# Cortex Linux GNOME Terminal Profile
-# Import with: dconf load /org/gnome/terminal/ < cortex-terminal.dconf
+# CX Linux GNOME Terminal Profile
+# Import with: dconf load /org/gnome/terminal/ < cx-terminal.dconf
 
-[legacy/profiles:/:cortex]
+[legacy/profiles:/:cx]
 audible-bell=false
 background-color='#0D0D0D'
 background-transparency-percent=5
@@ -25,8 +25,8 @@ scrollback-lines=10000
 use-system-font=false
 use-theme-colors=false
 use-transparent-background=false
-visible-name='Cortex'
+visible-name='CX'
 
 [legacy/profiles:]
-default='cortex'
-list=['cortex']
+default='cx'
+list=['cx']

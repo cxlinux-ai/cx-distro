@@ -1,8 +1,8 @@
 /**
- * Cortex Linux GDM Theme
+ * CX Linux GDM Theme
  *
  * Custom styling for the GNOME Display Manager login screen.
- * This overrides the default GDM theme with Cortex branding.
+ * This overrides the default GDM theme with CX branding.
  */
 
 /* Login screen background */
@@ -158,7 +158,7 @@
 
 /* Logo/branding area */
 .login-dialog-logo {
-    background-image: url('resource:///org/gnome/shell/theme/cortex-logo.svg');
+    background-image: url('resource:///org/gnome/shell/theme/cx-logo.svg');
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;

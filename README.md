@@ -226,7 +226,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## Related Repositories
 
-- [cortex](https://github.com/cxlinux-ai/cortex) - AI-powered package manager CLI
+- [cortex](https://github.com/cxlinux-ai/cx-core) - AI-powered package manager CLI
 - [website](https://github.com/cxlinux-ai/website) - cxlinux-ai.com
 
 ## License

@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Cortex Linux System Information
+# CX Linux System Information
 # Displays system stats on terminal login
 #
 
@@ -16,7 +16,7 @@ RESET='\033[0m'
 
 # Gather system information
 HOSTNAME=$(hostname)
-DISTRO=$(grep PRETTY_NAME /etc/os-release 2>/dev/null | cut -d'"' -f2 || echo "Cortex Linux")
+DISTRO=$(grep PRETTY_NAME /etc/os-release 2>/dev/null | cut -d'"' -f2 || echo "CX Linux")
 KERNEL=$(uname -r)
 UPTIME=$(uptime -p 2>/dev/null | sed 's/up //' || uptime | awk -F'( |,|:)+' '{print $6"h "$7"m"}')
 LOAD=$(cat /proc/loadavg | awk '{print $1" "$2" "$3}')

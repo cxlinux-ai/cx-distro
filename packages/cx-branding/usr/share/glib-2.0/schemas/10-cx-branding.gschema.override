@@ -1,5 +1,5 @@
-# Cortex Linux GSettings Overrides
-# These provide default GNOME settings for Cortex Linux
+# CX Linux GSettings Overrides
+# These provide default GNOME settings for CX Linux
 
 [org.gnome.desktop.interface]
 gtk-theme='Adwaita-dark'

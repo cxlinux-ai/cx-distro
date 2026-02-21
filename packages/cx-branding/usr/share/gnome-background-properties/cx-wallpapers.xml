@@ -3,8 +3,8 @@
 <wallpapers>
 
   <wallpaper deleted="false">
-    <name>Cortex Minimal Dark (Default)</name>
-    <filename>/usr/share/backgrounds/cortex/minimal-dark.png</filename>
+    <name>CX Minimal Dark (Default)</name>
+    <filename>/usr/share/backgrounds/cx/minimal-dark.png</filename>
     <options>zoom</options>
     <shade_type>solid</shade_type>
     <pcolor>#0F0F23</pcolor>
@@ -12,8 +12,8 @@
   </wallpaper>
 
   <wallpaper deleted="false">
-    <name>Cortex Circuit Board</name>
-    <filename>/usr/share/backgrounds/cortex/circuit-board.png</filename>
+    <name>CX Circuit Board</name>
+    <filename>/usr/share/backgrounds/cx/circuit-board.png</filename>
     <options>zoom</options>
     <shade_type>solid</shade_type>
     <pcolor>#0F0F23</pcolor>

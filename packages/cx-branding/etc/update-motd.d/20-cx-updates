@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Cortex Linux Update Notification
+# CX Linux Update Notification
 # Shows available updates on login (if any)
 #
 
@@ -55,10 +55,10 @@ if [ -f "$REBOOT_FILE" ]; then
     echo ""
 fi
 
-# Cortex-specific notifications
-CORTEX_NOTICE="/opt/cortex/notice"
-if [ -f "$CORTEX_NOTICE" ]; then
-    echo -e "  ${CYAN}◆ Cortex Notice:${RESET}"
-    cat "$CORTEX_NOTICE" | sed 's/^/    /'
+# CX-specific notifications
+CX_NOTICE="/opt/cx/notice"
+if [ -f "$CX_NOTICE" ]; then
+    echo -e "  ${CYAN}◆ CX Notice:${RESET}"
+    cat "$CX_NOTICE" | sed 's/^/    /'
     echo ""
 fi
