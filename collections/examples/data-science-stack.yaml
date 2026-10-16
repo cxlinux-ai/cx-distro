@@ -1,0 +1,15 @@
+collection: data-science-stack
+version: "1.2.0"
+description: Complete data science environment
+packages:
+  - python3
+  - jupyter-notebook
+  - python3-pandas
+  - python3-numpy
+  - python3-sklearn
+  - python3-matplotlib
+dependencies:
+  - base-development@>=1.0.0,<2.0.0
+configurations:
+  jupyter:
+    port: 8888
