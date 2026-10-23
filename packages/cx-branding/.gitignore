@@ -1,5 +1,5 @@
 # dpkg-buildpackage artifacts
-debian/cortex-branding/
+debian/cx-branding/
 debian/files
 debian/*.substvars
 debian/.debhelper/
