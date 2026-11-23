@@ -1,0 +1,83 @@
+#!/usr/bin/make -f
+#
+# CX Branding Package Build Rules
+#
+# All branding assets are stored directly in this package directory.
+# Build with: dpkg-buildpackage -us -uc -b
+#
+
+export DH_VERBOSE = 1
+
+%:
+	dh $@
+
+# Don't run 'make clean' - our PNG assets are pre-committed static files
+override_dh_auto_clean:
+	@echo "Skipping make clean (assets are pre-committed)"
+
+override_dh_auto_install:
+	# Install OS identity templates (installed to /etc by postinst to avoid base-files conflict)
+	install -d $(CURDIR)/debian/cx-branding/usr/share/cx/templates
+	install -m 644 usr/share/cx/templates/os-release $(CURDIR)/debian/cx-branding/usr/share/cx/templates/
+	install -m 644 usr/share/cx/templates/lsb-release $(CURDIR)/debian/cx-branding/usr/share/cx/templates/
+	install -m 644 usr/share/cx/templates/issue $(CURDIR)/debian/cx-branding/usr/share/cx/templates/
+	install -m 644 usr/share/cx/templates/issue.net $(CURDIR)/debian/cx-branding/usr/share/cx/templates/
+	
+	# Install Plymouth theme
+	install -d $(CURDIR)/debian/cx-branding/usr/share/plymouth/themes/cx
+	cp -r usr/share/plymouth/themes/cx/* $(CURDIR)/debian/cx-branding/usr/share/plymouth/themes/cx/
+	
+	# Install GRUB theme
+	install -d $(CURDIR)/debian/cx-branding/boot/grub/themes/cx
+	cp -r boot/grub/themes/cx/* $(CURDIR)/debian/cx-branding/boot/grub/themes/cx/
+	
+	# Install wallpapers
+	install -d $(CURDIR)/debian/cx-branding/usr/share/backgrounds/cx
+	cp -r usr/share/backgrounds/cx/* $(CURDIR)/debian/cx-branding/usr/share/backgrounds/cx/
+	install -d $(CURDIR)/debian/cx-branding/usr/share/gnome-background-properties
+	cp usr/share/gnome-background-properties/*.xml $(CURDIR)/debian/cx-branding/usr/share/gnome-background-properties/ 2>/dev/null || true
+	
+	# Install MOTD scripts
+	install -d $(CURDIR)/debian/cx-branding/etc/update-motd.d
+	install -m 755 etc/update-motd.d/* $(CURDIR)/debian/cx-branding/etc/update-motd.d/
+	
+	# Install logos
+	install -d $(CURDIR)/debian/cx-branding/usr/share/cx/logos
+	cp -r usr/share/cx/logos/* $(CURDIR)/debian/cx-branding/usr/share/cx/logos/
+	
+	# Install dconf profile
+	install -d $(CURDIR)/debian/cx-branding/etc/dconf/profile
+	install -m 644 etc/dconf/profile/user $(CURDIR)/debian/cx-branding/etc/dconf/profile/
+	
+	# Install GDM dconf configuration
+	install -d $(CURDIR)/debian/cx-branding/etc/dconf/db/gdm.d
+	install -m 644 etc/dconf/db/gdm.d/01-cx-branding $(CURDIR)/debian/cx-branding/etc/dconf/db/gdm.d/
+	
+	# Install desktop and terminal dconf configuration
+	install -d $(CURDIR)/debian/cx-branding/etc/dconf/db/local.d
+	install -m 644 etc/dconf/db/local.d/00-cx-desktop $(CURDIR)/debian/cx-branding/etc/dconf/db/local.d/
+	install -m 644 etc/dconf/db/local.d/01-cx-terminal $(CURDIR)/debian/cx-branding/etc/dconf/db/local.d/
+	install -m 644 etc/dconf/db/local.d/02-disable-initial-setup $(CURDIR)/debian/cx-branding/etc/dconf/db/local.d/
+	
+	# Install GSettings schema override
+	install -d $(CURDIR)/debian/cx-branding/usr/share/glib-2.0/schemas
+	install -m 644 usr/share/glib-2.0/schemas/10-cx-branding.gschema.override $(CURDIR)/debian/cx-branding/usr/share/glib-2.0/schemas/
+	
+	# Install neofetch configuration
+	install -d $(CURDIR)/debian/cx-branding/etc/neofetch
+	install -m 644 etc/neofetch/config.conf $(CURDIR)/debian/cx-branding/etc/neofetch/
+	install -d $(CURDIR)/debian/cx-branding/usr/share/neofetch/ascii/distro
+	install -m 644 usr/share/neofetch/ascii/distro/cx $(CURDIR)/debian/cx-branding/usr/share/neofetch/ascii/distro/
+	
+	# Install GDM theme (GNOME Shell login screen)
+	install -d $(CURDIR)/debian/cx-branding/usr/share/gnome-shell/theme/CX
+	install -m 644 usr/share/gnome-shell/theme/CX/gnome-shell.css $(CURDIR)/debian/cx-branding/usr/share/gnome-shell/theme/CX/
+	
+	# Install skel config to disable gnome-initial-setup for new users
+	install -d $(CURDIR)/debian/cx-branding/etc/skel/.config
+	install -m 644 etc/skel/.config/gnome-initial-setup-done $(CURDIR)/debian/cx-branding/etc/skel/.config/
+
+override_dh_fixperms:
+	dh_fixperms
+	# Ensure MOTD scripts are executable
+	chmod 755 $(CURDIR)/debian/cx-branding/etc/update-motd.d/* || true

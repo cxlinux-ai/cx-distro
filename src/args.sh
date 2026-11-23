@@ -4,7 +4,7 @@
 #           PLEASE READ THIS BEFORE EDITING
 #=================================================
 # This file is used to set the environment variables for the build process.
-# Before building Cortex Linux, you should edit this file to customize the build process.
+# Before building CX Linux, you should edit this file to customize the build process.
 # It is sourced by the build script and should not be executed directly.
 # You can edit this file to customize the build process.
 # However, you should not change the variable names or the structure of the file.
@@ -82,11 +82,11 @@ export APT_CACHER_NG_URL="${APT_CACHER_NG_URL:-}"
 
 # This is the name of the target OS.
 # Must be lowercase without special characters and spaces
-export TARGET_NAME="cortex"
+export TARGET_NAME="cx"
 
 # This is the full display name of the target OS.
 # Business name. No special characters or spaces
-export TARGET_BUSINESS_NAME="Cortex Linux"
+export TARGET_BUSINESS_NAME="CX Linux"
 
 # Version number. Must be in the format of x.y.z
 export TARGET_BUILD_VERSION="1.5.0"

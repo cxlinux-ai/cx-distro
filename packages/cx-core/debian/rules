@@ -3,20 +3,15 @@
 # Copyright 2025 AI Venture Holdings LLC
 # SPDX-License-Identifier: BUSL-1.1
 
-export PYBUILD_NAME=cx-linux
 export DH_VERBOSE=1
 
 %:
-	dh $@ --with python3 --buildsystem=pybuild
+	dh $@
 
 override_dh_auto_build:
-	dh_auto_build
-	# Build Python package
-	python3 setup.py build || python3 -m build --wheel --no-isolation
+	@echo "No build step required - cx-linux installed via pip"
 
 override_dh_auto_install:
-	dh_auto_install
-
 	# Create configuration directories
 	install -d $(CURDIR)/debian/cx-core/etc/cx
 	install -d $(CURDIR)/debian/cx-core/etc/cx/profiles.d
@@ -25,26 +20,21 @@ override_dh_auto_install:
 	install -d $(CURDIR)/debian/cx-core/var/cache/cx
 	install -d $(CURDIR)/debian/cx-core/usr/share/cx
 	install -d $(CURDIR)/debian/cx-core/usr/share/doc/cx-core
+	install -d $(CURDIR)/debian/cx-core/usr/bin
 
 	# Install default configuration
 	install -m 644 debian/cx.yaml \
 		$(CURDIR)/debian/cx-core/etc/cx/cx.yaml
 
-	# Ensure cx CLI is in /usr/bin
-	install -d $(CURDIR)/debian/cx-core/usr/bin
-
-	# Create wrapper script if pip install didn't create it
-	if [ ! -f $(CURDIR)/debian/cx-core/usr/bin/cx ]; then \
-		echo '#!/usr/bin/python3' > $(CURDIR)/debian/cx-core/usr/bin/cx; \
-		echo 'from cx.cli import main' >> $(CURDIR)/debian/cx-core/usr/bin/cx; \
-		echo 'if __name__ == "__main__":' >> $(CURDIR)/debian/cx-core/usr/bin/cx; \
-		echo '    main()' >> $(CURDIR)/debian/cx-core/usr/bin/cx; \
-		chmod 755 $(CURDIR)/debian/cx-core/usr/bin/cx; \
-	fi
+	# Create cx wrapper that installs from PyPI on first run
+	echo '#!/bin/bash' > $(CURDIR)/debian/cx-core/usr/bin/cx
+	echo '# CX Linux CLI Wrapper' >> $(CURDIR)/debian/cx-core/usr/bin/cx
+	echo 'if ! python3 -c "import cx" 2>/dev/null; then' >> $(CURDIR)/debian/cx-core/usr/bin/cx
+	echo '    echo "Installing cx-linux from PyPI..."' >> $(CURDIR)/debian/cx-core/usr/bin/cx
+	echo '    pip3 install --user cx-linux' >> $(CURDIR)/debian/cx-core/usr/bin/cx
+	echo 'fi' >> $(CURDIR)/debian/cx-core/usr/bin/cx
+	echo 'python3 -m cx.cli "$$@"' >> $(CURDIR)/debian/cx-core/usr/bin/cx
+	chmod 755 $(CURDIR)/debian/cx-core/usr/bin/cx
 
 override_dh_auto_clean:
-	dh_auto_clean
-	rm -rf build dist *.egg-info .eggs
-
-override_dh_python3:
-	dh_python3 --shebang=/usr/bin/python3
+	@echo "No clean step required"

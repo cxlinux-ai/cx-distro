@@ -1,0 +1,6 @@
+collection: base-development
+version: "1.0.0"
+description: Base development utilities
+packages:
+  - git
+  - curl

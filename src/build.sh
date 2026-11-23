@@ -357,7 +357,7 @@ This image is built with the following configurations:
 - **Version**: $TARGET_BUILD_VERSION
 - **Date**: $DATE
 
-$TARGET_BUSINESS_NAME is distributed with Business Source License 1.1. You can find the license on [BSL 1.1](https://github.com/cortexlinux/cortex-distro/blob/$TARGET_BUILD_BRANCH/LICENSE).
+$TARGET_BUSINESS_NAME is distributed with Business Source License 1.1. You can find the license on [BSL 1.1](https://github.com/cxlinux/cx-distro/blob/$TARGET_BUILD_BRANCH/LICENSE).
 
 ## Please verify the checksum!!!
 
@@ -377,7 +377,7 @@ Press F12 to enter the boot menu when you start your computer. Select the USB dr
 
 ## More information
 
-For detailed instructions, please visit [$TARGET_BUSINESS_NAME Document](https://docs.cortexlinux.com/Install/System-Requirements.html).
+For detailed instructions, please visit [$TARGET_BUSINESS_NAME Document](https://docs.cxlinux.com/Install/System-Requirements.html).
 EOF
 
     pushd $SCRIPT_DIR/image

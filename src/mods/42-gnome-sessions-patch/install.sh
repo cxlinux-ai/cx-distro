@@ -3,16 +3,16 @@ set -o pipefail         # exit on pipeline error
 set -u                  # treat unset variable as error
 
 print_ok "Setting up /usr/share/gnome-sessions/sessions..."
-sed -i 's/Ubuntu/Cortex Linux/g' /usr/share/gnome-session/sessions/ubuntu.session
+sed -i 's/Ubuntu/CX Linux/g' /usr/share/gnome-session/sessions/ubuntu.session
 judge "Set up /usr/share/gnome-sessions/sessions"
 
 print_ok "Setting up /usr/share/wayland-sessions..."
 rm /usr/share/wayland-sessions/gnome* || true
 
-mv /usr/share/wayland-sessions/ubuntu.desktop /usr/share/wayland-sessions/cortex.desktop
-mv /usr/share/wayland-sessions/ubuntu-wayland.desktop /usr/share/wayland-sessions/cortex-wayland.desktop
-sed -i 's/Name=Ubuntu/Name=Cortex Linux/g' /usr/share/wayland-sessions/cortex.desktop
-sed -i 's/Name=Ubuntu/Name=Cortex Linux/g' /usr/share/wayland-sessions/cortex-wayland.desktop
+mv /usr/share/wayland-sessions/ubuntu.desktop /usr/share/wayland-sessions/cx.desktop
+mv /usr/share/wayland-sessions/ubuntu-wayland.desktop /usr/share/wayland-sessions/cx-wayland.desktop
+sed -i 's/Name=Ubuntu/Name=CX Linux/g' /usr/share/wayland-sessions/cx.desktop
+sed -i 's/Name=Ubuntu/Name=CX Linux/g' /usr/share/wayland-sessions/cx-wayland.desktop
 judge "Set up /usr/share/wayland-sessions"
 
 print_ok "Setting up apparmor to allow user namespaces..."
