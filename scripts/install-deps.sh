@@ -1,5 +1,5 @@
 #!/bin/bash
-# Cortex Linux Build Dependencies Installer
+# CX Linux Build Dependencies Installer
 # Copyright 2025 AI Venture Holdings LLC
 # SPDX-License-Identifier: Apache-2.0
 
@@ -24,7 +24,7 @@ fi
 # Architecture detection: use ARCH env var if set, otherwise detect from system
 ARCH="${ARCH:-$(dpkg --print-architecture 2>/dev/null || echo amd64)}"
 
-log "Installing Cortex Linux build dependencies for ${ARCH}..."
+log "Installing CX Linux build dependencies for ${ARCH}..."
 
 # Update package lists
 apt-get update

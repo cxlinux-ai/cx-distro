@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=CX Linux
+Description=CX Linux boot splash with neural network animation
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/cx
+ScriptFile=/usr/share/plymouth/themes/cx/cx.script

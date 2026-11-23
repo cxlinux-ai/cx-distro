@@ -4,7 +4,7 @@ set -o pipefail         # exit on pipeline error
 set -u                  # treat unset variable as error
 
 # ==============================================================================
-# Cortex Linux dconf System-Level Configuration
+# CX Linux dconf System-Level Configuration
 # ==============================================================================
 # This script configures system-wide defaults using:
 # 1. gsettings schema overrides for standard schemas
@@ -17,15 +17,15 @@ set -u                  # treat unset variable as error
 # - System updates can push new defaults without overwriting user changes
 # ==============================================================================
 
-print_ok "Configuring Cortex Linux system-wide dconf defaults"
+print_ok "Configuring CX Linux system-wide dconf defaults"
 
 # ==============================================================================
 # 1. Install gsettings schema overrides
 # ==============================================================================
 print_ok "Installing gsettings schema overrides"
 
-cp ./schemas/99-cortex-defaults.gschema.override \
-   /usr/share/glib-2.0/schemas/99-cortex-defaults.gschema.override
+cp ./schemas/99-cx-defaults.gschema.override \
+   /usr/share/glib-2.0/schemas/99-cx-defaults.gschema.override
 judge "Copy gsettings schema override"
 
 glib-compile-schemas /usr/share/glib-2.0/schemas/
@@ -45,10 +45,10 @@ judge "Install dconf profile"
 # ==============================================================================
 print_ok "Installing dconf system database configurations"
 
-mkdir -p /etc/dconf/db/cortex.d
-cp ./dconf-db/01-custom-keybindings.conf /etc/dconf/db/cortex.d/
-cp ./dconf-db/02-ptyxis-terminal.conf /etc/dconf/db/cortex.d/
-cp ./dconf-db/03-gnome-extensions.conf /etc/dconf/db/cortex.d/
+mkdir -p /etc/dconf/db/cx.d
+cp ./dconf-db/01-custom-keybindings.conf /etc/dconf/db/cx.d/
+cp ./dconf-db/02-ptyxis-terminal.conf /etc/dconf/db/cx.d/
+cp ./dconf-db/03-gnome-extensions.conf /etc/dconf/db/cx.d/
 judge "Copy dconf system configurations"
 
 # ==============================================================================
@@ -69,8 +69,8 @@ fi
 
 # Generate dynamic configuration file
 print_ok "Generating dynamic configuration with build-time variables"
-cat > /etc/dconf/db/cortex.d/04-dynamic-configs.conf << EOF
-# Cortex Linux Dynamic Configuration
+cat > /etc/dconf/db/cx.d/04-dynamic-configs.conf << EOF
+# CX Linux Dynamic Configuration
 # Auto-generated during build
 
 # ============================================================================
@@ -100,7 +100,7 @@ judge "Compile dconf system database"
 # ==============================================================================
 print_ok "Configuring GDM greeter"
 
-cp ./cortex_text_smaller.png /usr/share/pixmaps/cortex_text_smaller.png
+cp ./cx_text_smaller.png /usr/share/pixmaps/cx_text_smaller.png
 judge "Copy GDM logo"
 
 cp ./greeter.dconf-defaults.ini /etc/gdm3/greeter.dconf-defaults

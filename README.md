@@ -18,7 +18,7 @@
 
 ```bash
 # Clone repository
-git clone https://github.com/cxlinux-ai/cortex-distro.git
+git clone https://github.com/cxlinux-ai/cx-distro.git
 cd cx-distro
 
 # Install dependencies (requires sudo)
@@ -130,7 +130,7 @@ CX uses a signed APT repository with deb822 format:
 ```
 # /etc/apt/sources.list.d/cx.sources
 Types: deb
-URIs: https://repo.cxlinux-ai.com/apt
+URIs: https://repo.cxlinux.com/apt
 Suites: cx cx-updates cx-security
 Components: main
 Signed-By: /usr/share/keyrings/cx-archive-keyring.gpg
@@ -153,6 +153,38 @@ CX_GPG_KEY_ID=ABCD1234 ./repository/scripts/repo-manage.sh publish
 
 # Export for offline use
 ./repository/scripts/repo-manage.sh export cx-offline-repo
+```
+
+### Dependency tree optimizer
+
+Use the read-only dependency tree optimizer to inspect the smallest package
+closure for one or more packages before publishing repository metadata. The
+tool reads local `Packages` or `Packages.gz` indexes only; it does not call
+`apt`, `dpkg`, `sudo`, or the network.
+
+```bash
+# Use indexes discovered under ./dists
+apt/scripts/optimize-dependency-tree.py cx-full
+
+# Or pass one or more explicit package indexes
+apt/scripts/optimize-dependency-tree.py \
+  --index dists/trixie/main/binary-amd64/Packages.gz \
+  cx-core cx-full
+
+# Include Graphviz DOT output for visualization
+apt/scripts/optimize-dependency-tree.py --dot cx-full > dependency-plan.txt
+```
+
+The report includes selected packages, total `Installed-Size`, the dependency
+tree, missing dependency diagnostics, and conflict diagnostics. The command
+exits with status `0` for a complete non-conflicting plan, `1` when missing
+dependencies or conflicts are detected, and `2` when indexes cannot be read or
+no package index is available.
+
+Run the focused regression suite with:
+
+```bash
+make test-dep-tree-optimizer
 ```
 
 ## Security
@@ -226,7 +258,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## Related Repositories
 
-- [cortex](https://github.com/cxlinux-ai/cortex) - AI-powered package manager CLI
+- [cx-terminal](https://github.com/cxlinux-ai/cx-core) - AI-powered terminal emulator
 - [website](https://github.com/cxlinux-ai/website) - cxlinux-ai.com
 
 ## License
@@ -235,9 +267,9 @@ BSL 1.1 - See [LICENSE](LICENSE)
 
 ## Support
 
-- Documentation: https://cxlinux-ai.com/docs
+- Documentation: https://cxlinux.com/docs
 - Issues: https://github.com/cxlinux-ai/cx-distro/issues
-- Discord: https://discord.gg/cxlinux-ai
+- Discord: https://discord.gg/7K6TR7qtS
 
 ---
 
